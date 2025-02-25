@@ -127,7 +127,7 @@ const EditBlog = () => {
         <div>
             <Card className="pt-5">
                 <CardContent>
-                    <h1 className='text-2xl font-bold mb-4'>Edit Blog</h1>
+                    <h1 className='text-2xl font-bold mb-4'>Modifier le Infos sur la Victime</h1>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)}  >
                             <div className='mb-3'>
@@ -138,7 +138,7 @@ const EditBlog = () => {
 
                                         <FormItem>
 
-                                            <FormLabel>Category</FormLabel>
+                                            <FormLabel>Sexe</FormLabel>
                                             <FormControl>
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <SelectTrigger  >
@@ -165,7 +165,7 @@ const EditBlog = () => {
                                     name="title"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Title</FormLabel>
+                                            <FormLabel>Noms Complet de la Victime</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="Enter blog title" {...field} />
                                             </FormControl>
@@ -180,7 +180,7 @@ const EditBlog = () => {
                                     name="slug"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Slug</FormLabel>
+                                            <FormLabel>Identifiant de la Victime</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="Slug" {...field} />
                                             </FormControl>
@@ -190,7 +190,7 @@ const EditBlog = () => {
                                 />
                             </div>
                             <div className='mb-3'>
-                                <span className='mb-2 block'>Featured Image</span>
+                                <span className='mb-2 block'>Portrait de la Victime</span>
                                 <Dropzone onDrop={acceptedFiles => handleFileSelection(acceptedFiles)}>
                                     {({ getRootProps, getInputProps }) => (
                                         <div {...getRootProps()}>
@@ -209,7 +209,7 @@ const EditBlog = () => {
                                     name="blogContent"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Blog Content</FormLabel>
+                                            <FormLabel>Hommage et mémoire à la victime</FormLabel>
                                             <FormControl>
                                                 <Editor props={{ initialData: field.value, onChange: handleEditorData }} />
                                             </FormControl>

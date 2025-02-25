@@ -31,7 +31,25 @@ const blogSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true
+    },
+    age: {
+        type: Number,
+        required: true
+    },
+
+    deathDate: { 
+        type: Date, 
+        required: false 
+    },
+    placeOfDeath: {
+        type: String,
+        required: false
+    },
+    deathMethod: {
+        type: String,
+        required: true
     }
+   
 }, { timestamps: true })
 
 const Blog = mongoose.model('Blog', blogSchema, 'blogs')

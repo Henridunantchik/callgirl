@@ -46,7 +46,7 @@ const BlogDetails = () => {
                     <div>
                         <Button asChild>
                             <Link to={RouteBlogAdd}>
-                                Add Blog
+                            Ajouter une Victime
                             </Link>
                         </Button>
                     </div>
@@ -56,11 +56,18 @@ const BlogDetails = () => {
 
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Author </TableHead>
-                                <TableHead>Category </TableHead>
-                                <TableHead>Title</TableHead>
-                                <TableHead>Slug</TableHead>
-                                <TableHead>Dated</TableHead>
+                                <TableHead>Témoin </TableHead>
+                                <TableHead>Sexe </TableHead>
+                                <TableHead>Noms de la victime</TableHead>
+                                <TableHead>Identifiant</TableHead>
+                                <TableHead>Age</TableHead>
+                                <TableHead>Date Décès</TableHead>
+
+
+                                <TableHead>Lieu du Décès</TableHead>
+
+
+                                <TableHead>Raison du Décès</TableHead>
                                 <TableHead>Action</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -73,7 +80,42 @@ const BlogDetails = () => {
                                         <TableCell>{blog?.category?.name}</TableCell>
                                         <TableCell>{blog?.title}</TableCell>
                                         <TableCell>{blog?.slug}</TableCell>
-                                        <TableCell>{moment(blog?.createdAt).format('DD-MM-YYYY')}</TableCell>
+                                        <TableCell>{blog?.age ?? 'N/A'}</TableCell>
+                                        <TableCell> {blog?.deathDate ? moment(new Date(blog.deathDate)).format('DD-MM-YYYY') : 'N/A'} </TableCell>
+                                        <TableCell>{blog?.placeOfDeath}</TableCell>
+                                        <TableCell>{blog?.deathMethod}</TableCell>
+
+                            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                    
+
+
+
+
+
+
+
+
+
+
+
+
+
                                      
                                         <TableCell className="flex gap-3">
                                             <Button variant="outline" className="hover:bg-violet-500 hover:text-white" asChild>

@@ -7,6 +7,7 @@ import RelatedBlog from '@/components/RelatedBlog'
 import { Avatar } from '@/components/ui/avatar'
 import { getEvn } from '@/helpers/getEnv'
 import { useFetch } from '@/hooks/useFetch'
+import { FaRegCalendarAlt } from "react-icons/fa";
 import { AvatarImage } from '@radix-ui/react-avatar'
 import { decode } from 'entities'
 import moment from 'moment'
@@ -28,8 +29,10 @@ const SingleBlogDetails = () => {
             {data && data.blog &&
                 <>
                     <div className='border rounded md:w-[70%] w-full p-5'>
-                        <h1 className='text-2xl font-bold mb-5'>{data.blog.title}</h1>
                         <div className='flex justify-between items-center'>
+
+                            {/* 
+
                             <div className='flex justify-between items-center gap-5'>
                                 <Avatar>
                                     <AvatarImage src={data.blog.author.avatar} />
@@ -39,6 +42,29 @@ const SingleBlogDetails = () => {
                                     <p>Date: {moment(data.blog.createdAt).format('DD-MM-YYYY')}</p>
                                 </div>
                             </div>
+
+                            */}
+
+
+
+
+
+
+
+                            <div className='flex justify-between items-center gap-5'>
+                               
+                                <div>
+                                    <p>Commémoré(e) le {moment(data.blog.createdAt).format('DD-MM-YYYY')}</p>
+                                </div>
+                            </div>
+
+
+
+
+
+
+
+
                             <div className='flex justify-between items-center gap-5'>
                                 <LikeCount props={{ blogid: data.blog._id }} />
                                 <CommentCount props={{ blogid: data.blog._id }} />
@@ -47,6 +73,30 @@ const SingleBlogDetails = () => {
                         <div className='my-5'>
                             <img src={data.blog.featuredImage} className='rounded' />
                         </div>
+
+                        <div>
+                        <h1 className='text-2xl font-bold mb-5'>{data.blog.title}</h1>
+
+                        <p className='flex items-center gap-2 mb-2'>
+                                                Décédé le 
+                                                    <FaRegCalendarAlt />
+                                                    <span>{moment(data.blog.deathDate).format('DD-MM-YYYY')}</span>
+                                                    À 
+                                                    <span>{data.blog.placeOfDeath}</span>
+                                                    Par
+                                                    <span>{data.blog.deathMethod}</span>
+                                                    À l'âge de
+                                                    <span>{data.blog.age}</span>
+                                                    ans.
+                                                </p>
+
+
+
+                        </div>
+
+                        
+
+
                         <div dangerouslySetInnerHTML={{ __html: decode(data.blog.blogContent) || '' }}>
 
                         </div>

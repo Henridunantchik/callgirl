@@ -23,6 +23,7 @@ import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { RouteBlog } from '@/helpers/RouteName'
 
+
 const AddBlog = () => {
     const navigate = useNavigate()
     const user = useSelector((state) => state.user)
@@ -39,7 +40,29 @@ const AddBlog = () => {
         title: z.string().min(3, 'Title must be at least 3 character long.'),
         slug: z.string().min(3, 'Slug must be at least 3 character long.'),
         blogContent: z.string().min(3, 'Blog content must be at least 3 character long.'),
+        age: z
+        .number({ required_error: "L'âge est requis" })
+        .min(0, "L'âge doit être au moins 1 mois")
+        .max(120, "L'âge ne peut pas dépasser 120"),
+        deathDate: z
+        .string()
+        .nullable()
+        .optional()
+        .refine((date) => {
+            if (!date) return true; // Allow null values
+            const selectedDate = new Date(date);
+            const today = new Date();
+            return selectedDate <= today; // Ensure it's today or in the past
+        }, { message: "La date de décès doit être aujourd'hui ou dans le passé." }),
+        placeOfDeath: z.string().min(3, 'Place of death must be at least 3 characters long.'),
+
+        deathMethod: z.string().min(3, 'Category must be at least 3 character long.'),
     })
+
+
+   
+
+    
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -48,8 +71,19 @@ const AddBlog = () => {
             title: '',
             slug: '',
             blogContent: '',
+            age: '', // Ensure it starts as a number
+            deathDate: null,
+            placeOfDeath: '',
+            deathMethod: ''
         },
     })
+    
+
+
+
+
+
+
 
     const handleEditorData = (event, editor) => {
         const data = editor.getData()
@@ -130,6 +164,9 @@ const AddBlog = () => {
                             </div>
 
 
+                            
+
+
 
                             <div className='mb-3'>
                                 <FormField
@@ -186,17 +223,34 @@ const AddBlog = () => {
 
 
 
-                            <div className='mb-3'>
-    <FormField name="age" control={form.control} render={({ field }) => (
-        <FormItem>
-            <FormLabel>Âge au moment du décès</FormLabel>
-            <FormControl>
-                <Input type="number" placeholder="Âge de la victime au moment du décès" {...field} />
-            </FormControl>
-            <FormMessage />
-        </FormItem>
-    )} />
-</div>
+
+
+
+    {/* Age */}
+    <div className='mb-3'>
+                                <FormField
+                                    control={form.control}
+                                    name="age"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Victim's Age</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="Enter age of the victim"
+                                                    {...field}
+                                                    value={field.value ?? ""}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value ? parseInt(e.target.value, 10) : "";
+                                                        field.onChange(value);
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
 
 
 
@@ -206,28 +260,43 @@ const AddBlog = () => {
 <div className='mb-3'>
 
 <FormField name="deathDate" control={form.control} render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Date de Décès</FormLabel>
-                        <FormControl><Input type="date" {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
+    <FormItem>
+        <FormLabel>Date de Décès</FormLabel>
+        <FormControl>
+            <Input 
+                type="date" 
+                value={field.value ?? ''}  // Ensure it's not null or undefined
+                onChange={(e) => field.onChange(e.target.value || null)} // Allow clearing
+                max={new Date().toISOString().split("T")[0]} // Restrict future dates
+            />
+        </FormControl>
+        <FormMessage />
+    </FormItem>
+)} />
+
 </div>
+
+
+
 
 
 
 
 <div className='mb-3'>
-
-
-                <FormField name="placeOfDeath" control={form.control} render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Lieu du Décès</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
+    <FormField name="placeOfDeath" control={form.control} render={({ field }) => (
+        <FormItem>
+            <FormLabel>Lieu du Décès</FormLabel>
+            <FormControl>
+                <Input type="text" value={field.value ?? ''} onChange={field.onChange} />
+            </FormControl>
+            <FormMessage />
+        </FormItem>
+    )} />
 </div>
+
+
+
+
 
 
 
@@ -278,15 +347,15 @@ const AddBlog = () => {
                             <SelectValue placeholder="Sélectionnez la méthode de décès" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="gunshot">Par balle</SelectItem>
+                            <SelectItem value="balle">Par balle</SelectItem>
                             <SelectItem value="strangulation">Par strangulation</SelectItem>
                             <SelectItem value="kidnaping">Par Enlevement</SelectItem>
                             <SelectItem value="torture">Par torture</SelectItem>
                             <SelectItem value="viol">Par viol</SelectItem>
-                            <SelectItem value="drowning">Par noyade</SelectItem>
-                            <SelectItem value="beating">Par coups</SelectItem>
+                            <SelectItem value="noyade">Par noyade</SelectItem>
+                            <SelectItem value="coups">Par coups</SelectItem>
                             <SelectItem value="mutilation">Par mutilation</SelectItem>
-                            <SelectItem value="bombing">Par bombardement</SelectItem>
+                            <SelectItem value="bombardement">Par bombardement</SelectItem>
                             <SelectItem value="fonction">Dans l'exercice de ses fonctions</SelectItem>
                             <SelectItem value="other">Autre</SelectItem>
                         </SelectContent>
@@ -320,6 +389,9 @@ const AddBlog = () => {
                                     )}
                                 </Dropzone>
                             </div>
+
+
+                             
                             <div className='mb-3'>
 
                                 <FormField

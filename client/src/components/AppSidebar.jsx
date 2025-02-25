@@ -39,7 +39,7 @@ const AppSidebar = () => {
                         <SidebarMenuItem>
                             <SidebarMenuButton>
                                 <IoHomeOutline />
-                                <Link to={RouteIndex}>Home</Link>
+                                <Link to={RouteIndex}>MéMORIAL</Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
 
@@ -48,13 +48,13 @@ const AppSidebar = () => {
                                 <SidebarMenuItem>
                                     <SidebarMenuButton>
                                         <GrBlog />
-                                        <Link to={RouteBlog}>Blogs</Link>
+                                        <Link to={RouteBlog}>VICTIMES</Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                                 <SidebarMenuItem>
                                     <SidebarMenuButton>
                                         <FaRegComments />
-                                        <Link to={RouteCommentDetails}>Comments</Link>
+                                        <Link to={RouteCommentDetails}>HOMMAGES</Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             </>

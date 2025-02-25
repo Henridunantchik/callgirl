@@ -13,6 +13,7 @@ const categorySchema = new mongoose.Schema({
         unique: true,
         trim: true
     },
+    
 
 })
 

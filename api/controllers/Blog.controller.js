@@ -20,7 +20,7 @@ export const addBlog = async (req, res, next) => {
 
             featuredImage = uploadResult.secure_url
         }
-        
+
         const blog = new Blog({
             author: data.author,
             category: data.category,
@@ -28,7 +28,20 @@ export const addBlog = async (req, res, next) => {
             slug: `${data.slug}-${Math.round(Math.random() * 100000)}`,
             featuredImage: featuredImage,
             blogContent: encode(data.blogContent),
+            age: Number(data.age),  
+            deathDate: data.deathDate ? new Date(data.deathDate) : null,
+            placeOfDeath: data.placeOfDeath,
+
+            deathMethod: data.deathMethod,
         })
+
+       
+
+        
+
+
+
+
 
         await blog.save()
 
