@@ -50,9 +50,9 @@ const Comments = () => {
 
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Blog </TableHead>
-                                <TableHead>Comented By</TableHead>
-                                <TableHead>Comment</TableHead>
+                                <TableHead>Victime </TableHead>
+                                <TableHead>Rendu Hommage Par</TableHead>
+                                <TableHead>Hommage</TableHead>
                                 <TableHead>Action</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -79,7 +79,7 @@ const Comments = () => {
 
                                 <TableRow>
                                     <TableCell colSpan="3">
-                                        Data not found.
+                                    Aucun Hommage Trouvé.
                                     </TableCell>
                                 </TableRow>
                             }

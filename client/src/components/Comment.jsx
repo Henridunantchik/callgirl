@@ -50,7 +50,7 @@ const Comment = ({ props }) => {
 
     return (
         <div>
-            <h4 className='flex items-center gap-2 text-2xl font-bold'> <FaComments className='text-violet-500' /> Comment</h4>
+            <h4 className='flex items-center gap-2 text-2xl font-bold'> <FaComments className='text-violet-500' /> Hommages</h4>
 
             {user && user.isLoggedIn
                 ?
@@ -62,9 +62,13 @@ const Comment = ({ props }) => {
                                 name="comment"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Comment</FormLabel>
+                                        <FormLabel>Reendre Hommage 
+                                            
+
+                                        </FormLabel>
+                                        
                                         <FormControl>
-                                            <Textarea placeholder="Type your comment..." {...field} />
+                                            <Textarea placeholder="Saisissez votre hommage..." {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -72,7 +76,7 @@ const Comment = ({ props }) => {
                             />
                         </div>
 
-                        <Button type="submit" >Submit</Button>
+                        <Button type="submit" >Rendre Hommage</Button>
                     </form>
                 </Form>
                 :

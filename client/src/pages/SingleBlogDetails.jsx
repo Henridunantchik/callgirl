@@ -51,12 +51,12 @@ const SingleBlogDetails = () => {
 
 
 
-                            <div className='flex justify-between items-center gap-5'>
-                               
-                                <div>
-                                    <p>Commémoré(e) le {moment(data.blog.createdAt).format('DD-MM-YYYY')}</p>
-                                </div>
-                            </div>
+<div className='flex flex-wrap justify-between items-center gap-5'>
+  <div>
+    <p className='text-sm sm:text-base'>Commémoré(e) le <br /> {moment(data.blog.createdAt).format('DD-MM-YYYY')}</p>
+  </div>
+</div>
+
 
 
 
@@ -74,25 +74,26 @@ const SingleBlogDetails = () => {
                             <img src={data.blog.featuredImage} className='rounded' />
                         </div>
 
-                        <div>
-                        <h1 className='text-2xl font-bold mb-5'>{data.blog.title}</h1>
+                        <div className="max-w-full px-4">
+  <h1 className='text-2xl sm:text-3xl md:text-4xl font-bold mb-5'>{data.blog.title}</h1>
 
-                        <p className='flex items-center gap-2 mb-2'>
-                                                Décédé le 
-                                                    <FaRegCalendarAlt />
-                                                    <span>{moment(data.blog.deathDate).format('DD-MM-YYYY')}</span>
-                                                    À 
-                                                    <span>{data.blog.placeOfDeath}</span>
-                                                    Par
-                                                    <span>{data.blog.deathMethod}</span>
-                                                    À l'âge de
-                                                    <span>{data.blog.age}</span>
-                                                    ans.
-                                                </p>
+  <p className='flex flex-wrap items-center gap-2 mb-2 text-sm sm:text-base'>
+    <span className="font-semibold">Décédé le</span> 
+    <FaRegCalendarAlt className="text-xl" />
+    <span>{moment(data.blog.deathDate).format('DD-MM-YYYY')}</span>
+    
+    <span className="font-semibold">À</span>
+    <span>{data.blog.placeOfDeath}</span>
+    
+    <span className="font-semibold">Par</span>
+    <span>{data.blog.deathMethod}</span>
+    
+    <span className="font-semibold">À l'âge de</span>
+    <span>{data.blog.age}</span>
+    <span className="font-semibold">ans.</span>
+  </p>
+</div>
 
-
-
-                        </div>
 
                         
 

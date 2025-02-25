@@ -109,7 +109,7 @@ const Topbar = () => {
                             <DropdownMenuItem asChild className="cursor-pointer">
                                 <Link to={RouteBlogAdd}>
                                     <FaPlus />
-                                    Create Blog
+                                    Ajouter une Victime
                                 </Link>
                             </DropdownMenuItem>
 
