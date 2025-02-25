@@ -86,7 +86,7 @@ const AppSidebar = () => {
 
                 <SidebarGroup>
                     <SidebarGroupLabel>
-                        Categories
+                        GENRE
                     </SidebarGroupLabel>
                     <SidebarMenu>
                         {categoryData && categoryData.category.length > 0

@@ -13,7 +13,7 @@ const RelatedBlog = ({ props }) => {
     if (loading) return <div>Loading....</div>
     return (
         <div>
-            <h2 className='text-2xl font-bold mb-5'>Related Blogs</h2>
+            <h2 className='text-2xl font-bold mb-5'>Autres Profils des Victimes</h2>
             <div>
                 {data && data.relatedBlog.length > 0
                     ?
@@ -30,7 +30,7 @@ const RelatedBlog = ({ props }) => {
 
                     :
                     <div>
-                        No Related Blog
+                        Aucun Profil Connexe
                     </div>
                 }
 

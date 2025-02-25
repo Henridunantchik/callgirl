@@ -26,7 +26,8 @@ const CommentList = ({ props }) => {
                         :
                         <span className='me-2'>{data && data.comments.length}</span>
                 }
-                Comments</h4>
+                Tous les Hommages
+                </h4>
             <div className='mt-5'>
 
                 {props.newComment
