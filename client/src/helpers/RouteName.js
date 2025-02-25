@@ -2,41 +2,41 @@ export const RouteIndex = '/'
 export const RouteSignIn = '/sign-in'
 export const RouteSignUp = '/sign-up'
 export const RouteProfile = '/profile'
-export const RouteCategoryDetails = '/categories'
-export const RouteAddCategory = '/category/add'
+export const RouteCategoryDetails = '/sexe'
+export const RouteAddCategory = '/sexe/add'
 export const RouteEditCategory = (category_id) => {
     if (category_id) {
-        return `/category/edit/${category_id}`
+        return `/sexe/edit/${category_id}`
     } else {
-        return `/category/edit/:category_id`
+        return `/sexe/edit/:category_id`
     }
 }
 
-export const RouteBlog = '/blog'
-export const RouteBlogAdd = '/blog/add'
+export const RouteBlog = '/victimes'
+export const RouteBlogAdd = '/victime/add'
 export const RouteBlogEdit = (blogid) => {
     if (blogid) {
-        return `/blog/edit/${blogid}`
+        return `/victime/edit/${blogid}`
     } else {
-        return `/blog/edit/:blogid`
+        return `/victime/edit/:blogid`
     }
 }
 
 
 export const RouteBlogDetails = (category, blog) => {
     if (!category || !blog) {
-        return '/blog/:category/:blog'
+        return '/victimes/:sexe/:blog'
     } else {
-        return `/blog/${category}/${blog}`
+        return `/victimes/${category}/${blog}`
     }
 }
 
 
 export const RouteBlogByCategory = (category) => {
     if (!category) {
-        return '/blog/:category'
+        return '/victimes/:category'
     } else {
-        return `/blog/${category}`
+        return `/victimes/${category}`
     }
 }
 
@@ -51,5 +51,5 @@ export const RouteSearch = (q) => {
 }
 
 
-export const RouteCommentDetails = '/comments'
+export const RouteCommentDetails = '/hommages'
 export const RouteUser = '/users'

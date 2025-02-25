@@ -15,7 +15,9 @@ const BlogCard = ({ props }) => {
         <Link to={RouteBlogDetails(props.category.slug, props.slug)}>
             <Card className="pt-5">
                 <CardContent>
-                    <div className='flex items-center justify-between'>
+
+                     {/* 
+                    <div className='flex items-center justify-between'> 
                         <div className='flex justify-between items-center gap-2'>
                             <Avatar>
                                 <AvatarImage src={props.author.avatar || usericon} />
@@ -27,16 +29,26 @@ const BlogCard = ({ props }) => {
                         }
                     </div>
 
+                    */}
+
                     <div className='my-2'>
                         <img src={props.featuredImage} className='rounded' />
                     </div>
                     <div>
                         <p className='flex items-center gap-2 mb-2'>
+                        Décédé le 
                             <FaRegCalendarAlt />
-                            <span>{moment(props.createdAt).format('DD-MM-YYYY')}</span>
+                            <span>{moment(props.deathDate).format('DD-MM-YYYY')}</span>
+                            À 
+                            <span>{props.placeOfDeath}</span>
                         </p>
                         <h2 className='text-2xl font-bold line-clamp-2'>{props.title}</h2>
                     </div>
+
+
+
+
+
 
                 </CardContent>
             </Card>
