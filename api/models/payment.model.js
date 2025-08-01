@@ -119,7 +119,6 @@ const paymentSchema = new mongoose.Schema(
 // Index for performance
 paymentSchema.index({ user: 1, status: 1, createdAt: -1 });
 paymentSchema.index({ status: 1, createdAt: -1 });
-paymentSchema.index({ transactionId: 1 });
 paymentSchema.index({ type: 1, status: 1 });
 
 const Payment = mongoose.model("Payment", paymentSchema, "payments");

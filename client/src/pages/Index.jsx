@@ -25,14 +25,10 @@ const Index = () => {
     online: false,
   });
 
-  const {
-    data: escortData,
-    loading,
-    error,
-  } = useFetch(`${getEvn("VITE_API_BASE_URL")}/escort/all`, {
-    method: "get",
-    credentials: "include",
-  });
+  // Temporarily disable API call to fix white screen
+  const escortData = { escorts: [] };
+  const loading = false;
+  const error = null;
 
   const handleSearch = (e) => {
     e.preventDefault();

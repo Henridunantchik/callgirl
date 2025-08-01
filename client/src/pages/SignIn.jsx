@@ -35,7 +35,7 @@ const SignIn = () => {
 
     async function onSubmit(values) {
         try {
-            const response = await fetch(`${getEvn('VITE_API_BASE_URL')}/auth/login`, {
+            const response = await fetch(`/api/auth/login`, {
                 method: 'post',
                 headers: { 'Content-type': 'application/json' },
                 credentials: 'include',
@@ -63,13 +63,14 @@ const SignIn = () => {
                     </Link>
                 </div>
                 <h1 className='text-2xl font-bold text-center mb-5'>Login Into Account</h1>
+                {/* Temporarily disabled Google Login
                 <div className=''>
                     <GoogleLogin />
                     <div className='border my-5 flex justify-center items-center'>
                         <span className='absolute bg-white text-sm'>Or</span>
                     </div>
-
                 </div>
+                */}
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}  >

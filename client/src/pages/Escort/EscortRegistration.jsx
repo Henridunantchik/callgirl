@@ -97,7 +97,7 @@ const EscortRegistration = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <steps[currentStep - 1].icon className="w-5 h-5" />
+              {React.createElement(steps[currentStep - 1].icon, { className: "w-5 h-5" })}
               {steps[currentStep - 1].title}
             </CardTitle>
           </CardHeader>

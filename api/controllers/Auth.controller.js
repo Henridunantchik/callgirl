@@ -32,6 +32,7 @@ export const Register = async (req, res, next) => {
 
 export const Login = async (req, res, next) => {
     try {
+        console.log("JWT_SECRET:", process.env.JWT_SECRET);
         const { email, password } = req.body
         const user = await User.findOne({ email })
         if (!user) {
@@ -49,7 +50,7 @@ export const Login = async (req, res, next) => {
             name: user.name,
             email: user.email,
             avatar: user.avatar
-        }, process.env.JWT_SECRET)
+        }, "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca")
 
 
         res.cookie('access_token', token, {
@@ -95,7 +96,7 @@ export const GoogleLogin = async (req, res, next) => {
             name: user.name,
             email: user.email,
             avatar: user.avatar
-        }, process.env.JWT_SECRET)
+        }, "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca")
 
 
         res.cookie('access_token', token, {

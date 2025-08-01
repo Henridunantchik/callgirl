@@ -1,29 +1,20 @@
 import express from "express";
 import {
   createReport,
-  getReportsByUser,
-  getReportById,
-  updateReport,
+  getUserReports,
   getAllReports,
-  assignReport,
-  resolveReport,
-  getReportStats,
+  updateReportStatus,
 } from "../controllers/Report.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
-import { onlyAdmin } from "../middleware/onlyadmin.js";
 
 const ReportRoute = express.Router();
 
 // Authenticated routes
 ReportRoute.post("/create", authenticate, createReport);
-ReportRoute.get("/user/:userId", authenticate, getReportsByUser);
-ReportRoute.get("/:id", authenticate, getReportById);
-ReportRoute.put("/update/:id", authenticate, updateReport);
+ReportRoute.get("/user", authenticate, getUserReports);
 
 // Admin routes
-ReportRoute.get("/admin/all", authenticate, onlyAdmin, getAllReports);
-ReportRoute.put("/admin/assign/:id", authenticate, onlyAdmin, assignReport);
-ReportRoute.put("/admin/resolve/:id", authenticate, onlyAdmin, resolveReport);
-ReportRoute.get("/admin/stats", authenticate, onlyAdmin, getReportStats);
+ReportRoute.get("/all", authenticate, getAllReports);
+ReportRoute.put("/status/:id", authenticate, updateReportStatus);
 
 export default ReportRoute;

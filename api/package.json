@@ -30,7 +30,6 @@
     "crypto": "^1.0.1",
     "moment": "^2.30.1",
     "validator": "^13.11.0",
-    "rate-limiter-flexible": "^3.0.8",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5"
   },

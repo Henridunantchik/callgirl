@@ -22,7 +22,7 @@ const GoogleLogin = () => {
                 email: user.email,
                 avatar: user.photoURL
             }
-            const response = await fetch(`${getEvn('VITE_API_BASE_URL')}/auth/google-login`, {
+            const response = await fetch(`/api/auth/google-login`, {
                 method: 'post',
                 headers: { 'Content-type': 'application/json' },
                 credentials: 'include',

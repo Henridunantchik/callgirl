@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "./components/ui/button";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Layout from "./Layout/Layout";
+import { AuthProvider } from "./contexts/AuthContext";
 import {
   RouteAddCategory,
   RouteBlog,
@@ -63,8 +64,9 @@ import OnlyClientAllowed from "./components/OnlyClientAllowed";
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <Routes>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
         <Route path={RouteIndex} element={<Layout />}>
           <Route index element={<Index />} />
 
@@ -130,7 +132,8 @@ const App = () => {
         <Route path={RouteSignUp} element={<SignUp />} />
         <Route path="/age-verification" element={<AgeVerification />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </AuthProvider>
   );
 };
 

@@ -19,9 +19,24 @@ import MessageRoute from "./routes/Message.route.js";
 import PaymentRoute from "./routes/Payment.route.js";
 import ReportRoute from "./routes/Report.route.js";
 
-dotenv.config();
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-const PORT = process.env.PORT;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: join(__dirname, '.env') });
+
+// Debug environment variables
+console.log("JWT_SECRET:", process.env.JWT_SECRET);
+console.log("MONGODB_CONN:", process.env.MONGODB_CONN);
+
+// Temporary hardcoded values for testing
+const JWT_SECRET = process.env.JWT_SECRET || "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca";
+const MONGODB_CONN =
+  process.env.MONGODB_CONN ||
+  "mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau";
+const PORT = process.env.PORT || 5000;
 const app = express();
 
 app.use(cookieParser());
@@ -38,16 +53,38 @@ app.use((req, res, next) => {
   // Skip age verification for certain routes
   const skipRoutes = [
     "/api/auth/age-verification",
+    "/api/auth/verify-age",
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/google-login",
+    "/api/auth/logout",
     "/api/legal/terms",
     "/api/legal/privacy",
+    "/api/health",
+    "/api/category/all-category",
+    "/api/escort/all",
+    "/api/escort/search",
+    "/api/escort/location",
+    "/api/escort/category",
   ];
-  if (skipRoutes.includes(req.path)) {
+
+  // Check if the current path matches any skip route
+  const shouldSkip = skipRoutes.some((route) => {
+    if (route.includes("*")) {
+      // Handle wildcard routes
+      const pattern = route.replace("*", ".*");
+      return new RegExp(pattern).test(req.path);
+    }
+    return req.path.startsWith(route);
+  });
+
+  if (shouldSkip) {
     return next();
   }
 
   // Check if user has verified age
   const ageVerified = req.cookies.ageVerified;
-  if (!ageVerified && req.path !== "/api/auth/verify-age") {
+  if (!ageVerified) {
     return res.status(403).json({
       success: false,
       message:
@@ -85,7 +122,7 @@ app.get("/api/health", (req, res) => {
 });
 
 mongoose
-  .connect(process.env.MONGODB_CONN, { dbName: "escort_directory" })
+  .connect(MONGODB_CONN, { dbName: "escort_directory" })
   .then(() => console.log("Database connected."))
   .catch((err) => console.log("Database connection failed.", err));
 

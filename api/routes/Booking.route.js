@@ -1,31 +1,24 @@
 import express from "express";
 import {
   createBooking,
-  getBookingsByEscort,
-  getBookingsByClient,
-  updateBooking,
+  getUserBookings,
+  getEscortBookings,
+  getBooking,
+  updateBookingStatus,
   cancelBooking,
-  getBookingById,
-  getAllBookings,
-  confirmBooking,
-  completeBooking,
+  getAvailability,
 } from "../controllers/Booking.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
-import { onlyAdmin } from "../middleware/onlyadmin.js";
 
 const BookingRoute = express.Router();
 
 // Authenticated routes
 BookingRoute.post("/create", authenticate, createBooking);
-BookingRoute.get("/escort/:escortId", authenticate, getBookingsByEscort);
-BookingRoute.get("/client/:clientId", authenticate, getBookingsByClient);
-BookingRoute.get("/:id", authenticate, getBookingById);
-BookingRoute.put("/update/:id", authenticate, updateBooking);
+BookingRoute.get("/user", authenticate, getUserBookings);
+BookingRoute.get("/escort", authenticate, getEscortBookings);
+BookingRoute.get("/:id", authenticate, getBooking);
+BookingRoute.put("/status/:id", authenticate, updateBookingStatus);
 BookingRoute.put("/cancel/:id", authenticate, cancelBooking);
-BookingRoute.put("/confirm/:id", authenticate, confirmBooking);
-BookingRoute.put("/complete/:id", authenticate, completeBooking);
-
-// Admin routes
-BookingRoute.get("/admin/all", authenticate, onlyAdmin, getAllBookings);
+BookingRoute.get("/availability/:escortId", authenticate, getAvailability);
 
 export default BookingRoute;

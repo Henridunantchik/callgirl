@@ -8,6 +8,8 @@ import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent } from '../../components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import { escortAPI, favoriteAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Search, 
   MapPin, 
@@ -38,155 +40,32 @@ const EscortList = () => {
     online: searchParams.get('online') === 'true',
   });
 
-  // Mock data for demonstration
-  const mockEscorts = [
-    {
-      _id: '1',
-      name: 'Sophia',
-      alias: 'Sophia',
-      age: 25,
-      height: 165,
-      bodyType: 'Slim',
-      ethnicity: 'Caucasian',
-      location: { city: 'New York', area: 'Manhattan' },
-      rates: { hourly: 300 },
-      services: ['In-call', 'Out-call', 'GFE'],
-      gallery: [
-        { url: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop', isPrivate: false }
-      ],
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop',
-      isOnline: true,
-      isVerified: true,
-      verification: { idVerified: true, selfieVerified: true },
-      rating: 4.8,
-      reviewCount: 127,
-      subscriptionPlan: 'premium',
-      lastSeen: new Date().toISOString(),
-    },
-    {
-      _id: '2',
-      name: 'Isabella',
-      alias: 'Bella',
-      age: 28,
-      height: 170,
-      bodyType: 'Curvy',
-      ethnicity: 'Hispanic',
-      location: { city: 'Los Angeles', area: 'Hollywood' },
-      rates: { hourly: 400 },
-      services: ['In-call', 'Massage', 'PSE'],
-      gallery: [
-        { url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop', isPrivate: false }
-      ],
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop',
-      isOnline: false,
-      isVerified: true,
-      verification: { idVerified: true, selfieVerified: true },
-      rating: 4.9,
-      reviewCount: 89,
-      subscriptionPlan: 'vip',
-      lastSeen: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      _id: '3',
-      name: 'Emma',
-      alias: 'Emma',
-      age: 23,
-      height: 160,
-      bodyType: 'Petite',
-      ethnicity: 'Asian',
-      location: { city: 'Miami', area: 'South Beach' },
-      rates: { hourly: 350 },
-      services: ['In-call', 'Out-call', 'Duo'],
-      gallery: [
-        { url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=600&fit=crop', isPrivate: false }
-      ],
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=600&fit=crop',
-      isOnline: true,
-      isVerified: false,
-      verification: { idVerified: false, selfieVerified: false },
-      rating: 4.5,
-      reviewCount: 45,
-      subscriptionPlan: 'standard',
-      lastSeen: new Date().toISOString(),
-    },
-    {
-      _id: '4',
-      name: 'Olivia',
-      alias: 'Liv',
-      age: 26,
-      height: 175,
-      bodyType: 'Athletic',
-      ethnicity: 'Black',
-      location: { city: 'Chicago', area: 'Downtown' },
-      rates: { hourly: 450 },
-      services: ['In-call', 'Travel', 'Weekend'],
-      gallery: [
-        { url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop', isPrivate: false }
-      ],
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop',
-      isOnline: true,
-      isVerified: true,
-      verification: { idVerified: true, selfieVerified: true },
-      rating: 4.7,
-      reviewCount: 203,
-      subscriptionPlan: 'premium',
-      lastSeen: new Date().toISOString(),
-    },
-    {
-      _id: '5',
-      name: 'Ava',
-      alias: 'Ava',
-      age: 24,
-      height: 168,
-      bodyType: 'Average',
-      ethnicity: 'Mixed',
-      location: { city: 'Las Vegas', area: 'Strip' },
-      rates: { hourly: 500 },
-      services: ['In-call', 'Party', 'Overnight'],
-      gallery: [
-        { url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop', isPrivate: false }
-      ],
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop',
-      isOnline: false,
-      isVerified: true,
-      verification: { idVerified: true, selfieVerified: true },
-      rating: 4.6,
-      reviewCount: 156,
-      subscriptionPlan: 'vip',
-      lastSeen: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      _id: '6',
-      name: 'Mia',
-      alias: 'Mia',
-      age: 27,
-      height: 172,
-      bodyType: 'Curvy',
-      ethnicity: 'Caucasian',
-      location: { city: 'San Francisco', area: 'Mission' },
-      rates: { hourly: 380 },
-      services: ['In-call', 'Out-call', 'Dinner Date'],
-      gallery: [
-        { url: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&h=600&fit=crop', isPrivate: false }
-      ],
-      avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&h=600&fit=crop',
-      isOnline: true,
-      isVerified: false,
-      verification: { idVerified: false, selfieVerified: false },
-      rating: 4.4,
-      reviewCount: 78,
-      subscriptionPlan: 'standard',
-      lastSeen: new Date().toISOString(),
-    }
-  ];
+  const { user } = useAuth();
 
+  // Fetch escorts from API
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setEscorts(mockEscorts);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    const fetchEscorts = async () => {
+      try {
+        setLoading(true);
+        const params = {
+          ...filters,
+          sortBy,
+          limit: 50
+        };
+        
+        const response = await escortAPI.getAllEscorts(params);
+        setEscorts(response.data.escorts || []);
+      } catch (error) {
+        console.error('Error fetching escorts:', error);
+        // Fallback to mock data if API fails
+        setEscorts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEscorts();
+  }, [filters, sortBy]);
 
   useEffect(() => {
     // Update URL params when filters change
@@ -206,9 +85,23 @@ const EscortList = () => {
     console.log('Searching for:', searchTerm);
   };
 
-  const handleFavorite = (escortId) => {
-    // Implement favorite functionality
-    console.log('Favorited escort:', escortId);
+  const handleFavorite = async (escortId) => {
+    try {
+      if (user) {
+        await favoriteAPI.addToFavorites(escortId);
+        // Update the escort's favorited status in the list
+        setEscorts(prev => prev.map(escort => 
+          escort._id === escortId 
+            ? { ...escort, isFavorited: !escort.isFavorited }
+            : escort
+        ));
+      } else {
+        // Redirect to login if not authenticated
+        window.location.href = '/signin';
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   const handleContact = (escort, method) => {
