@@ -9,8 +9,18 @@ export const useGeolocation = () => {
   useEffect(() => {
     const detectCountry = async () => {
       try {
-        // Try to get country from IP geolocation
-        const response = await fetch("https://ipapi.co/json/");
+        // Try to get country from IP geolocation using a CORS-friendly approach
+        const response = await fetch("https://ipapi.co/json/", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
 
         // Map country codes to our supported countries
@@ -20,6 +30,7 @@ export const useGeolocation = () => {
           TZ: "tz",
           RW: "rw",
           BI: "bi",
+          CD: "cd", // Add DRC
         };
 
         const detectedCountry = countryMapping[data.country_code];
@@ -40,7 +51,17 @@ export const useGeolocation = () => {
       }
     };
 
-    detectCountry();
+    // Only run geolocation detection in production or if explicitly enabled
+    if (
+      import.meta.env.PROD ||
+      import.meta.env.VITE_ENABLE_GEOLOCATION === "true"
+    ) {
+      detectCountry();
+    } else {
+      // In development, default to Uganda to avoid CORS issues
+      setCountryCode("ug");
+      setLoading(false);
+    }
   }, []);
 
   return { countryCode, loading, error };

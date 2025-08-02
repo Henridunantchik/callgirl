@@ -148,6 +148,12 @@ const App = () => {
 
           {/* Root redirect */}
           <Route path="/" element={<Navigate to="/ug" replace />} />
+
+          {/* Fallback for direct escort registration access */}
+          <Route
+            path="/escort/registration"
+            element={<Navigate to="/ug/escort/registration" replace />}
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

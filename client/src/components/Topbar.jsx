@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import logo from "@/assets/images/logo-white.png";
 import { Button } from "./ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { MdLogin } from "react-icons/md";
 import SearchBox from "./SearchBox";
 import {
@@ -47,6 +47,7 @@ const Topbar = () => {
   const [showSearch, setShowSearch] = useState(false);
   const dispath = useDispatch();
   const navigate = useNavigate();
+  const { countryCode } = useParams();
   const user = useSelector((state) => state.user);
 
   const handleLogout = async () => {
@@ -203,7 +204,7 @@ const Topbar = () => {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/escort/registration">
+                    <Link to={`/${countryCode}/escort/registration`}>
                       <FaUserTie className="mr-2" />
                       Join as Escort
                     </Link>
