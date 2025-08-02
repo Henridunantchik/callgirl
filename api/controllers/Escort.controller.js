@@ -5,6 +5,9 @@ import cloudinary from "../config/cloudinary.js";
 // Get all active escorts with pagination and filters
 export const getAllEscorts = async (req, res) => {
   try {
+    console.log("=== GET ALL ESCORTS DEBUG ===");
+    console.log("Request query:", req.query);
+    
     const {
       page = 1,
       limit = 20,
@@ -49,6 +52,8 @@ export const getAllEscorts = async (req, res) => {
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
 
+    console.log("Query:", query);
+    
     const escorts = await User.find(query)
       .select("-password -twoFactorSecret -loginAttempts -lockUntil")
       .sort(sortOptions)
@@ -57,6 +62,10 @@ export const getAllEscorts = async (req, res) => {
       .exec();
 
     const total = await User.countDocuments(query);
+    
+    console.log("Found escorts:", escorts.length);
+    console.log("Total escorts:", total);
+    console.log("First escort:", escorts[0]);
 
     res.json({
       success: true,

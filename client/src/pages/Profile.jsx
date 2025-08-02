@@ -39,6 +39,7 @@ const Profile = () => {
     personal: true,
     services: true,
     about: true,
+    gallery: true,
   });
   const user = useSelector((state) => state.user);
   const [userData, setUserData] = useState(null);
@@ -107,12 +108,44 @@ const Profile = () => {
 
   const profileCompletion = calculateProfileCompletion(userData);
 
-  // Use Redux data
+  // Fetch fresh user data on page load
   useEffect(() => {
-    if (user.user && user.user._id) {
-      setUserData({ success: true, user: user.user });
-      setLoading(false);
-    }
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+        console.log("=== PROFILE PAGE DEBUG ===");
+        console.log("Fetching fresh user data...");
+
+        // Get fresh user data from API
+        const response = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Fresh user data received:", data);
+          setUserData({ success: true, user: data.user });
+        } else {
+          console.error("Failed to fetch user data");
+          // Fallback to Redux data
+          if (user.user && user.user._id) {
+            setUserData({ success: true, user: user.user });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        // Fallback to Redux data
+        if (user.user && user.user._id) {
+          setUserData({ success: true, user: user.user });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
   }, [user.user]);
 
   const isEscort = userData?.user?.role === "escort";
@@ -232,22 +265,12 @@ const Profile = () => {
         experience: values.experience,
       };
 
-            // Make API call to update profile using the proper service
+      // Make API call to update profile using the proper service
       try {
         console.log("Making API call to update profile...");
         console.log("API endpoint: /api/user/update");
         console.log("Request data:", updateData);
-        
-        // Test API connectivity first
-        try {
-          const healthCheck = await fetch("/api/health");
-          console.log("API health check status:", healthCheck.status);
-        } catch (healthError) {
-          console.error("API health check failed:", healthError);
-          showToast("Cannot connect to server. Please check if the API is running.", "error");
-          return;
-        }
-        
+
         const response = await userAPI.updateUserProfile(updateData);
         console.log("Profile updated successfully:", response.data);
 
@@ -255,6 +278,9 @@ const Profile = () => {
         if (response.data.success && response.data.user) {
           console.log("Updating Redux store with new user data");
           dispatch(setUser(response.data.user));
+
+          // Also update local user data
+          setUserData({ success: true, user: response.data.user });
         }
 
         showToast("Profile updated successfully!", "success");
@@ -267,16 +293,17 @@ const Profile = () => {
         console.error("Error status:", error.response?.status);
         console.error("Error data:", error.response?.data);
         console.error("Error config:", error.config);
-        
+
         let errorMessage = "Failed to update profile";
         if (error.code === "ECONNREFUSED" || error.code === "ERR_NETWORK") {
-          errorMessage = "Cannot connect to server. Please check if the API is running.";
+          errorMessage =
+            "Cannot connect to server. Please check if the API is running.";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
         showToast(errorMessage, "error");
       }
     } catch (error) {
@@ -287,12 +314,95 @@ const Profile = () => {
     }
   }
 
-  const handleFileSelection = (files) => {
+  const handleFileSelection = async (files) => {
     if (files && files.length > 0) {
       const file = files[0];
       const reader = new FileReader();
       reader.onload = (e) => setPreview(e.target.result);
       reader.readAsDataURL(file);
+
+      // Upload avatar to server
+      try {
+        console.log("Uploading avatar...");
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/user/update", {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Avatar uploaded successfully:", data);
+          showToast("Avatar uploaded successfully!", "success");
+
+          // Update user data with new avatar
+          if (data.user) {
+            setUserData((prev) => ({
+              ...prev,
+              user: { ...prev.user, avatar: data.user.avatar },
+            }));
+          }
+        } else {
+          console.error("Failed to upload avatar");
+          showToast("Failed to upload avatar", "error");
+        }
+      } catch (error) {
+        console.error("Error uploading avatar:", error);
+        showToast("Failed to upload avatar", "error");
+      }
+    }
+  };
+
+  const handleGalleryUpload = async (files) => {
+    if (files && files.length > 0) {
+      try {
+        console.log("Uploading gallery photos...");
+        const formData = new FormData();
+
+        // Add all files to form data
+        files.forEach((file, index) => {
+          formData.append("images", file);
+        });
+
+        const response = await fetch("/api/escort/gallery/" + user.user._id, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Gallery uploaded successfully:", data);
+          showToast("Gallery photos uploaded successfully!", "success");
+
+          // Refresh user data to show new gallery
+          const userResponse = await fetch("/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            console.log("Updated user data after gallery upload:", userData);
+            setUserData({ success: true, user: userData.user });
+          }
+        } else {
+          const errorData = await response.json();
+          console.error("Failed to upload gallery:", errorData);
+          showToast("Failed to upload gallery photos", "error");
+        }
+      } catch (error) {
+        console.error("Error uploading gallery:", error);
+        showToast("Failed to upload gallery photos", "error");
+      }
     }
   };
 
@@ -1209,6 +1319,217 @@ const Profile = () => {
                                 </FormItem>
                               )}
                             />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Gallery Section for Escorts */}
+                  {isEscort && (
+                    <div className="border-b border-gray-200">
+                      <div className="p-6">
+                        <div
+                          className="flex items-center justify-between mb-4 cursor-pointer"
+                          onClick={() => toggleSection("gallery")}
+                        >
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <svg
+                              className="w-5 h-5 text-purple-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            Gallery Photos
+                          </h3>
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform ${
+                              expandedSections.gallery ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+
+                        {expandedSections.gallery && (
+                          <div className="space-y-4">
+                            {/* Gallery Upload */}
+                            <div className="mb-4">
+                              <Dropzone
+                                onDrop={handleGalleryUpload}
+                                accept="image/*"
+                                multiple
+                              >
+                                {({ getRootProps, getInputProps }) => (
+                                  <div
+                                    {...getRootProps()}
+                                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                                  >
+                                    <input {...getInputProps()} />
+                                    <svg
+                                      className="w-8 h-8 mx-auto text-gray-400 mb-2"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                      />
+                                    </svg>
+                                    <p className="text-sm text-gray-600">
+                                      Click to upload gallery photos
+                                    </p>
+                                  </div>
+                                )}
+                              </Dropzone>
+                            </div>
+
+                            {/* Gallery Display */}
+                            {(() => {
+                              console.log("=== GALLERY DEBUG ===");
+                              console.log("userData.user:", userData?.user);
+                              console.log(
+                                "Gallery data:",
+                                userData?.user?.gallery
+                              );
+                              console.log(
+                                "Gallery length:",
+                                userData?.user?.gallery?.length
+                              );
+
+                              // Check if gallery exists and has items
+                              const hasGallery =
+                                userData?.user?.gallery &&
+                                userData.user.gallery.length > 0;
+                              console.log("Has gallery:", hasGallery);
+
+                              if (hasGallery) {
+                                console.log(
+                                  "First gallery item:",
+                                  userData.user.gallery[0]
+                                );
+                                console.log(
+                                  "First gallery item URL:",
+                                  userData.user.gallery[0]?.url
+                                );
+                              }
+
+                              return hasGallery;
+                            })() && (
+                              <div className="grid grid-cols-3 gap-3">
+                                {userData.user.gallery.map((image, index) => {
+                                  console.log(`Gallery image ${index}:`, image);
+
+                                  // Handle both base64 data URLs and Cloudinary URLs
+                                  const imageUrl = image.url || image;
+                                  console.log(`Image ${index} URL:`, imageUrl);
+                                  console.log(
+                                    `Image ${index} is base64:`,
+                                    typeof imageUrl === "string" &&
+                                      imageUrl.startsWith("data:")
+                                  );
+
+                                  return (
+                                    <div key={index} className="relative group">
+                                      <img
+                                        src={imageUrl}
+                                        alt={`Gallery photo ${index + 1}`}
+                                        className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                                        onLoad={() =>
+                                          console.log(
+                                            `Image ${index} loaded successfully`
+                                          )
+                                        }
+                                        onError={(e) => {
+                                          console.error(
+                                            `Error loading image ${index}:`,
+                                            e
+                                          );
+                                          console.error(
+                                            `Failed URL:`,
+                                            imageUrl
+                                          );
+                                          e.target.style.display = "none";
+                                        }}
+                                      />
+                                      <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                                        {index === 0 ? "Main" : index + 1}
+                                      </div>
+                                      <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                                        <svg
+                                          className="w-4 h-4 text-white"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                          />
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                          />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            <p className="text-xs text-gray-500">
+                              {userData?.user?.gallery?.length || 0} photo(s)
+                              uploaded
+                            </p>
+
+                            {/* No photos message */}
+                            {(!userData?.user?.gallery ||
+                              userData.user.gallery.length === 0) && (
+                              <div className="text-center py-8 text-gray-500">
+                                <svg
+                                  className="w-12 h-12 mx-auto text-gray-300 mb-2"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <p className="text-sm">
+                                  No photos uploaded yet
+                                </p>
+                                <p className="text-xs">
+                                  Upload photos to showcase your profile
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

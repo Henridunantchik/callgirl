@@ -2,6 +2,7 @@ import EscortCard from "@/components/EscortCard";
 import Loading from "@/components/Loading";
 import { getEvn } from "@/helpers/getEnv";
 import { useFetch } from "@/hooks/useFetch";
+import { escortAPI } from "@/services/api";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +27,37 @@ const Index = () => {
     online: false,
   });
 
-  // Temporarily disable API call to fix white screen
-  const escortData = { escorts: [] };
-  const loading = false;
-  const error = null;
+    // Fetch escort data from API
+  const [escortData, setEscortData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Debug logging
+  console.log("=== HOME PAGE DEBUG ===");
+  console.log("Escort data:", escortData);
+  console.log("Loading:", loading);
+  console.log("Error:", error);
+  
+  // Fetch escorts on component mount
+  React.useEffect(() => {
+    const fetchEscorts = async () => {
+      try {
+        setLoading(true);
+        console.log("Fetching escorts from API...");
+        const response = await escortAPI.getAllEscorts();
+        console.log("API response:", response.data);
+        setEscortData(response.data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching escorts:", err);
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEscorts();
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -185,16 +213,28 @@ const Index = () => {
 
         {escortData && escortData.escorts && escortData.escorts.length > 0 ? (
           <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6">
-            {escortData.escorts.map((escort) => (
-              <EscortCard key={escort._id} escort={escort} />
-            ))}
+            {escortData.escorts.map((escort) => {
+              console.log("Rendering escort:", escort);
+              return <EscortCard key={escort._id} escort={escort} />;
+            })}
           </div>
         ) : (
           <Card>
             <CardContent className="p-8 text-center">
               <div className="text-gray-500">
-                No escorts found. Try adjusting your search criteria.
+                {loading
+                  ? "Loading escorts..."
+                  : error
+                  ? `Error loading escorts: ${error.message}`
+                  : escortData
+                  ? `No escorts found. Total: ${escortData.total || 0}`
+                  : "No escorts found. Try adjusting your search criteria."}
               </div>
+              {error && (
+                <div className="mt-4 text-red-500 text-sm">
+                  Debug: {JSON.stringify(error)}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
