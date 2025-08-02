@@ -40,6 +40,7 @@ import { IoMdSearch } from "react-icons/io";
 import { AiOutlineMenu } from "react-icons/ai";
 import { useSidebar } from "./ui/sidebar";
 import { Badge } from "./ui/badge";
+import CountrySelector from "./CountrySelector";
 
 const Topbar = () => {
   const { toggleSidebar } = useSidebar();
@@ -113,6 +114,8 @@ const Topbar = () => {
       </div>
 
       <div className="flex items-center gap-5">
+        <CountrySelector />
+
         <button
           onClick={toggleSearch}
           type="button"
@@ -123,12 +126,6 @@ const Topbar = () => {
 
         {!user.isLoggedIn ? (
           <div className="flex gap-2">
-            <Button asChild variant="outline" className="rounded-full">
-              <Link to="/escort/registration">
-                <FaUserTie className="mr-2" />
-                Join as Escort
-              </Link>
-            </Button>
             <Button asChild className="rounded-full">
               <Link to={RouteSignIn}>
                 <MdLogin />
@@ -202,6 +199,13 @@ const Topbar = () => {
                     <Link to="/client/bookings">
                       <FaCalendarAlt className="mr-2" />
                       My Bookings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link to="/escort/registration">
+                      <FaUserTie className="mr-2" />
+                      Join as Escort
                     </Link>
                   </DropdownMenuItem>
                 </>

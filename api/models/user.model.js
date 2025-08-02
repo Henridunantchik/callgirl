@@ -113,6 +113,14 @@ const userSchema = new mongoose.Schema(
 
     // Location
     location: {
+      country: {
+        type: String,
+        required: function () {
+          return this.role === "escort";
+        },
+        enum: ["ug", "ke", "tz", "rw", "bi", "cd"],
+        trim: true,
+      },
       city: {
         type: String,
         required: function () {

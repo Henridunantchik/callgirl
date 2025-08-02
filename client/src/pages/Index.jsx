@@ -19,8 +19,9 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     city: "",
-    ageMin: "",
+    ageMin: "18",
     ageMax: "",
+    gender: "",
     verified: false,
     online: false,
   });
@@ -76,7 +77,7 @@ const Index = () => {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Input
                 placeholder="City"
                 value={filters.city}
@@ -85,8 +86,14 @@ const Index = () => {
               <Input
                 placeholder="Min Age"
                 type="number"
+                min="18"
                 value={filters.ageMin}
-                onChange={(e) => handleFilterChange("ageMin", e.target.value)}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (value >= 18 || e.target.value === "") {
+                    handleFilterChange("ageMin", e.target.value);
+                  }
+                }}
               />
               <Input
                 placeholder="Max Age"
@@ -94,6 +101,19 @@ const Index = () => {
                 value={filters.ageMax}
                 onChange={(e) => handleFilterChange("ageMax", e.target.value)}
               />
+              <select
+                value={filters.gender}
+                onChange={(e) => handleFilterChange("gender", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">All Genders</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="trans-female">Trans Female</option>
+                <option value="trans-male">Trans Male</option>
+                <option value="non-binary">Non-Binary</option>
+                <option value="other">Other</option>
+              </select>
               <div className="flex gap-2">
                 <Button
                   type="button"

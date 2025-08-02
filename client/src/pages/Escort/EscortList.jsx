@@ -1,43 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import EscortCard from '../../components/EscortCard';
-import SearchFilters from '../../components/SearchFilters';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Badge } from '../../components/ui/badge';
-import { Card, CardContent } from '../../components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
-import { escortAPI, favoriteAPI } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Search, 
-  MapPin, 
-  Grid, 
-  List, 
-  Filter, 
-  SortAsc, 
+import React, { useState, useEffect } from "react";
+import { useSearchParams, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import EscortCard from "../../components/EscortCard";
+import SearchFilters from "../../components/SearchFilters";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardContent } from "../../components/ui/card";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "../../components/ui/tabs";
+import { escortAPI, favoriteAPI } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { getCountryByCode } from "../../helpers/countries";
+import {
+  Search,
+  MapPin,
+  Grid,
+  List,
+  Filter,
+  SortAsc,
   SortDesc,
   Heart,
   Star,
   Users,
-  TrendingUp
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+  TrendingUp,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const EscortList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { countryCode } = useParams();
   const [escorts, setEscorts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('grid');
-  const [sortBy, setSortBy] = useState('featured');
+  const [viewMode, setViewMode] = useState("grid");
+  const [sortBy, setSortBy] = useState("featured");
   const [filters, setFilters] = useState({
-    location: searchParams.get('location') || '',
-    minPrice: parseInt(searchParams.get('minPrice')) || 0,
-    maxPrice: parseInt(searchParams.get('maxPrice')) || 1000,
-    services: searchParams.get('services')?.split(',') || [],
-    verified: searchParams.get('verified') === 'true',
-    online: searchParams.get('online') === 'true',
+    location: searchParams.get("location") || "",
+    minPrice: parseInt(searchParams.get("minPrice")) || 0,
+    maxPrice: parseInt(searchParams.get("maxPrice")) || 1000,
+    services: searchParams.get("services")?.split(",") || [],
+    verified: searchParams.get("verified") === "true",
+    online: searchParams.get("online") === "true",
   });
 
   const { user } = useAuth();
@@ -49,14 +56,15 @@ const EscortList = () => {
         setLoading(true);
         const params = {
           ...filters,
+          country: countryCode,
           sortBy,
-          limit: 50
+          limit: 50,
         };
-        
+
         const response = await escortAPI.getAllEscorts(params);
         setEscorts(response.data.escorts || []);
       } catch (error) {
-        console.error('Error fetching escorts:', error);
+        console.error("Error fetching escorts:", error);
         // Fallback to mock data if API fails
         setEscorts([]);
       } finally {
@@ -65,24 +73,27 @@ const EscortList = () => {
     };
 
     fetchEscorts();
-  }, [filters, sortBy]);
+  }, [filters, sortBy, countryCode]);
 
   useEffect(() => {
     // Update URL params when filters change
     const params = new URLSearchParams();
-    if (filters.location) params.set('location', filters.location);
-    if (filters.minPrice > 0) params.set('minPrice', filters.minPrice.toString());
-    if (filters.maxPrice < 1000) params.set('maxPrice', filters.maxPrice.toString());
-    if (filters.services.length > 0) params.set('services', filters.services.join(','));
-    if (filters.verified) params.set('verified', 'true');
-    if (filters.online) params.set('online', 'true');
-    
+    if (filters.location) params.set("location", filters.location);
+    if (filters.minPrice > 0)
+      params.set("minPrice", filters.minPrice.toString());
+    if (filters.maxPrice < 1000)
+      params.set("maxPrice", filters.maxPrice.toString());
+    if (filters.services.length > 0)
+      params.set("services", filters.services.join(","));
+    if (filters.verified) params.set("verified", "true");
+    if (filters.online) params.set("online", "true");
+
     setSearchParams(params);
   }, [filters, setSearchParams]);
 
   const handleSearch = (searchTerm) => {
     // Implement search functionality
-    console.log('Searching for:', searchTerm);
+    console.log("Searching for:", searchTerm);
   };
 
   const handleFavorite = async (escortId) => {
@@ -90,23 +101,25 @@ const EscortList = () => {
       if (user) {
         await favoriteAPI.addToFavorites(escortId);
         // Update the escort's favorited status in the list
-        setEscorts(prev => prev.map(escort => 
-          escort._id === escortId 
-            ? { ...escort, isFavorited: !escort.isFavorited }
-            : escort
-        ));
+        setEscorts((prev) =>
+          prev.map((escort) =>
+            escort._id === escortId
+              ? { ...escort, isFavorited: !escort.isFavorited }
+              : escort
+          )
+        );
       } else {
         // Redirect to login if not authenticated
-        window.location.href = '/signin';
+        window.location.href = "/signin";
       }
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error("Error toggling favorite:", error);
     }
   };
 
   const handleContact = (escort, method) => {
     // Implement contact functionality
-    console.log('Contacting escort:', escort.alias, 'via', method);
+    console.log("Contacting escort:", escort.alias, "via", method);
   };
 
   const handleFiltersChange = (newFilters) => {
@@ -115,7 +128,7 @@ const EscortList = () => {
 
   const handleFiltersReset = () => {
     setFilters({
-      location: '',
+      location: "",
       minPrice: 0,
       maxPrice: 1000,
       services: [],
@@ -126,15 +139,17 @@ const EscortList = () => {
 
   const sortEscorts = (escortList) => {
     switch (sortBy) {
-      case 'price-low':
+      case "price-low":
         return [...escortList].sort((a, b) => a.rates.hourly - b.rates.hourly);
-      case 'price-high':
+      case "price-high":
         return [...escortList].sort((a, b) => b.rates.hourly - a.rates.hourly);
-      case 'rating':
+      case "rating":
         return [...escortList].sort((a, b) => b.rating - a.rating);
-      case 'newest':
-        return [...escortList].sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
-      case 'online':
+      case "newest":
+        return [...escortList].sort(
+          (a, b) => new Date(b.lastSeen) - new Date(a.lastSeen)
+        );
+      case "online":
         return [...escortList].sort((a, b) => b.isOnline - a.isOnline);
       default:
         return escortList;
@@ -162,22 +177,38 @@ const EscortList = () => {
     );
   }
 
+  const countryInfo = getCountryByCode(countryCode);
+
   return (
     <>
       <Helmet>
-        <title>Escorts Directory - Call Girls</title>
-        <meta name="description" content="Find verified escorts in your area. Browse profiles, read reviews, and book appointments safely and discreetly." />
-        <meta name="keywords" content="escorts, call girls, adult services, verified profiles" />
+        <title>
+          {countryInfo ? `Escorts in ${countryInfo.name}` : "Escorts Directory"}{" "}
+          - Call Girls
+        </title>
+        <meta
+          name="description"
+          content={`Find verified escorts in ${
+            countryInfo?.name || "your area"
+          }. Browse profiles, read reviews, and book appointments safely and discreetly.`}
+        />
+        <meta
+          name="keywords"
+          content="escorts, call girls, adult services, verified profiles"
+        />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Find Your Perfect Companion
+            {countryInfo
+              ? `Escorts in ${countryInfo.name}`
+              : "Find Your Perfect Companion"}
           </h1>
           <p className="text-gray-600">
-            Browse verified escorts in your area. Safe, discreet, and professional.
+            Browse verified escorts in {countryInfo?.name || "your area"}. Safe,
+            discreet, and professional.
           </p>
         </div>
 
@@ -189,7 +220,7 @@ const EscortList = () => {
               placeholder="Search by name, location, or services..."
               className="pl-10 pr-4 py-3 text-lg"
               onKeyPress={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   handleSearch(e.target.value);
                 }
               }}
@@ -273,17 +304,17 @@ const EscortList = () => {
                 {/* View Mode */}
                 <div className="flex border border-gray-300 rounded-md">
                   <Button
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    variant={viewMode === "grid" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => setViewMode("grid")}
                     className="rounded-r-none"
                   >
                     <Grid className="w-4 h-4" />
                   </Button>
                   <Button
-                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    variant={viewMode === "list" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => setViewMode('list')}
+                    onClick={() => setViewMode("list")}
                     className="rounded-l-none"
                   >
                     <List className="w-4 h-4" />
@@ -301,9 +332,9 @@ const EscortList = () => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
                 className={
-                  viewMode === 'grid'
-                    ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'
-                    : 'space-y-4'
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                    : "space-y-4"
                 }
               >
                 {filteredAndSortedEscorts.map((escort) => (
@@ -329,9 +360,7 @@ const EscortList = () => {
                 <p className="text-gray-600 mb-4">
                   Try adjusting your filters or search criteria
                 </p>
-                <Button onClick={handleFiltersReset}>
-                  Clear All Filters
-                </Button>
+                <Button onClick={handleFiltersReset}>Clear All Filters</Button>
               </div>
             )}
           </div>
@@ -341,4 +370,4 @@ const EscortList = () => {
   );
 };
 
-export default EscortList; 
+export default EscortList;

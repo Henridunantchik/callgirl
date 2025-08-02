@@ -19,20 +19,22 @@ import MessageRoute from "./routes/Message.route.js";
 import PaymentRoute from "./routes/Payment.route.js";
 import ReportRoute from "./routes/Report.route.js";
 
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: join(__dirname, '.env') });
+dotenv.config({ path: join(__dirname, ".env") });
 
 // Debug environment variables
 console.log("JWT_SECRET:", process.env.JWT_SECRET);
 console.log("MONGODB_CONN:", process.env.MONGODB_CONN);
 
 // Temporary hardcoded values for testing
-const JWT_SECRET = process.env.JWT_SECRET || "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca";
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca";
 const MONGODB_CONN =
   process.env.MONGODB_CONN ||
   "mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau";
@@ -66,6 +68,7 @@ app.use((req, res, next) => {
     "/api/escort/search",
     "/api/escort/location",
     "/api/escort/category",
+    "/api/escort/create",
   ];
 
   // Check if the current path matches any skip route

@@ -8,7 +8,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import logo from "@/assets/images/logo-white.png";
 import { IoHomeOutline } from "react-icons/io5";
 import { BiCategoryAlt } from "react-icons/bi";
@@ -25,6 +25,8 @@ import {
   FaChartBar,
   FaShieldAlt,
   FaCreditCard,
+  FaChevronDown,
+  FaChevronUp,
 } from "react-icons/fa";
 import {
   RouteBlog,
@@ -37,9 +39,14 @@ import {
 import { useFetch } from "@/hooks/useFetch";
 import { getEvn } from "@/helpers/getEnv";
 import { useSelector } from "react-redux";
+import { getCitiesByCountry, getCountryByCode } from "@/helpers/countries";
+import { useState } from "react";
 
 const AppSidebar = () => {
   const user = useSelector((state) => state.user);
+  const { countryCode } = useParams();
+  const [showAllCities, setShowAllCities] = useState(false);
+  const [showAllServices, setShowAllServices] = useState(false);
   const { data: categoryData } = useFetch(
     `${getEvn("VITE_API_BASE_URL")}/category/all-category`,
     {
@@ -47,6 +54,13 @@ const AppSidebar = () => {
       credentials: "include",
     }
   );
+
+  // Get cities for the current country
+  const cities = getCitiesByCountry(countryCode);
+  const countryInfo = getCountryByCode(countryCode);
+
+  // Show first 8 cities by default, or all cities if expanded
+  const displayedCities = showAllCities ? cities : cities.slice(0, 8);
 
   return (
     <Sidebar>
@@ -59,7 +73,7 @@ const AppSidebar = () => {
             <SidebarMenuItem>
               <SidebarMenuButton>
                 <IoHomeOutline />
-                <Link to={RouteIndex}>ESCORT DIRECTORY</Link>
+                <Link to={`/${countryCode}`}>ESCORT DIRECTORY</Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -71,19 +85,25 @@ const AppSidebar = () => {
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaHeart />
-                        <Link to="/client/favorites">My Favorites</Link>
+                        <Link to={`/${countryCode}/client/favorites`}>
+                          My Favorites
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaCalendarAlt />
-                        <Link to="/client/bookings">My Bookings</Link>
+                        <Link to={`/${countryCode}/client/bookings`}>
+                          My Bookings
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaEnvelope />
-                        <Link to="/client/messages">Messages</Link>
+                        <Link to={`/${countryCode}/client/messages`}>
+                          Messages
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </>
@@ -95,25 +115,31 @@ const AppSidebar = () => {
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaUserTie />
-                        <Link to="/escort/dashboard">My Dashboard</Link>
+                        <Link to={`/${countryCode}/escort/dashboard`}>
+                          My Dashboard
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaCalendarAlt />
-                        <Link to="/escort/bookings">Bookings</Link>
+                        <Link to={`/${countryCode}/escort/bookings`}>
+                          Bookings
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaEnvelope />
-                        <Link to="/escort/messages">Messages</Link>
+                        <Link to={`/${countryCode}/escort/messages`}>
+                          Messages
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaRegComments />
-                        <Link to={RouteCommentDetails}>Reviews</Link>
+                        <Link to={`/${countryCode}/hommages`}>Reviews</Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </>
@@ -125,31 +151,39 @@ const AppSidebar = () => {
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaChartBar />
-                        <Link to="/admin/dashboard">Dashboard</Link>
+                        <Link to={`/${countryCode}/admin/dashboard`}>
+                          Dashboard
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <LuUsers />
-                        <Link to="/admin/users">User Management</Link>
+                        <Link to={`/${countryCode}/admin/users`}>
+                          User Management
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaShieldAlt />
-                        <Link to="/admin/moderation">Content Moderation</Link>
+                        <Link to={`/${countryCode}/admin/moderation`}>
+                          Content Moderation
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaCreditCard />
-                        <Link to="/admin/payments">Payment Management</Link>
+                        <Link to={`/${countryCode}/admin/payments`}>
+                          Payment Management
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <BiCategoryAlt />
-                        <Link to={RouteCategoryDetails}>Categories</Link>
+                        <Link to={`/${countryCode}/sexe`}>Categories</Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </>
@@ -166,58 +200,183 @@ const AppSidebar = () => {
             <SidebarMenuItem>
               <SidebarMenuButton>
                 <GoDot />
-                <Link to="/category/massage">Massage</Link>
+                <Link to={`/${countryCode}/category/in-call`}>In-call</Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton>
                 <GoDot />
-                <Link to="/category/companionship">Companionship</Link>
+                <Link to={`/${countryCode}/category/out-call`}>Out-call</Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton>
                 <GoDot />
-                <Link to="/category/events">Events</Link>
+                <Link to={`/${countryCode}/category/massage`}>Massage</Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton>
                 <GoDot />
-                <Link to="/category/travel">Travel</Link>
+                <Link to={`/${countryCode}/category/gfe`}>GFE (Girlfriend Experience)</Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
+                <GoDot />
+                <Link to={`/${countryCode}/category/pse`}>PSE (Porn Star Experience)</Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
+                <GoDot />
+                <Link to={`/${countryCode}/category/travel`}>Travel</Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
+                <GoDot />
+                <Link to={`/${countryCode}/category/overnight`}>Overnight</Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
+                <GoDot />
+                <Link to={`/${countryCode}/category/duo`}>Duo</Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* View All Services Toggle */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setShowAllServices(!showAllServices)}
+                className="cursor-pointer hover:bg-gray-100"
+              >
+                {showAllServices ? (
+                  <>
+                    <FaChevronUp />
+                    <span>Show Less Services</span>
+                  </>
+                ) : (
+                  <>
+                    <FaChevronDown />
+                    <span>View All Services</span>
+                  </>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Popular Locations */}
+        {/* All Services (Expanded) */}
+        {showAllServices && (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>EXTENDED SERVICES</SidebarGroupLabel>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/dinner-date`}>
+                      Dinner Date
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/weekend`}>Weekend</Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/party`}>Party</Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/companionship`}>
+                      Companionship
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>SPECIALTY SERVICES</SidebarGroupLabel>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/bdsm`}>BDSM</Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/role-play`}>
+                      Role Play
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/fetish`}>Fetish</Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
+                    <GoDot />
+                    <Link to={`/${countryCode}/category/couples`}>Couples</Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+          </>
+        )}
+
+        {/* Popular Locations - Country Specific */}
         <SidebarGroup>
-          <SidebarGroupLabel>POPULAR LOCATIONS</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {countryInfo?.name?.toUpperCase()} CITIES ({cities.length})
+          </SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <GoDot />
-                <Link to="/location/kampala">Kampala</Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <GoDot />
-                <Link to="/location/entebbe">Entebbe</Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <GoDot />
-                <Link to="/location/jinja">Jinja</Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <GoDot />
-                <Link to="/location/mbarara">Mbarara</Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {displayedCities.map((city) => (
+              <SidebarMenuItem key={city}>
+                <SidebarMenuButton>
+                  <GoDot />
+                  <Link to={`/${countryCode}/location/${city.toLowerCase()}`}>
+                    {city}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+
+            {/* Show More/Less Cities Toggle */}
+            {cities.length > 8 && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setShowAllCities(!showAllCities)}
+                  className="cursor-pointer hover:bg-gray-100"
+                >
+                  {showAllCities ? (
+                    <>
+                      <FaChevronUp />
+                      <span>Show Less Cities</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaChevronDown />
+                      <span>View All {cities.length} Cities</span>
+                    </>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

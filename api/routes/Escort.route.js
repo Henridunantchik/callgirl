@@ -31,13 +31,15 @@ EscortRoute.get("/search", searchEscorts);
 EscortRoute.get("/location/:city", getEscortsByLocation);
 EscortRoute.get("/category/:category", getEscortsByCategory);
 
-// Authenticated routes
+// Public routes (for registration)
 EscortRoute.post(
   "/create",
   authenticate,
   upload.array("gallery", 20),
   createEscortProfile
 );
+
+// Authenticated routes
 EscortRoute.put(
   "/update/:id",
   authenticate,

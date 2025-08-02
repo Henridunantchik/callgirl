@@ -8,6 +8,7 @@ export const getAllEscorts = async (req, res) => {
     const {
       page = 1,
       limit = 20,
+      country,
       city,
       ageMin,
       ageMax,
@@ -24,6 +25,9 @@ export const getAllEscorts = async (req, res) => {
     };
 
     // Apply filters
+    if (country) {
+      query["location.country"] = country;
+    }
     if (city) {
       query["location.city"] = { $regex: city, $options: "i" };
     }
@@ -106,16 +110,25 @@ export const getEscortProfile = async (req, res) => {
 // Create escort profile
 export const createEscortProfile = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const escortData = JSON.parse(req.body.data || "{}");
+    const escortData = req.body; // Direct form data, not JSON
     const files = req.files || [];
 
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+
     // Check if user already has an escort profile
-    const existingEscort = await User.findOne({ _id: userId, role: "escort" });
-    if (existingEscort) {
+    if (user.role === "escort") {
       return res.status(400).json({
         success: false,
         message: "You already have an escort profile",
+      });
+    }
+
+    // Check if user is admin (admin cannot become escort)
+    if (user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin users cannot create escort profiles",
       });
     }
 
@@ -140,9 +153,29 @@ export const createEscortProfile = async (req, res) => {
       }
     }
 
+    // Parse services from string to array
+    let services = [];
+    if (escortData.services) {
+      try {
+        services = JSON.parse(escortData.services);
+      } catch (e) {
+        services = escortData.services.split(",").map((s) => s.trim());
+      }
+    }
+
     // Create escort profile
     const escortProfile = {
-      ...escortData,
+      name: escortData.name,
+      alias: escortData.alias,
+      email: escortData.email,
+      phone: escortData.phone,
+      age: parseInt(escortData.age),
+      location: {
+        city: escortData.city,
+        country: escortData.country || "Unknown",
+      },
+      services,
+      hourlyRate: parseFloat(escortData.hourlyRate),
       role: "escort",
       gallery,
       isActive: true,

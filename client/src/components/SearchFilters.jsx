@@ -1,62 +1,123 @@
-import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Badge } from './ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Slider } from './ui/slider';
-import { Checkbox } from './ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Separator } from './ui/separator';
-import { Filter, MapPin, DollarSign, Users, Star, X, RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Badge } from "./ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Slider } from "./ui/slider";
+import { Checkbox } from "./ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { Separator } from "./ui/separator";
+import {
+  Filter,
+  MapPin,
+  DollarSign,
+  Users,
+  Star,
+  X,
+  RefreshCw,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const serviceOptions = [
-    'In-call', 'Out-call', 'Massage', 'GFE', 'PSE', 'Duo', 'Party', 'Travel',
-    'Dinner Date', 'Overnight', 'Weekend', 'BDSM', 'Role Play', 'Fetish'
+    "In-call",
+    "Out-call",
+    "Massage",
+    "GFE (Girlfriend Experience)",
+    "PSE (Porn Star Experience)",
+    "Duo",
+    "Party",
+    "Travel",
+    "Dinner Date",
+    "Overnight",
+    "Weekend",
+    "BDSM",
+    "Role Play",
+    "Fetish",
   ];
 
   const bodyTypeOptions = [
-    'Slim', 'Athletic', 'Average', 'Curvy', 'Plus Size', 'BBW', 'Petite', 'Tall'
+    "Slim",
+    "Athletic",
+    "Average",
+    "Curvy",
+    "Plus Size",
+    "BBW",
+    "Petite",
+    "Tall",
   ];
 
   const ethnicityOptions = [
-    'Asian', 'Black', 'Caucasian', 'Hispanic', 'Indian', 'Middle Eastern', 'Mixed', 'Other'
+    "Asian",
+    "Black",
+    "Caucasian",
+    "Hispanic",
+    "Indian",
+    "Middle Eastern",
+    "Mixed",
+    "Other",
   ];
 
   const hairColorOptions = [
-    'Black', 'Brown', 'Blonde', 'Red', 'Brunette', 'Auburn', 'Gray', 'Other'
+    "Black",
+    "Brown",
+    "Blonde",
+    "Red",
+    "Brunette",
+    "Auburn",
+    "Gray",
+    "Other",
   ];
 
-  const eyeColorOptions = [
-    'Brown', 'Blue', 'Green', 'Hazel', 'Gray', 'Other'
+  const eyeColorOptions = ["Brown", "Blue", "Green", "Hazel", "Gray", "Other"];
+
+  const genderOptions = [
+    "Female",
+    "Male",
+    "Trans Female",
+    "Trans Male",
+    "Non-Binary",
+    "Other",
   ];
 
   const handleFilterChange = (key, value) => {
     onFiltersChange({
       ...filters,
-      [key]: value
+      [key]: value,
     });
   };
+
+  // Set default min age to 18 if not already set
+  React.useEffect(() => {
+    if (!filters.minAge) {
+      handleFilterChange("minAge", "18");
+    }
+  }, []);
 
   const handleServiceToggle = (service) => {
     const currentServices = filters.services || [];
     const newServices = currentServices.includes(service)
-      ? currentServices.filter(s => s !== service)
+      ? currentServices.filter((s) => s !== service)
       : [...currentServices, service];
-    
-    handleFilterChange('services', newServices);
+
+    handleFilterChange("services", newServices);
   };
 
   const handleMultiSelectToggle = (key, value) => {
     const currentValues = filters[key] || [];
     const newValues = currentValues.includes(value)
-      ? currentValues.filter(v => v !== value)
+      ? currentValues.filter((v) => v !== value)
       : [...currentValues, value];
-    
+
     handleFilterChange(key, newValues);
   };
 
@@ -68,9 +129,13 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
 
   const getActiveFiltersCount = () => {
     let count = 0;
-    Object.keys(filters).forEach(key => {
-      if (filters[key] && 
-          (Array.isArray(filters[key]) ? filters[key].length > 0 : filters[key] !== '')) {
+    Object.keys(filters).forEach((key) => {
+      if (
+        filters[key] &&
+        (Array.isArray(filters[key])
+          ? filters[key].length > 0
+          : filters[key] !== "")
+      ) {
         count++;
       }
     });
@@ -96,7 +161,7 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
             >
-              {isExpanded ? 'Collapse' : 'Expand'}
+              {isExpanded ? "Collapse" : "Expand"}
             </Button>
             {getActiveFiltersCount() > 0 && (
               <Button
@@ -121,8 +186,8 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
             <Input
               id="location"
               placeholder="Enter city or area..."
-              value={filters.location || ''}
-              onChange={(e) => handleFilterChange('location', e.target.value)}
+              value={filters.location || ""}
+              onChange={(e) => handleFilterChange("location", e.target.value)}
               className="pl-10"
             />
           </div>
@@ -135,8 +200,8 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
             <Slider
               value={[filters.minPrice || 0, filters.maxPrice || 1000]}
               onValueChange={([min, max]) => {
-                handleFilterChange('minPrice', min);
-                handleFilterChange('maxPrice', max);
+                handleFilterChange("minPrice", min);
+                handleFilterChange("maxPrice", max);
               }}
               max={1000}
               min={0}
@@ -154,18 +219,43 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
         <div className="space-y-2">
           <Label>Age Range</Label>
           <div className="grid grid-cols-2 gap-2">
-            <Input
-              type="number"
-              placeholder="Min age"
-              value={filters.minAge || ''}
-              onChange={(e) => handleFilterChange('minAge', e.target.value)}
-            />
+                         <Input
+               type="number"
+               placeholder="Min age"
+               min="18"
+               value={filters.minAge || "18"}
+               onChange={(e) => {
+                 const value = parseInt(e.target.value);
+                 if (value >= 18 || e.target.value === "") {
+                   handleFilterChange("minAge", e.target.value);
+                 }
+               }}
+             />
             <Input
               type="number"
               placeholder="Max age"
-              value={filters.maxAge || ''}
-              onChange={(e) => handleFilterChange('maxAge', e.target.value)}
+              value={filters.maxAge || ""}
+              onChange={(e) => handleFilterChange("maxAge", e.target.value)}
             />
+          </div>
+        </div>
+
+        {/* Gender */}
+        <div className="space-y-2">
+          <Label>Gender</Label>
+          <div className="flex flex-wrap gap-2">
+            {genderOptions.map((gender) => (
+              <Badge
+                key={gender}
+                variant={
+                  filters.genders?.includes(gender) ? "default" : "outline"
+                }
+                className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                onClick={() => handleMultiSelectToggle("genders", gender)}
+              >
+                {gender}
+              </Badge>
+            ))}
           </div>
         </div>
 
@@ -177,17 +267,25 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
               <Checkbox
                 id="verified"
                 checked={filters.verified || false}
-                onCheckedChange={(checked) => handleFilterChange('verified', checked)}
+                onCheckedChange={(checked) =>
+                  handleFilterChange("verified", checked)
+                }
               />
-              <Label htmlFor="verified" className="text-sm">Verified Only</Label>
+              <Label htmlFor="verified" className="text-sm">
+                Verified Only
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="online"
                 checked={filters.online || false}
-                onCheckedChange={(checked) => handleFilterChange('online', checked)}
+                onCheckedChange={(checked) =>
+                  handleFilterChange("online", checked)
+                }
               />
-              <Label htmlFor="online" className="text-sm">Online Now</Label>
+              <Label htmlFor="online" className="text-sm">
+                Online Now
+              </Label>
             </div>
           </div>
         </div>
@@ -199,7 +297,9 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
             {serviceOptions.map((service) => (
               <Badge
                 key={service}
-                variant={filters.services?.includes(service) ? "default" : "outline"}
+                variant={
+                  filters.services?.includes(service) ? "default" : "outline"
+                }
                 className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
                 onClick={() => handleServiceToggle(service)}
               >
@@ -213,7 +313,7 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
           {isExpanded && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
               className="space-y-4"
@@ -227,9 +327,13 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
                   {bodyTypeOptions.map((type) => (
                     <Badge
                       key={type}
-                      variant={filters.bodyTypes?.includes(type) ? "default" : "outline"}
+                      variant={
+                        filters.bodyTypes?.includes(type)
+                          ? "default"
+                          : "outline"
+                      }
                       className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                      onClick={() => handleMultiSelectToggle('bodyTypes', type)}
+                      onClick={() => handleMultiSelectToggle("bodyTypes", type)}
                     >
                       {type}
                     </Badge>
@@ -244,9 +348,15 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
                   {ethnicityOptions.map((ethnicity) => (
                     <Badge
                       key={ethnicity}
-                      variant={filters.ethnicities?.includes(ethnicity) ? "default" : "outline"}
+                      variant={
+                        filters.ethnicities?.includes(ethnicity)
+                          ? "default"
+                          : "outline"
+                      }
                       className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                      onClick={() => handleMultiSelectToggle('ethnicities', ethnicity)}
+                      onClick={() =>
+                        handleMultiSelectToggle("ethnicities", ethnicity)
+                      }
                     >
                       {ethnicity}
                     </Badge>
@@ -261,9 +371,15 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
                   {hairColorOptions.map((color) => (
                     <Badge
                       key={color}
-                      variant={filters.hairColors?.includes(color) ? "default" : "outline"}
+                      variant={
+                        filters.hairColors?.includes(color)
+                          ? "default"
+                          : "outline"
+                      }
                       className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                      onClick={() => handleMultiSelectToggle('hairColors', color)}
+                      onClick={() =>
+                        handleMultiSelectToggle("hairColors", color)
+                      }
                     >
                       {color}
                     </Badge>
@@ -278,9 +394,15 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
                   {eyeColorOptions.map((color) => (
                     <Badge
                       key={color}
-                      variant={filters.eyeColors?.includes(color) ? "default" : "outline"}
+                      variant={
+                        filters.eyeColors?.includes(color)
+                          ? "default"
+                          : "outline"
+                      }
                       className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                      onClick={() => handleMultiSelectToggle('eyeColors', color)}
+                      onClick={() =>
+                        handleMultiSelectToggle("eyeColors", color)
+                      }
                     >
                       {color}
                     </Badge>
@@ -295,14 +417,18 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
                   <Input
                     type="number"
                     placeholder="Min height"
-                    value={filters.minHeight || ''}
-                    onChange={(e) => handleFilterChange('minHeight', e.target.value)}
+                    value={filters.minHeight || ""}
+                    onChange={(e) =>
+                      handleFilterChange("minHeight", e.target.value)
+                    }
                   />
                   <Input
                     type="number"
                     placeholder="Max height"
-                    value={filters.maxHeight || ''}
-                    onChange={(e) => handleFilterChange('maxHeight', e.target.value)}
+                    value={filters.maxHeight || ""}
+                    onChange={(e) =>
+                      handleFilterChange("maxHeight", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -311,8 +437,10 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
               <div className="space-y-2">
                 <Label>Languages</Label>
                 <Select
-                  value={filters.language || ''}
-                  onValueChange={(value) => handleFilterChange('language', value)}
+                  value={filters.language || ""}
+                  onValueChange={(value) =>
+                    handleFilterChange("language", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select language" />
@@ -340,17 +468,25 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
                     <Checkbox
                       id="available-now"
                       checked={filters.availableNow || false}
-                      onCheckedChange={(checked) => handleFilterChange('availableNow', checked)}
+                      onCheckedChange={(checked) =>
+                        handleFilterChange("availableNow", checked)
+                      }
                     />
-                    <Label htmlFor="available-now" className="text-sm">Available Now</Label>
+                    <Label htmlFor="available-now" className="text-sm">
+                      Available Now
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="same-day"
                       checked={filters.sameDay || false}
-                      onCheckedChange={(checked) => handleFilterChange('sameDay', checked)}
+                      onCheckedChange={(checked) =>
+                        handleFilterChange("sameDay", checked)
+                      }
                     />
-                    <Label htmlFor="same-day" className="text-sm">Same Day</Label>
+                    <Label htmlFor="same-day" className="text-sm">
+                      Same Day
+                    </Label>
                   </div>
                 </div>
               </div>
@@ -364,18 +500,26 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
             <Label>Active Filters</Label>
             <div className="flex flex-wrap gap-2">
               {Object.entries(filters).map(([key, value]) => {
-                if (!value || (Array.isArray(value) && value.length === 0)) return null;
-                
+                if (!value || (Array.isArray(value) && value.length === 0))
+                  return null;
+
                 let displayValue = value;
                 if (Array.isArray(value)) {
-                  displayValue = value.join(', ');
-                } else if (key === 'verified' || key === 'online' || key === 'availableNow' || key === 'sameDay') {
-                  displayValue = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                } else if (key === 'minPrice' || key === 'maxPrice') {
+                  displayValue = value.join(", ");
+                } else if (
+                  key === "verified" ||
+                  key === "online" ||
+                  key === "availableNow" ||
+                  key === "sameDay"
+                ) {
+                  displayValue = key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (str) => str.toUpperCase());
+                } else if (key === "minPrice" || key === "maxPrice") {
                   displayValue = `$${value}`;
-                } else if (key === 'minAge' || key === 'maxAge') {
+                } else if (key === "minAge" || key === "maxAge") {
                   displayValue = `${value} years`;
-                } else if (key === 'minHeight' || key === 'maxHeight') {
+                } else if (key === "minHeight" || key === "maxHeight") {
                   displayValue = `${value}cm`;
                 }
 
@@ -401,4 +545,4 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
   );
 };
 
-export default SearchFilters; 
+export default SearchFilters;
