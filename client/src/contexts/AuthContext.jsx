@@ -23,18 +23,27 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem("token");
         const storedUser = localStorage.getItem("user");
 
+        console.log("=== AUTH CONTEXT DEBUG ===");
+        console.log("Token:", token ? "Present" : "Missing");
+        console.log("Stored user:", storedUser ? "Present" : "Missing");
+
         if (token && storedUser) {
           // Try to get fresh user data from server
           try {
+            console.log("Attempting to get fresh user data...");
             const response = await authAPI.getCurrentUser();
+            console.log("Fresh user data received:", response.data.user);
             setUser(response.data.user);
           } catch (error) {
             console.error("Auth check failed:", error);
             // If server check fails, still use stored user data
             // Don't clear localStorage immediately
             const parsedUser = JSON.parse(storedUser);
+            console.log("Using stored user data:", parsedUser);
             setUser(parsedUser);
           }
+        } else {
+          console.log("No token or stored user found");
         }
       } catch (error) {
         console.error("Auth check failed:", error);

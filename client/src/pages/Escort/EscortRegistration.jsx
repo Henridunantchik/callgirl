@@ -51,6 +51,17 @@ const EscortRegistration = () => {
       const storedUser = localStorage.getItem("user");
       return storedUser ? JSON.parse(storedUser) : null;
     })();
+
+  // Debug authentication state
+  React.useEffect(() => {
+    console.log("=== AUTHENTICATION DEBUG ===");
+    console.log("AuthContext user:", user);
+    console.log("Loading:", loading);
+    console.log("LocalStorage user:", localStorage.getItem("user"));
+    console.log("LocalStorage token:", localStorage.getItem("token"));
+    console.log("Current user (with fallback):", currentUser);
+  }, [user, loading, currentUser]);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
@@ -342,6 +353,13 @@ const EscortRegistration = () => {
         return;
       }
 
+      // Ensure we have a valid user ID
+      if (!currentUser._id) {
+        console.error("No user ID found in currentUser:", currentUser);
+        alert("Authentication error: Please log in again.");
+        return;
+      }
+
       // Validate required fields
       if (
         !formData.ageVerified ||
@@ -437,8 +455,10 @@ const EscortRegistration = () => {
         error.message.includes("Failed to fetch") ||
         error.message.includes("ERR_CONNECTION_RESET")
       ) {
+        console.error("Network error details:", error);
         alert(
-          "Network error: Please check if the backend server is running and try again."
+          "Network error: Please check if the backend server is running and try again. Error: " +
+            error.message
         );
       } else if (error.response?.status === 401) {
         alert("Authentication error: Please log in again.");

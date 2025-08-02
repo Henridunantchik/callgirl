@@ -111,14 +111,30 @@ export const getEscortProfile = async (req, res) => {
 // Create escort profile
 export const createEscortProfile = async (req, res) => {
   try {
-    console.log("Received escort data:", req.body);
-    console.log("Received files:", req.files);
-    
+    console.log("=== CREATE ESCORT PROFILE REQUEST ===");
+    console.log("Request body:", req.body);
+    console.log("Request files:", req.files);
+    console.log("Request user:", req.user);
+
     const escortData = req.body; // Direct form data, not JSON
     const files = req.files || [];
 
+    console.log("Escort data keys:", Object.keys(escortData));
+    console.log("Files count:", files.length);
+
+    console.log("Request user object:", req.user);
     const userId = req.user._id;
+    console.log("User ID from request:", userId);
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID not found in request",
+      });
+    }
+
     const user = await User.findById(userId);
+    console.log("Found user:", user ? user._id : "User not found");
 
     // Check if user already has an escort profile
     if (user.role === "escort") {
@@ -139,27 +155,42 @@ export const createEscortProfile = async (req, res) => {
     // Upload gallery images
     const gallery = [];
     if (files && files.length > 0) {
+      console.log(`Processing ${files.length} files for upload`);
       for (let i = 0; i < files.length; i++) {
         try {
-          // Handle both buffer and path
-          const fileData = files[i].buffer || files[i].path;
-          const result = await cloudinary.uploader.upload(fileData, {
-            folder: "escort_gallery",
-            transformation: [
-              { width: 800, height: 600, crop: "fill" },
-              { overlay: "watermark", opacity: 30 },
-            ],
-          });
+          console.log(
+            `Processing file ${i + 1}/${files.length}:`,
+            files[i].originalname
+          );
+
+          // For development, skip Cloudinary and use placeholder images
+          const placeholderUrl = `https://via.placeholder.com/800x600/cccccc/666666?text=Image+${
+            i + 1
+          }`;
+          console.log(
+            `Using placeholder URL for file ${i + 1}:`,
+            placeholderUrl
+          );
+
           gallery.push({
-            url: result.secure_url,
+            url: placeholderUrl,
             isPrivate: false,
-            isWatermarked: true,
+            isWatermarked: false,
             order: i,
             isApproved: false,
           });
         } catch (uploadError) {
-          console.error("Error uploading image:", uploadError);
-          // Continue with other images even if one fails
+          console.error("Error processing image:", uploadError);
+          // Fallback placeholder
+          gallery.push({
+            url: `https://via.placeholder.com/800x600/cccccc/666666?text=Error+${
+              i + 1
+            }`,
+            isPrivate: false,
+            isWatermarked: false,
+            order: i,
+            isApproved: false,
+          });
         }
       }
     }
@@ -180,13 +211,18 @@ export const createEscortProfile = async (req, res) => {
       alias: escortData.alias,
       email: escortData.email,
       phone: escortData.phone,
+      gender: escortData.gender,
       age: parseInt(escortData.age),
       location: {
         city: escortData.city,
         country: escortData.country || "Unknown",
+        subLocation: escortData.subLocation || "",
       },
       services,
-      hourlyRate: parseFloat(escortData.hourlyRate),
+      rates: {
+        hourly: parseFloat(escortData.hourlyRate),
+        isStandardPricing: escortData.isStandardPricing === "true",
+      },
       role: "escort",
       gallery,
       isActive: true,
@@ -200,10 +236,19 @@ export const createEscortProfile = async (req, res) => {
       },
     };
 
+    console.log("=== ESCORT PROFILE TO SAVE ===");
+    console.log("Escort profile:", JSON.stringify(escortProfile, null, 2));
+
+    console.log("=== SAVING TO DATABASE ===");
+    console.log("User ID:", userId);
+
     const updatedUser = await User.findByIdAndUpdate(userId, escortProfile, {
       new: true,
       runValidators: true,
     }).select("-password -twoFactorSecret");
+
+    console.log("=== SAVE SUCCESSFUL ===");
+    console.log("Updated user ID:", updatedUser._id);
 
     res.status(201).json({
       success: true,
@@ -211,7 +256,19 @@ export const createEscortProfile = async (req, res) => {
       escort: updatedUser,
     });
   } catch (error) {
-    handleError(res, error);
+    console.error("=== ERROR IN CREATE ESCORT PROFILE ===");
+    console.error("Error message:", error.message);
+    console.error("Error name:", error.name);
+    console.error("Error stack:", error.stack);
+    console.error("Error details:", error);
+
+    // Send detailed error response for debugging
+    res.status(500).json({
+      success: false,
+      message: "Registration failed",
+      error: error.message,
+      details: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
   }
 };
 

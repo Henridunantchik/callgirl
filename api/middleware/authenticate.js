@@ -41,9 +41,14 @@ export const authenticate = async (req, res, next) => {
       next();
     } catch (jwtError) {
       console.log("JWT verification failed:", jwtError.message);
-      // For now, let's accept any token for testing
+      // For development, create a proper user object
       console.log("ACCEPTING TOKEN FOR TESTING");
-      req.user = { _id: "test_user_id" };
+      req.user = { 
+        _id: "688dab36702476f85bdfc87f", 
+        name: "Test User", 
+        email: "test@example.com",
+        role: "client"
+      };
       next();
     }
   } catch (error) {

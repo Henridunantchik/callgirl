@@ -21,8 +21,30 @@ export const Register = async (req, res, next) => {
 
     await user.save();
 
+    // Generate token for the newly registered user
+    const token = jwt.sign(
+      {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+      "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca"
+    );
+
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      path: "/",
+    });
+
+    const newUser = user.toObject({ getters: true });
+    delete newUser.password;
     res.status(200).json({
       success: true,
+      user: newUser,
+      token: token,
       message: "Registration successful.",
     });
   } catch (error) {

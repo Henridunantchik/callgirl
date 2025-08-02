@@ -38,6 +38,11 @@ const userSchema = new mongoose.Schema(
     },
 
     // Physical Attributes (for escorts)
+    gender: {
+      type: String,
+      enum: ["male", "female", "transgender", "other"],
+      trim: true,
+    },
     age: {
       type: Number,
       min: 18,
@@ -128,6 +133,10 @@ const userSchema = new mongoose.Schema(
         },
         trim: true,
       },
+      subLocation: {
+        type: String,
+        trim: true,
+      },
       area: {
         type: String,
         trim: true,
@@ -210,6 +219,10 @@ const userSchema = new mongoose.Schema(
       travel: {
         type: Number,
         min: 0,
+      },
+      isStandardPricing: {
+        type: Boolean,
+        default: true,
       },
     },
 

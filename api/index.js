@@ -28,24 +28,26 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, ".env") });
 
 // Debug environment variables
-console.log("JWT_SECRET:", process.env.JWT_SECRET);
-console.log("MONGODB_CONN:", process.env.MONGODB_CONN);
+console.log("JWT_SECRET:", process.env.JWT_SECRET ? "***" : "undefined");
+console.log("MONGODB_CONN:", process.env.MONGODB_CONN ? "***" : "undefined");
 
-// Temporary hardcoded values for testing
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca";
-const MONGODB_CONN =
-  process.env.MONGODB_CONN ||
-  "mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau";
+// Use hardcoded values for development
+const JWT_SECRET = "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca";
+const MONGODB_CONN = "mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau";
 const PORT = process.env.PORT || 5000;
 const app = express();
 
 app.use(cookieParser());
 app.use(express.json());
+
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
+  next();
+});
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   })
 );
@@ -60,6 +62,7 @@ app.use((req, res, next) => {
     "/api/auth/register",
     "/api/auth/google-login",
     "/api/auth/logout",
+    "/api/auth/me",
     "/api/legal/terms",
     "/api/legal/privacy",
     "/api/health",
