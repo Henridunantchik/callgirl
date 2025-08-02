@@ -35,13 +35,22 @@ import {
   getCurrencyByCountry,
 } from "../../helpers/countries";
 import { DocumentVerificationService } from "../../services/documentVerification";
+import { escortAPI } from "../../services/api";
 
 const EscortRegistration = () => {
   // Initialize the real verification service
   const verificationService = new DocumentVerificationService();
   const navigate = useNavigate();
   const { countryCode } = useParams();
-  const { user } = useAuth(); // Get current user from AuthContext
+  const { user, loading } = useAuth(); // Get current user from AuthContext
+
+  // Fallback to localStorage if AuthContext user is null
+  const currentUser =
+    user ||
+    (() => {
+      const storedUser = localStorage.getItem("user");
+      return storedUser ? JSON.parse(storedUser) : null;
+    })();
   const [currentStep, setCurrentStep] = useState(1);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
@@ -312,6 +321,27 @@ const EscortRegistration = () => {
 
   const handleSubmit = async () => {
     try {
+      // Check if user is authenticated
+      console.log("Current user:", user);
+      console.log("Loading state:", loading);
+      console.log("LocalStorage token:", localStorage.getItem("token"));
+      console.log("LocalStorage user:", localStorage.getItem("user"));
+
+      // If still loading, wait a bit
+      // If still loading and no user data available, wait
+      if (loading && !currentUser) {
+        alert("Please wait while we verify your authentication...");
+        return;
+      }
+
+      // Use the currentUser from the component state (which includes fallback)
+      console.log("Current user for submission:", currentUser);
+
+      if (!currentUser) {
+        alert("Please log in to create an escort profile.");
+        return;
+      }
+
       // Validate required fields
       if (
         !formData.ageVerified ||
@@ -322,10 +352,12 @@ const EscortRegistration = () => {
         !formData.email ||
         !formData.phone ||
         !formData.age ||
+        !formData.gender ||
         !formData.city ||
         (formData.city === "other" && !formData.customCity) ||
         !formData.services.length ||
-        !formData.hourlyRate
+        !formData.hourlyRate ||
+        formData.photos.length < 3
       ) {
         if (formData.verificationStatus === "failed") {
           alert(
@@ -334,8 +366,23 @@ const EscortRegistration = () => {
         } else if (formData.verificationStatus === "processing") {
           alert("Please wait for age verification to complete.");
         } else {
+          let missingFields = [];
+          if (!formData.name) missingFields.push("Legal Name");
+          if (!formData.alias) missingFields.push("Professional Name");
+          if (!formData.email) missingFields.push("Email");
+          if (!formData.phone) missingFields.push("Phone");
+          if (!formData.age) missingFields.push("Age");
+          if (!formData.gender) missingFields.push("Gender");
+          if (!formData.city) missingFields.push("City");
+          if (formData.city === "other" && !formData.customCity)
+            missingFields.push("Custom City");
+          if (!formData.services.length) missingFields.push("Services");
+          if (!formData.hourlyRate) missingFields.push("Hourly Rate");
+          if (formData.photos.length < 3)
+            missingFields.push("At least 3 photos");
+
           alert(
-            "Please complete all required fields including age verification"
+            `Please complete all required fields: ${missingFields.join(", ")}`
           );
         }
         return;
@@ -348,13 +395,16 @@ const EscortRegistration = () => {
       submitData.append("email", formData.email);
       submitData.append("phone", formData.phone);
       submitData.append("age", formData.age);
+      submitData.append("gender", formData.gender);
       submitData.append("country", formData.country);
       // Use custom city if "other" is selected, otherwise use selected city
       const finalCity =
         formData.city === "other" ? formData.customCity : formData.city;
       submitData.append("city", finalCity);
+      submitData.append("subLocation", formData.subLocation || "");
       submitData.append("services", JSON.stringify(formData.services));
       submitData.append("hourlyRate", formData.hourlyRate);
+      submitData.append("isStandardPricing", formData.isStandardPricing);
 
       // Add ID document for age verification
       if (formData.idDocument) {
@@ -368,27 +418,55 @@ const EscortRegistration = () => {
         });
       }
 
-      const response = await fetch("/api/escort/create", {
-        method: "POST",
-        credentials: "include",
-        body: submitData,
-      });
+      console.log("Submitting escort profile...");
+      console.log("Form data:", Object.fromEntries(submitData.entries()));
 
-      const data = await response.json();
+      const response = await escortAPI.createEscortProfile(submitData);
+      const data = response.data;
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to create escort profile");
-      }
+      console.log("Response received:", data);
 
-      // Success - redirect to escort dashboard
-      navigate("/escort/dashboard");
+      // Success - show success message and redirect
+      alert("Registration successful! Welcome to our platform.");
+      navigate(`/${countryCode}/escort/dashboard`);
     } catch (error) {
       console.error("Error creating escort profile:", error);
-      alert(error.message);
+
+      if (
+        error.code === "ERR_NETWORK" ||
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("ERR_CONNECTION_RESET")
+      ) {
+        alert(
+          "Network error: Please check if the backend server is running and try again."
+        );
+      } else if (error.response?.status === 401) {
+        alert("Authentication error: Please log in again.");
+      } else if (error.response?.status === 400) {
+        alert(
+          `Registration failed: ${
+            error.response.data?.message || error.message
+          }`
+        );
+      } else {
+        alert(`Registration failed: ${error.message}`);
+      }
     }
   };
 
   const progress = (currentStep / steps.length) * 100;
+
+  // Check if user is already logged in from localStorage
+  React.useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+
+    console.log("Component mounted - checking authentication:");
+    console.log("Stored user:", storedUser);
+    console.log("Token:", token);
+    console.log("AuthContext user:", user);
+    console.log("Loading:", loading);
+  }, [user, loading]);
 
   // Cleanup Tesseract worker on component unmount
   React.useEffect(() => {
@@ -398,6 +476,20 @@ const EscortRegistration = () => {
       }
     };
   }, []);
+
+  // Show loading if authentication is still being checked
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Verifying authentication...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -943,7 +1035,9 @@ const EscortRegistration = () => {
                     onChange={(e) =>
                       handleInputChange("hourlyRate", e.target.value)
                     }
-                    placeholder={`Enter hourly rate in ${getCurrencyByCountry(formData.country)}`}
+                    placeholder={`Enter hourly rate in ${getCurrencyByCountry(
+                      formData.country
+                    )}`}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     This is your base rate, but prices can be discussed based on
@@ -1033,6 +1127,45 @@ const EscortRegistration = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Photo Preview */}
+                  {formData.photos && formData.photos.length > 0 && (
+                    <div className="mt-6">
+                      <Label className="text-sm font-medium mb-3 block">
+                        Photo Preview
+                      </Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {formData.photos.map((photo, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={URL.createObjectURL(photo)}
+                              alt={`Photo ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                            />
+                            <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                              {index === 0 ? "Main" : index + 1}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newPhotos = formData.photos.filter(
+                                  (_, i) => i !== index
+                                );
+                                handleInputChange("photos", newPhotos);
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        First photo will be your main profile picture. Hover
+                        over photos to remove them.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

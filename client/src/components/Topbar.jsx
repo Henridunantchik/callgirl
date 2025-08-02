@@ -63,6 +63,10 @@ const Topbar = () => {
       if (!response.ok) {
         return showToast("error", data.message);
       }
+      // Clear localStorage for AuthContext
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
       dispath(removeUser());
       navigate(RouteIndex);
       showToast("success", data.message);

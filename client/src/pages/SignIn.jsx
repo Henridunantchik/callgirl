@@ -50,6 +50,11 @@ const SignIn = () => {
       if (!response.ok) {
         return showToast("error", data.message);
       }
+
+      // Store user data in localStorage for AuthContext
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       dispath(setUser(data.user));
       navigate(RouteIndex);
       showToast("success", data.message);

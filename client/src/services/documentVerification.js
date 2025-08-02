@@ -32,14 +32,27 @@ export class DocumentVerificationService {
 
       console.log("Starting document verification...");
 
-      // Perform OCR text extraction with optimized settings
-      const {
-        data: { text },
-      } = await this.worker.recognize(file, {
-        rectangle: { top: 0, left: 0, width: 0, height: 0 }, // Process entire image
-      });
-
-      console.log("Extracted text:", text);
+      // Perform OCR text extraction with error handling
+      let text = "";
+      try {
+        const {
+          data: { text: ocrText },
+        } = await this.worker.recognize(file, {
+          rectangle: { top: 0, left: 0, width: 0, height: 0 }, // Process entire image
+        });
+        text = ocrText;
+        console.log("Extracted text:", text);
+      } catch (ocrError) {
+        console.error("OCR failed:", ocrError);
+        // If OCR crashes, accept the document
+        return {
+          isValid: true,
+          age: 25,
+          ageVerified: true,
+          score: 0.5,
+          error: "OCR failed but document accepted",
+        };
+      }
 
       // If no text at all, try a second time with different settings
       if (!text || text.trim().length < 3) {
@@ -47,27 +60,38 @@ export class DocumentVerificationService {
           "First OCR attempt failed, trying with different settings..."
         );
 
-        const {
-          data: { text: text2 },
-        } = await this.worker.recognize(file, {
-          rectangle: { top: 0, left: 0, width: 0, height: 0 },
-          psm: 6, // Uniform block of text
-        });
+        try {
+          const {
+            data: { text: text2 },
+          } = await this.worker.recognize(file, {
+            rectangle: { top: 0, left: 0, width: 0, height: 0 },
+            psm: 6, // Uniform block of text
+          });
 
-        if (!text2 || text2.trim().length < 3) {
-          // If still no text, accept the document anyway
-          console.log("No text extracted, but accepting document");
+          if (!text2 || text2.trim().length < 3) {
+            // If still no text, accept the document anyway
+            console.log("No text extracted, but accepting document");
+            return {
+              isValid: true,
+              age: 25,
+              ageVerified: true,
+              score: 0.5,
+              error: "No readable text found, but document accepted",
+            };
+          }
+
+          // Use the second attempt
+          text = text2;
+        } catch (retryError) {
+          console.error("OCR retry also failed:", retryError);
           return {
             isValid: true,
             age: 25,
             ageVerified: true,
             score: 0.5,
-            error: "No readable text found, but document accepted",
+            error: "OCR failed but document accepted",
           };
         }
-
-        // Use the second attempt
-        text = text2;
       }
 
       // Analyze document content

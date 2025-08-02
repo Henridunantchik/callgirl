@@ -66,6 +66,7 @@ export const getAllEscorts = async (req, res) => {
       total,
     });
   } catch (error) {
+    console.error("Error creating escort profile:", error);
     handleError(res, error);
   }
 };
@@ -110,6 +111,9 @@ export const getEscortProfile = async (req, res) => {
 // Create escort profile
 export const createEscortProfile = async (req, res) => {
   try {
+    console.log("Received escort data:", req.body);
+    console.log("Received files:", req.files);
+    
     const escortData = req.body; // Direct form data, not JSON
     const files = req.files || [];
 
@@ -134,22 +138,29 @@ export const createEscortProfile = async (req, res) => {
 
     // Upload gallery images
     const gallery = [];
-    if (files.length > 0) {
+    if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
-        const result = await cloudinary.uploader.upload(files[i].path, {
-          folder: "escort_gallery",
-          transformation: [
-            { width: 800, height: 600, crop: "fill" },
-            { overlay: "watermark", opacity: 30 },
-          ],
-        });
-        gallery.push({
-          url: result.secure_url,
-          isPrivate: false,
-          isWatermarked: true,
-          order: i,
-          isApproved: false,
-        });
+        try {
+          // Handle both buffer and path
+          const fileData = files[i].buffer || files[i].path;
+          const result = await cloudinary.uploader.upload(fileData, {
+            folder: "escort_gallery",
+            transformation: [
+              { width: 800, height: 600, crop: "fill" },
+              { overlay: "watermark", opacity: 30 },
+            ],
+          });
+          gallery.push({
+            url: result.secure_url,
+            isPrivate: false,
+            isWatermarked: true,
+            order: i,
+            isApproved: false,
+          });
+        } catch (uploadError) {
+          console.error("Error uploading image:", uploadError);
+          // Continue with other images even if one fails
+        }
       }
     }
 
