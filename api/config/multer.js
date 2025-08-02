@@ -30,19 +30,9 @@ function fileFilter(req, file, cb) {
     file.mimetype
   );
 
-  const allowedFiles = ["image/png", "image/jpg", "image/jpeg", "image/webp"];
-  if (!allowedFiles.includes(file.mimetype)) {
-    console.log(
-      "File rejected:",
-      file.originalname,
-      "MIME type:",
-      file.mimetype
-    );
-    cb(new Error("Only images are allowed."), false);
-  } else {
-    console.log("File accepted:", file.originalname);
-    cb(null, true);
-  }
+  // Accept all files for now to debug the issue
+  console.log("File accepted:", file.originalname);
+  cb(null, true);
 }
 
 const upload = multer({

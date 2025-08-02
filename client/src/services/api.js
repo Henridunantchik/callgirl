@@ -244,8 +244,11 @@ export const userAPI = {
   // Get user profile
   getUserProfile: () => api.get("/user/profile"),
 
+  // Get user by ID
+  getUser: (userId) => api.get(`/user/get-user/${userId}`),
+
   // Update user profile
-  updateUserProfile: (userData) => api.put("/user/profile", userData),
+  updateUserProfile: (userData) => api.put("/user/update", userData),
 
   // Change password
   changePassword: (passwordData) => api.put("/user/password", passwordData),

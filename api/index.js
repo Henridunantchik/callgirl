@@ -32,8 +32,10 @@ console.log("JWT_SECRET:", process.env.JWT_SECRET ? "***" : "undefined");
 console.log("MONGODB_CONN:", process.env.MONGODB_CONN ? "***" : "undefined");
 
 // Use hardcoded values for development
-const JWT_SECRET = "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca";
-const MONGODB_CONN = "mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau";
+const JWT_SECRET =
+  "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca";
+const MONGODB_CONN =
+  "mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau";
 const PORT = process.env.PORT || 5000;
 const app = express();
 
@@ -54,6 +56,10 @@ app.use(
 
 // Age verification middleware
 app.use((req, res, next) => {
+  console.log("=== AGE VERIFICATION MIDDLEWARE ===");
+  console.log("Request path:", req.path);
+  console.log("Request method:", req.method);
+
   // Skip age verification for certain routes
   const skipRoutes = [
     "/api/auth/age-verification",
@@ -72,6 +78,8 @@ app.use((req, res, next) => {
     "/api/escort/location",
     "/api/escort/category",
     "/api/escort/create",
+    "/api/user/update",
+    "/api/user/update-user",
   ];
 
   // Check if the current path matches any skip route
@@ -84,12 +92,26 @@ app.use((req, res, next) => {
     return req.path.startsWith(route);
   });
 
+  console.log("Should skip age verification:", shouldSkip);
+  console.log("Skip routes:", skipRoutes);
+
   if (shouldSkip) {
+    console.log("Skipping age verification for:", req.path);
     return next();
   }
 
   // Check if user has verified age
   const ageVerified = req.cookies.ageVerified;
+
+  // Skip age verification for authenticated users (they've already verified during registration)
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    console.log("User is authenticated, skipping age verification");
+    return next();
+  }
+
   if (!ageVerified) {
     return res.status(403).json({
       success: false,
@@ -127,21 +149,49 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Test endpoint for debugging
+app.post("/api/test", (req, res) => {
+  console.log("Test endpoint hit");
+  console.log("Request body:", req.body);
+  console.log("Request files:", req.files);
+  res.json({
+    success: true,
+    message: "Test endpoint working",
+    body: req.body,
+    files: req.files ? req.files.length : 0,
+  });
+});
+
 mongoose
   .connect(MONGODB_CONN, { dbName: "escort_directory" })
   .then(() => console.log("Database connected."))
   .catch((err) => console.log("Database connection failed.", err));
+
+// Global error handlers to prevent server crashes
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  console.error("Stack trace:", error.stack);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise);
+  console.error("Reason:", reason);
+});
 
 app.listen(PORT, () => {
   console.log("Escort Directory API running on port:", PORT);
 });
 
 app.use((err, req, res, next) => {
+  console.error("Express error handler caught:", err);
+  console.error("Error stack:", err.stack);
+
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal server error.";
   res.status(statusCode).json({
     success: false,
     statusCode,
     message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 });

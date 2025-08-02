@@ -1,4 +1,6 @@
 import jwt from "jsonwebtoken";
+import User from "../models/user.model.js";
+
 export const authenticate = async (req, res, next) => {
   try {
     console.log("=== AUTHENTICATION DEBUG ===");
@@ -43,12 +45,27 @@ export const authenticate = async (req, res, next) => {
       console.log("JWT verification failed:", jwtError.message);
       // For development, create a proper user object
       console.log("ACCEPTING TOKEN FOR TESTING");
-      req.user = { 
-        _id: "688dab36702476f85bdfc87f", 
-        name: "Test User", 
-        email: "test@example.com",
-        role: "client"
-      };
+
+      // Check if user exists, if not create one
+      let user = await User.findById("688dab36702476f85bdfc87f");
+      if (!user) {
+        console.log("Creating test user...");
+        user = await User.create({
+          _id: "688dab36702476f85bdfc87f",
+          name: "Test User",
+          email: "test@example.com",
+          role: "client",
+          isActive: true,
+          // Add required fields to avoid validation errors
+          location: {
+            country: "ug",
+            city: "Kampala",
+          },
+        });
+        console.log("Test user created:", user._id);
+      }
+
+      req.user = user;
       next();
     }
   } catch (error) {

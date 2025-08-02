@@ -8,7 +8,7 @@ const UserRoute = express.Router()
 UserRoute.use(authenticate)
 
 UserRoute.get('/get-user/:userid', getUser)
-UserRoute.put('/update-user/:userid', upload.single('file'), updateUser)
+UserRoute.put('/update', upload.single('file'), updateUser)
 UserRoute.get('/get-all-user', getAllUser)
 UserRoute.delete('/delete/:id', deleteUser)
 

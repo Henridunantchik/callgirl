@@ -168,7 +168,7 @@ const Topbar = () => {
 
               {/* Profile & Settings */}
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to={RouteProfile}>
+                <Link to={RouteProfile(countryCode)}>
                   <FaRegUser className="mr-2" />
                   Profile
                 </Link>
@@ -178,15 +178,9 @@ const Topbar = () => {
               {user.user.role === "escort" && (
                 <>
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/escort/dashboard">
+                    <Link to={`/${countryCode}/escort/dashboard`}>
                       <FaUserTie className="mr-2" />
                       Dashboard
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/escort/bookings">
-                      <FaCalendarAlt className="mr-2" />
-                      Bookings
                     </Link>
                   </DropdownMenuItem>
                 </>

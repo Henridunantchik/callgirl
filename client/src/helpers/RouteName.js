@@ -1,7 +1,7 @@
 export const RouteIndex = '/'
 export const RouteSignIn = '/sign-in'
 export const RouteSignUp = '/sign-up'
-export const RouteProfile = '/profile'
+export const RouteProfile = (countryCode = 'ug') => `/${countryCode}/profile`
 export const RouteCategoryDetails = '/sexe'
 export const RouteAddCategory = '/sexe/add'
 export const RouteEditCategory = (category_id) => {

@@ -34,8 +34,29 @@ EscortRoute.get("/category/:category", getEscortsByCategory);
 // Public routes (for registration)
 EscortRoute.post(
   "/create",
+  (req, res, next) => {
+    console.log("=== ESCORT CREATE ROUTE HIT ===");
+    console.log("Request method:", req.method);
+    console.log("Request path:", req.path);
+    console.log("Request headers:", req.headers);
+    next();
+  },
   authenticate,
-  upload.array("gallery", 20),
+  (req, res, next) => {
+    console.log("=== AFTER AUTHENTICATION ===");
+    console.log("User:", req.user);
+    next();
+  },
+  upload.fields([
+    { name: "gallery", maxCount: 20 },
+    { name: "idDocument", maxCount: 1 },
+  ]),
+  (req, res, next) => {
+    console.log("=== AFTER MULTER ===");
+    console.log("Files:", req.files);
+    console.log("Body:", req.body);
+    next();
+  },
   createEscortProfile
 );
 

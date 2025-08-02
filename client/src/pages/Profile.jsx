@@ -1,194 +1,1318 @@
-import { Avatar, AvatarImage } from '@/components/ui/avatar'
-import { Card, CardContent } from '@/components/ui/card'
-import React, { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { getEvn } from '@/helpers/getEnv'
-import { showToast } from '@/helpers/showToast'
-import { useDispatch, useSelector } from 'react-redux'
-import { useForm } from 'react-hook-form'
-import { Textarea } from "@/components/ui/textarea"
-import { useFetch } from '@/hooks/useFetch'
-import Loading from '@/components/Loading'
-import { IoCameraOutline } from "react-icons/io5";
-import Dropzone from 'react-dropzone'
-import { setUser } from '@/redux/user/user.slice'
-
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "@/redux/user/user.slice";
+import { useForm } from "react-hook-form";
+import Loading from "@/components/Loading";
+import Dropzone from "react-dropzone";
+import { showToast } from "@/helpers/showToast";
+import { getEvn } from "@/helpers/getEnv";
+import { userAPI } from "@/services/api";
 
 const Profile = () => {
+  const [filePreview, setPreview] = useState();
+  const [expandedSections, setExpandedSections] = useState({
+    basic: true,
+    personal: true,
+    services: true,
+    about: true,
+  });
+  const user = useSelector((state) => state.user);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const dispatch = useDispatch();
 
-    const [filePreview, setPreview] = useState()
-    const [file, setFile] = useState()
-    const user = useSelector((state) => state.user)
+  // Calculate profile completion
+  const calculateProfileCompletion = (userData) => {
+    if (!userData?.user) return 0;
+    const user = userData.user;
+    const isEscort = user.role === "escort";
 
-    const { data: userData, loading, error } = useFetch(`${getEvn('VITE_API_BASE_URL')}/user/get-user/${user.user._id}`,
-        { method: 'get', credentials: 'include' },
+    const fields = [
+      { field: user.name, weight: 5 },
+      { field: user.email, weight: 5 },
+      { field: user.phone, weight: 5 },
+      ...(isEscort
+        ? [
+            { field: user.alias, weight: 3 },
+            { field: user.age, weight: 3 },
+            { field: user.gender, weight: 3 },
+            { field: user.location?.city, weight: 3 },
+            { field: user.location?.subLocation, weight: 2 },
+            { field: user.rates?.hourly, weight: 3 },
+            { field: user.services, weight: 4 },
+            { field: user.bio, weight: 4 },
+            { field: user.bodyType, weight: 2 },
+            { field: user.ethnicity, weight: 2 },
+            { field: user.height, weight: 2 },
+            { field: user.weight, weight: 2 },
+            { field: user.hairColor, weight: 2 },
+            { field: user.eyeColor, weight: 2 },
+            { field: user.experience, weight: 3 },
+            { field: user.gallery?.length > 0, weight: 5 },
+          ]
+        : []),
+    ];
 
-    )
+    let totalWeight = 0;
+    let completedWeight = 0;
 
+    fields.forEach(({ field, weight }) => {
+      totalWeight += weight;
+      if (
+        field &&
+        field !== "" &&
+        field !== "Select gender" &&
+        field !== "Select body type" &&
+        field !== "Select ethnicity" &&
+        field !== "Select hair color" &&
+        field !== "Select eye color"
+      ) {
+        if (Array.isArray(field)) {
+          if (field.length > 0) completedWeight += weight;
+        } else {
+          completedWeight += weight;
+        }
+      }
+    });
 
+    return totalWeight > 0
+      ? Math.round((completedWeight / totalWeight) * 100)
+      : 0;
+  };
 
-    const dispath = useDispatch()
+  const profileCompletion = calculateProfileCompletion(userData);
 
-    const formSchema = z.object({
-        name: z.string().min(3, 'Name must be at least 3 character long.'),
-        email: z.string().email(),
-        bio: z.string().min(3, 'Bio must be at least 3 character long.'),
-    })
+  // Use Redux data
+  useEffect(() => {
+    if (user.user && user.user._id) {
+      setUserData({ success: true, user: user.user });
+      setLoading(false);
+    }
+  }, [user.user]);
 
-    const form = useForm({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: '',
-            email: '',
-            bio: '',
-            password: '',
+  const isEscort = userData?.user?.role === "escort";
+
+  // Form schema
+  const formSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters."),
+    email: z.string().email("Invalid email address."),
+    phone: z.string().min(10, "Phone number must be at least 10 digits."),
+    alias: z.string().optional(),
+    age: z.string().optional(),
+    gender: z.string().optional(),
+    city: z.string().optional(),
+    neighborhood: z.string().optional(),
+    pricingType: z.string().optional(),
+    rates: z.object({
+      hourly: z.string().optional(),
+    }),
+    services: z.array(z.string()).optional(),
+    bio: z.string().optional(),
+    bodyType: z.string().optional(),
+    ethnicity: z.string().optional(),
+    height: z.string().optional(),
+    weight: z.string().optional(),
+    hairColor: z.string().optional(),
+    eyeColor: z.string().optional(),
+    experience: z.string().optional(),
+  });
+
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      alias: "",
+      age: "",
+      gender: "",
+      city: "",
+      neighborhood: "",
+      pricingType: "",
+      rates: { hourly: "" },
+      services: [],
+      bio: "",
+      bodyType: "",
+      ethnicity: "",
+      height: "",
+      weight: "",
+      hairColor: "",
+      eyeColor: "",
+      experience: "",
+    },
+  });
+
+  // Reset form when user data changes
+  useEffect(() => {
+    if (userData && userData.success) {
+      const user = userData.user;
+      console.log("Pre-filling form with user data:", user);
+      form.reset({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        alias: user.alias || "",
+        age: user.age ? user.age.toString() : "",
+        gender: user.gender || "",
+        city: user.location?.city || "",
+        neighborhood: user.location?.subLocation || "",
+        pricingType: user.isStandardPricing ? "standard" : "discutable",
+        rates: {
+          hourly: user.rates?.hourly ? user.rates.hourly.toString() : "",
         },
-    })
+        services: user.services || [],
+        bio: user.bio || "",
+        bodyType: user.bodyType || "",
+        ethnicity: user.ethnicity || "",
+        height: user.height ? user.height.toString() : "",
+        weight: user.weight ? user.weight.toString() : "",
+        hairColor: user.hairColor || "",
+        eyeColor: user.eyeColor || "",
+        experience: user.experience || "",
+      });
+    }
+  }, [userData, form]);
 
-    useEffect(() => {
-        if (userData && userData.success) {
-            form.reset({
-                name: userData.user.name,
-                email: userData.user.email,
-                bio: userData.user.bio,
-            })
-        }
-    }, [userData])
+  async function onSubmit(values) {
+    try {
+      setUpdating(true);
+      console.log("=== PROFILE UPDATE DEBUG ===");
+      console.log("Form values:", values);
+      console.log("Starting profile update...");
 
+      // Prepare data for backend
+      const updateData = {
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        alias: values.alias,
+        age: values.age ? parseInt(values.age) : null,
+        gender: values.gender,
+        location: {
+          city: values.city,
+          subLocation: values.neighborhood,
+        },
+        rates: {
+          hourly: values.rates.hourly ? parseInt(values.rates.hourly) : null,
+        },
+        isStandardPricing: values.pricingType === "standard",
+        services: values.services,
+        bio: values.bio,
+        bodyType: values.bodyType,
+        ethnicity: values.ethnicity,
+        height: values.height ? parseInt(values.height) : null,
+        weight: values.weight ? parseInt(values.weight) : null,
+        hairColor: values.hairColor,
+        eyeColor: values.eyeColor,
+        experience: values.experience,
+      };
 
-
-    async function onSubmit(values) {
+            // Make API call to update profile using the proper service
+      try {
+        console.log("Making API call to update profile...");
+        console.log("API endpoint: /api/user/update");
+        console.log("Request data:", updateData);
+        
+        // Test API connectivity first
         try {
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('data', JSON.stringify(values))
-
-            const response = await fetch(`${getEvn('VITE_API_BASE_URL')}/user/update-user/${userData.user._id}`, {
-                method: 'put',
-                credentials: 'include',
-                body: formData
-            })
-            const data = await response.json()
-            if (!response.ok) {
-                return showToast('error', data.message)
-            }
-            dispath(setUser(data.user))
-            showToast('success', data.message)
-        } catch (error) {
-            showToast('error', error.message)
+          const healthCheck = await fetch("/api/health");
+          console.log("API health check status:", healthCheck.status);
+        } catch (healthError) {
+          console.error("API health check failed:", healthError);
+          showToast("Cannot connect to server. Please check if the API is running.", "error");
+          return;
         }
+        
+        const response = await userAPI.updateUserProfile(updateData);
+        console.log("Profile updated successfully:", response.data);
+
+        // Update Redux store with new data
+        if (response.data.success && response.data.user) {
+          console.log("Updating Redux store with new user data");
+          dispatch(setUser(response.data.user));
+        }
+
+        showToast("Profile updated successfully!", "success");
+      } catch (error) {
+        console.error("Failed to update profile:", error);
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        console.error("Error code:", error.code);
+        console.error("Error response:", error.response);
+        console.error("Error status:", error.response?.status);
+        console.error("Error data:", error.response?.data);
+        console.error("Error config:", error.config);
+        
+        let errorMessage = "Failed to update profile";
+        if (error.code === "ECONNREFUSED" || error.code === "ERR_NETWORK") {
+          errorMessage = "Cannot connect to server. Please check if the API is running.";
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        showToast(errorMessage, "error");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      showToast("Failed to update profile", "error");
+    } finally {
+      setUpdating(false);
     }
+  }
 
-    const handleFileSelection = (files) => {
-        const file = files[0]
-        const preview = URL.createObjectURL(file)
-        setFile(file)
-        setPreview(preview)
+  const handleFileSelection = (files) => {
+    if (files && files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => setPreview(e.target.result);
+      reader.readAsDataURL(file);
     }
+  };
 
-    if (loading) return <Loading />
-    return (
-        <Card className="max-w-screen-md mx-auto ">
+  const toggleSection = (section) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
-            <CardContent>
-                <div className='flex justify-center items-center mt-10' >
+  if (loading) return <Loading />;
+  if (!user.user._id)
+    return <div className="text-center p-8">User not found</div>;
 
-                    <Dropzone onDrop={acceptedFiles => handleFileSelection(acceptedFiles)}>
-                        {({ getRootProps, getInputProps }) => (
-                            <div {...getRootProps()}>
-                                <input {...getInputProps()} />
-                                <Avatar className="w-28 h-28 relative group">
-                                    <AvatarImage src={filePreview ? filePreview : userData?.user?.avatar} />
-                                    <div className='absolute z-50 w-full h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 justify-center items-center bg-black bg-opacity-20 border-2 border-violet-500 rounded-full group-hover:flex hidden cursor-pointer'>
-                                        <IoCameraOutline color='#7c3aed' />
-                                    </div>
-                                </Avatar>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-3 mb-2">
+            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {isEscort ? "Escort Profile" : "Client Profile"}
+            </h1>
+          </div>
+          <p className="text-gray-600 text-sm">
+            {isEscort
+              ? "Manage your escort profile and settings"
+              : "Update your personal information"}
+          </p>
+        </div>
+
+        {/* Profile Completion */}
+        {isEscort && (
+          <div className="mb-6 bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Profile Completion
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Complete your profile to get more bookings
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-blue-600">
+                  {profileCompletion}%
+                </div>
+                <div className="text-xs text-gray-500">Complete</div>
+              </div>
+            </div>
+
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+              <div
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  profileCompletion >= 80
+                    ? "bg-green-500"
+                    : profileCompletion >= 60
+                    ? "bg-yellow-500"
+                    : profileCompletion >= 40
+                    ? "bg-orange-500"
+                    : "bg-red-500"
+                }`}
+                style={{ width: `${profileCompletion}%` }}
+              ></div>
+            </div>
+
+            {profileCompletion < 100 && (
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-600">
+                    Add photos (+40% bookings)
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-600">
+                    Complete bio (+3x inquiries)
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Profile Picture */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Profile Picture
+                </h3>
+                <div className="relative">
+                  <Dropzone onDrop={handleFileSelection}>
+                    {({ getRootProps, getInputProps }) => (
+                      <div {...getRootProps()}>
+                        <input {...getInputProps()} />
+                        <div className="relative group cursor-pointer">
+                          <Avatar className="w-24 h-24 mx-auto border-2 border-gray-200">
+                            <AvatarImage
+                              src={
+                                filePreview
+                                  ? filePreview
+                                  : userData?.user?.avatar
+                              }
+                            />
+                            <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                              <svg
+                                className="w-6 h-6 text-white"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
                             </div>
+                          </Avatar>
+                        </div>
+                      </div>
+                    )}
+                  </Dropzone>
+                </div>
+              </div>
+
+              {isEscort && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Verification:</span>
+                    <Badge
+                      variant={
+                        userData?.user?.isVerified ? "default" : "secondary"
+                      }
+                    >
+                      {userData?.user?.isVerified ? "Verified" : "Unverified"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <Badge
+                      variant={userData?.user?.isOnline ? "default" : "outline"}
+                    >
+                      {userData?.user?.isOnline ? "Online" : "Offline"}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Main Form */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg border border-gray-200">
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                    console.log("Form validation errors:", errors);
+                  })}
+                  className="space-y-0"
+                >
+                  {/* Basic Information Section */}
+                  <div className="border-b border-gray-200">
+                    <div className="p-6">
+                      <div
+                        className="flex items-center justify-between mb-4 cursor-pointer"
+                        onClick={() => toggleSection("basic")}
+                      >
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <svg
+                            className="w-5 h-5 text-blue-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                          Basic Information
+                        </h3>
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform ${
+                            expandedSections.basic ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+
+                      {expandedSections.basic && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Full Name</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter your full name"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {isEscort && (
+                            <FormField
+                              control={form.control}
+                              name="alias"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Professional Name</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Your professional name"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+
+                          <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter your email"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Phone Number</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter your phone number"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {isEscort && (
+                            <>
+                              <FormField
+                                control={form.control}
+                                name="age"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Age</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        placeholder="Enter your age"
+                                        {...field}
+                                        onChange={(e) =>
+                                          field.onChange(e.target.value)
+                                        }
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="gender"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="flex items-center gap-2">
+                                      Gender
+                                      {!field.value && (
+                                        <span className="text-red-500 text-xs">
+                                          *Required
+                                        </span>
+                                      )}
+                                    </FormLabel>
+                                    <Select
+                                      onValueChange={field.onChange}
+                                      value={field.value}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger
+                                          className={
+                                            !field.value
+                                              ? "border-red-200 bg-red-50"
+                                              : ""
+                                          }
+                                        >
+                                          <SelectValue placeholder="Select gender" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="female">
+                                          Female
+                                        </SelectItem>
+                                        <SelectItem value="male">
+                                          Male
+                                        </SelectItem>
+                                        <SelectItem value="transgender">
+                                          Transgender
+                                        </SelectItem>
+                                        <SelectItem value="other">
+                                          Other
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="city"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>City</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter your city"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="neighborhood"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Neighborhood/Sub-city</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter your neighborhood or sub-city"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="pricingType"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Pricing Type</FormLabel>
+                                    <Select
+                                      onValueChange={field.onChange}
+                                      value={field.value}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select pricing type" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="standard">
+                                          Standard Rate
+                                        </SelectItem>
+                                        <SelectItem value="discutable">
+                                          Negotiable Rate
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="rates.hourly"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Hourly Rate ($)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        placeholder="Enter hourly rate"
+                                        {...field}
+                                        onChange={(e) =>
+                                          field.onChange(e.target.value)
+                                        }
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Personal Details Section */}
+                  {isEscort && (
+                    <div className="border-b border-gray-200">
+                      <div className="p-6">
+                        <div
+                          className="flex items-center justify-between mb-4 cursor-pointer"
+                          onClick={() => toggleSection("personal")}
+                        >
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <svg
+                              className="w-5 h-5 text-purple-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            Personal Details
+                          </h3>
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform ${
+                              expandedSections.personal ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+
+                        {expandedSections.personal && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="bodyType"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Body Type
+                                    {!field.value && (
+                                      <span className="text-orange-500 text-xs">
+                                        *Recommended
+                                      </span>
+                                    )}
+                                  </FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger
+                                        className={
+                                          !field.value
+                                            ? "border-orange-200 bg-orange-50"
+                                            : ""
+                                        }
+                                      >
+                                        <SelectValue placeholder="Select body type" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="slim">Slim</SelectItem>
+                                      <SelectItem value="athletic">
+                                        Athletic
+                                      </SelectItem>
+                                      <SelectItem value="curvy">
+                                        Curvy
+                                      </SelectItem>
+                                      <SelectItem value="plus-size">
+                                        Plus Size
+                                      </SelectItem>
+                                      <SelectItem value="average">
+                                        Average
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="ethnicity"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Ethnicity
+                                    {!field.value && (
+                                      <span className="text-orange-500 text-xs">
+                                        *Recommended
+                                      </span>
+                                    )}
+                                  </FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger
+                                        className={
+                                          !field.value
+                                            ? "border-orange-200 bg-orange-50"
+                                            : ""
+                                        }
+                                      >
+                                        <SelectValue placeholder="Select ethnicity" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="african">
+                                        African
+                                      </SelectItem>
+                                      <SelectItem value="asian">
+                                        Asian
+                                      </SelectItem>
+                                      <SelectItem value="caucasian">
+                                        Caucasian
+                                      </SelectItem>
+                                      <SelectItem value="hispanic">
+                                        Hispanic
+                                      </SelectItem>
+                                      <SelectItem value="middle-eastern">
+                                        Middle Eastern
+                                      </SelectItem>
+                                      <SelectItem value="mixed">
+                                        Mixed
+                                      </SelectItem>
+                                      <SelectItem value="other">
+                                        Other
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="height"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Height (cm)
+                                    {!field.value && (
+                                      <span className="text-orange-500 text-xs">
+                                        *Recommended
+                                      </span>
+                                    )}
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="Enter height in cm"
+                                      {...field}
+                                      onChange={(e) =>
+                                        field.onChange(e.target.value)
+                                      }
+                                      className={
+                                        !field.value
+                                          ? "border-orange-200 bg-orange-50"
+                                          : ""
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="weight"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Weight (kg)
+                                    {!field.value && (
+                                      <span className="text-orange-500 text-xs">
+                                        *Recommended
+                                      </span>
+                                    )}
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="Enter weight in kg"
+                                      {...field}
+                                      onChange={(e) =>
+                                        field.onChange(e.target.value)
+                                      }
+                                      className={
+                                        !field.value
+                                          ? "border-orange-200 bg-orange-50"
+                                          : ""
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="hairColor"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Hair Color
+                                    {!field.value && (
+                                      <span className="text-orange-500 text-xs">
+                                        *Recommended
+                                      </span>
+                                    )}
+                                  </FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger
+                                        className={
+                                          !field.value
+                                            ? "border-orange-200 bg-orange-50"
+                                            : ""
+                                        }
+                                      >
+                                        <SelectValue placeholder="Select hair color" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="black">
+                                        Black
+                                      </SelectItem>
+                                      <SelectItem value="brown">
+                                        Brown
+                                      </SelectItem>
+                                      <SelectItem value="blonde">
+                                        Blonde
+                                      </SelectItem>
+                                      <SelectItem value="red">Red</SelectItem>
+                                      <SelectItem value="gray">Gray</SelectItem>
+                                      <SelectItem value="other">
+                                        Other
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="eyeColor"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Eye Color
+                                    {!field.value && (
+                                      <span className="text-orange-500 text-xs">
+                                        *Recommended
+                                      </span>
+                                    )}
+                                  </FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger
+                                        className={
+                                          !field.value
+                                            ? "border-orange-200 bg-orange-50"
+                                            : ""
+                                        }
+                                      >
+                                        <SelectValue placeholder="Select eye color" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="brown">
+                                        Brown
+                                      </SelectItem>
+                                      <SelectItem value="blue">Blue</SelectItem>
+                                      <SelectItem value="green">
+                                        Green
+                                      </SelectItem>
+                                      <SelectItem value="hazel">
+                                        Hazel
+                                      </SelectItem>
+                                      <SelectItem value="gray">Gray</SelectItem>
+                                      <SelectItem value="other">
+                                        Other
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                         )}
-                    </Dropzone>
+                      </div>
+                    </div>
+                  )}
 
+                  {/* Services Section */}
+                  {isEscort && (
+                    <div className="border-b border-gray-200">
+                      <div className="p-6">
+                        <div
+                          className="flex items-center justify-between mb-4 cursor-pointer"
+                          onClick={() => toggleSection("services")}
+                        >
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <svg
+                              className="w-5 h-5 text-indigo-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                              />
+                            </svg>
+                            Services & Specializations
+                          </h3>
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform ${
+                              expandedSections.services ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
 
-                </div>
-                <div>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)}  >
-                            <div className='mb-3'>
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Name</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Enter your name" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                        {expandedSections.services && (
+                          <div className="space-y-4">
+                            <FormField
+                              control={form.control}
+                              name="services"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Services Offered
+                                    {(!field.value ||
+                                      field.value.length === 0) && (
+                                      <span className="text-red-500 text-xs">
+                                        *Required
+                                      </span>
                                     )}
-                                />
-                            </div>
-                            <div className='mb-3'>
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Email</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Enter your email address" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                                  </FormLabel>
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {[
+                                      "In-call",
+                                      "Out-call",
+                                      "Massage",
+                                      "GFE",
+                                      "PSE",
+                                      "Travel",
+                                      "Duo",
+                                      "Dinner Date",
+                                      "Party/Event",
+                                      "Weekend Getaway",
+                                      "Role Play",
+                                      "BDSM",
+                                      "Couples",
+                                      "Group",
+                                      "Strip Tease",
+                                      "Dance",
+                                      "Photography",
+                                      "Video Call",
+                                      "Chat/Text",
+                                      "Fetish",
+                                    ].map((service) => (
+                                      <div
+                                        key={service}
+                                        className="flex items-center space-x-2"
+                                      >
+                                        <Checkbox
+                                          id={service}
+                                          checked={
+                                            field.value?.includes(service) ||
+                                            false
+                                          }
+                                          onCheckedChange={(checked) => {
+                                            const updatedServices = checked
+                                              ? [
+                                                  ...(field.value || []),
+                                                  service,
+                                                ]
+                                              : (field.value || []).filter(
+                                                  (s) => s !== service
+                                                );
+                                            field.onChange(updatedServices);
+                                          }}
+                                        />
+                                        <Label
+                                          htmlFor={service}
+                                          className="text-sm"
+                                        >
+                                          {service}
+                                        </Label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="experience"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    Experience
+                                    {!field.value && (
+                                      <span className="text-orange-500 text-xs">
+                                        *Recommended
+                                      </span>
                                     )}
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      placeholder="Describe your experience in the industry..."
+                                      className="min-h-[100px]"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* About Me Section */}
+                  <div className="border-b border-gray-200">
+                    <div className="p-6">
+                      <div
+                        className="flex items-center justify-between mb-4 cursor-pointer"
+                        onClick={() => toggleSection("about")}
+                      >
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <svg
+                            className="w-5 h-5 text-green-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                          About Me
+                        </h3>
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform ${
+                            expandedSections.about ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+
+                      {expandedSections.about && (
+                        <FormField
+                          control={form.control}
+                          name="bio"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="flex items-center gap-2">
+                                Bio
+                                {!field.value && (
+                                  <span className="text-red-500 text-xs">
+                                    *Required
+                                  </span>
+                                )}
+                              </FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder={
+                                    isEscort
+                                      ? "Tell clients about yourself, your services, and what makes you special..."
+                                      : "Tell us about yourself..."
+                                  }
+                                  className={`min-h-[120px] ${
+                                    !field.value
+                                      ? "border-red-200 bg-red-50"
+                                      : ""
+                                  }`}
+                                  {...field}
                                 />
-                            </div>
-                            <div className='mb-3'>
-                                <FormField
-                                    control={form.control}
-                                    name="bio"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Bio</FormLabel>
-                                            <FormControl>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                  </div>
 
-                                                <Textarea type="password" placeholder="Enter bio" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                            <div className='mb-3'>
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Password</FormLabel>
-                                            <FormControl>
-                                                <Input type="password" placeholder="Enter your password" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
+                  {/* Submit Button */}
+                  <div className="p-6">
+                    <Button
+                      type="submit"
+                      disabled={updating}
+                      onClick={() =>
+                        console.log("Save Changes button clicked!")
+                      }
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {updating ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-                            <Button type="submit" className="w-full">Save Changes</Button>
-                        </form>
-                    </Form>
-
-                </div>
-
-            </CardContent>
-
-
-        </Card>
-    )
-}
-
-export default Profile
+export default Profile;
