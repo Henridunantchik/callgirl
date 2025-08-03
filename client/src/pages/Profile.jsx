@@ -40,11 +40,16 @@ const Profile = () => {
     services: true,
     about: true,
     gallery: true,
+    videos: true,
   });
   const user = useSelector((state) => state.user);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [uploadingVideos, setUploadingVideos] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(null);
+  const [deletingVideo, setDeletingVideo] = useState(null);
   const dispatch = useDispatch();
 
   // Calculate profile completion
@@ -234,6 +239,7 @@ const Profile = () => {
   async function onSubmit(values) {
     try {
       setUpdating(true);
+      showToast("Saving profile changes...", "info");
       console.log("=== PROFILE UPDATE DEBUG ===");
       console.log("Form values:", values);
       console.log("Starting profile update...");
@@ -271,8 +277,39 @@ const Profile = () => {
         console.log("API endpoint: /api/user/update");
         console.log("Request data:", updateData);
 
-        const response = await userAPI.updateUserProfile(updateData);
-        console.log("Profile updated successfully:", response.data);
+        // First try with the API service
+        let response;
+        try {
+          response = await userAPI.updateUserProfile(updateData);
+          console.log(
+            "Profile updated successfully via API service:",
+            response.data
+          );
+        } catch (apiError) {
+          console.log("API service failed, trying direct fetch...");
+
+          // Fallback to direct fetch
+          const fetchResponse = await fetch("/api/user/update", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify(updateData),
+          });
+
+          if (!fetchResponse.ok) {
+            throw new Error(
+              `HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`
+            );
+          }
+
+          response = { data: await fetchResponse.json() };
+          console.log(
+            "Profile updated successfully via direct fetch:",
+            response.data
+          );
+        }
 
         // Update Redux store with new data
         if (response.data.success && response.data.user) {
@@ -284,6 +321,13 @@ const Profile = () => {
         }
 
         showToast("Profile updated successfully!", "success");
+
+        // Refresh profile completion calculation
+        const newCompletion = calculateProfileCompletion({
+          success: true,
+          user: response.data.user,
+        });
+        console.log("New profile completion:", newCompletion + "%");
       } catch (error) {
         console.error("Failed to update profile:", error);
         console.error("Error name:", error.name);
@@ -295,9 +339,13 @@ const Profile = () => {
         console.error("Error config:", error.config);
 
         let errorMessage = "Failed to update profile";
-        if (error.code === "ECONNREFUSED" || error.code === "ERR_NETWORK") {
+        if (
+          error.code === "ECONNREFUSED" ||
+          error.code === "ERR_NETWORK" ||
+          error.code === "ECONNABORTED"
+        ) {
           errorMessage =
-            "Cannot connect to server. Please check if the API is running.";
+            "Server connection failed. Please check your internet connection and try again.";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         } else if (error.message) {
@@ -361,13 +409,18 @@ const Profile = () => {
   const handleGalleryUpload = async (files) => {
     if (files && files.length > 0) {
       try {
-        console.log("Uploading gallery photos...");
+        setUploadingGallery(true);
+        showToast(`Uploading ${files.length} photo(s)...`, "info");
+
         const formData = new FormData();
 
         // Add all files to form data
         files.forEach((file, index) => {
           formData.append("images", file);
         });
+
+        console.log(`Starting upload of ${files.length} images...`);
+        const startTime = Date.now();
 
         const response = await fetch("/api/escort/gallery/" + user.user._id, {
           method: "POST",
@@ -377,9 +430,11 @@ const Profile = () => {
           body: formData,
         });
 
+        const uploadTime = Date.now() - startTime;
+        console.log(`Upload completed in ${uploadTime}ms`);
+
         if (response.ok) {
           const data = await response.json();
-          console.log("Gallery uploaded successfully:", data);
           showToast("Gallery photos uploaded successfully!", "success");
 
           // Refresh user data to show new gallery
@@ -391,18 +446,173 @@ const Profile = () => {
 
           if (userResponse.ok) {
             const userData = await userResponse.json();
-            console.log("Updated user data after gallery upload:", userData);
             setUserData({ success: true, user: userData.user });
           }
         } else {
           const errorData = await response.json();
-          console.error("Failed to upload gallery:", errorData);
           showToast("Failed to upload gallery photos", "error");
         }
       } catch (error) {
-        console.error("Error uploading gallery:", error);
         showToast("Failed to upload gallery photos", "error");
+      } finally {
+        setUploadingGallery(false);
       }
+    }
+  };
+
+  const handleVideoUpload = async (files) => {
+    if (files && files.length > 0) {
+      try {
+        setUploadingVideos(true);
+        showToast(`Uploading ${files.length} video(s)...`, "info");
+
+        const formData = new FormData();
+
+        // Add all video files to form data
+        files.forEach((file, index) => {
+          formData.append("videos", file);
+        });
+
+        const response = await fetch("/api/escort/video/" + user.user._id, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showToast("Videos uploaded successfully!", "success");
+
+          // Refresh user data to show new videos
+          const userResponse = await fetch("/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            setUserData({ success: true, user: userData.user });
+          }
+        } else {
+          const errorData = await response.json();
+          showToast("Failed to upload videos", "error");
+        }
+      } catch (error) {
+        showToast("Failed to upload videos", "error");
+      } finally {
+        setUploadingVideos(false);
+      }
+    }
+  };
+
+  const handleGalleryImageDelete = async (imageId) => {
+    try {
+      setDeletingImage(imageId);
+
+      console.log("=== DELETE GALLERY IMAGE ===");
+      console.log("Image ID:", imageId);
+      console.log("User ID:", user.user._id);
+
+      const deleteUrl = `/api/escort/gallery/${user.user._id}/${imageId}`;
+      console.log("Delete URL:", deleteUrl);
+
+      const response = await fetch(deleteUrl, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
+      if (response.ok) {
+        let data;
+        try {
+          data = await response.json();
+          console.log("Delete success:", data);
+        } catch (jsonError) {
+          console.log("Response is not JSON, but deletion was successful");
+          data = { success: true, message: "Image deleted successfully" };
+        }
+
+        // Refresh user data
+        const userResponse = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUserData({ success: true, user: userData.user });
+          showToast("Image deleted successfully!", "success");
+        } else {
+          console.error("Failed to refresh user data:", userResponse.status);
+          showToast("Image deleted but failed to refresh data", "warning");
+        }
+      } else {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          errorData = { message: "Unknown error occurred" };
+        }
+        console.error("Delete failed:", errorData);
+        showToast(
+          `Failed to delete image: ${errorData.message || "Unknown error"}`,
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      showToast(`Failed to delete image: ${error.message}`, "error");
+    } finally {
+      setDeletingImage(null);
+    }
+  };
+
+  const handleVideoDelete = async (videoId) => {
+    try {
+      setDeletingVideo(videoId);
+
+      const response = await fetch(
+        `/api/escort/video/${user.user._id}/${videoId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        // Refresh user data
+        const userResponse = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUserData({ success: true, user: userData.user });
+          showToast("Video deleted successfully!", "success");
+        }
+      } else {
+        showToast("Failed to delete video", "error");
+      }
+    } catch (error) {
+      showToast("Failed to delete video", "error");
+    } finally {
+      setDeletingVideo(null);
     }
   };
 
@@ -1370,32 +1580,81 @@ const Profile = () => {
                           <div className="space-y-4">
                             {/* Gallery Upload */}
                             <div className="mb-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <Label className="text-sm font-medium">
+                                  Public Gallery Photos (Max 10 photos)
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    (Visible to all clients)
+                                  </span>
+                                </Label>
+                                <span className="text-xs text-gray-500">
+                                  {userData?.user?.gallery?.length || 0}/10
+                                  photos
+                                </span>
+                              </div>
                               <Dropzone
                                 onDrop={handleGalleryUpload}
                                 accept="image/*"
                                 multiple
+                                maxFiles={10}
+                                disabled={
+                                  userData?.user?.gallery?.length >= 10 ||
+                                  uploadingGallery
+                                }
                               >
-                                {({ getRootProps, getInputProps }) => (
+                                {({
+                                  getRootProps,
+                                  getInputProps,
+                                  isDragActive,
+                                }) => (
                                   <div
                                     {...getRootProps()}
-                                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                                    className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                                      uploadingGallery
+                                        ? "border-blue-400 bg-blue-50"
+                                        : isDragActive
+                                        ? "border-blue-400 bg-blue-50"
+                                        : "border-gray-300 hover:border-gray-400"
+                                    } ${
+                                      userData?.user?.gallery?.length >= 10 ||
+                                      uploadingGallery
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
+                                    }`}
                                   >
                                     <input {...getInputProps()} />
-                                    <svg
-                                      className="w-8 h-8 mx-auto text-gray-400 mb-2"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                      />
-                                    </svg>
+                                    {uploadingGallery ? (
+                                      <div className="w-8 h-8 mx-auto mb-2">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                      </div>
+                                    ) : (
+                                      <svg
+                                        className="w-8 h-8 mx-auto text-gray-400 mb-2"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                        />
+                                      </svg>
+                                    )}
                                     <p className="text-sm text-gray-600">
-                                      Click to upload gallery photos
+                                      {uploadingGallery
+                                        ? "Uploading photos..."
+                                        : userData?.user?.gallery?.length >= 10
+                                        ? "Gallery is full (10 photos max)"
+                                        : "Click to upload gallery photos"}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Drag & drop or click to select photos
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-1 font-medium">
+                                      💡 These photos will be visible to all
+                                      clients in your public profile
                                     </p>
                                   </div>
                                 )}
@@ -1403,102 +1662,104 @@ const Profile = () => {
                             </div>
 
                             {/* Gallery Display */}
-                            {(() => {
-                              console.log("=== GALLERY DEBUG ===");
-                              console.log("userData.user:", userData?.user);
-                              console.log(
-                                "Gallery data:",
-                                userData?.user?.gallery
-                              );
-                              console.log(
-                                "Gallery length:",
-                                userData?.user?.gallery?.length
-                              );
+                            {userData?.user?.gallery &&
+                              userData.user.gallery.length > 0 && (
+                                <div className="grid grid-cols-3 gap-3">
+                                  {userData.user.gallery.map((image, index) => {
+                                    // Simple direct display of base64 images
+                                    const imageUrl = image.url || image;
+                                    console.log(
+                                      `Gallery image ${index}:`,
+                                      image
+                                    );
 
-                              // Check if gallery exists and has items
-                              const hasGallery =
-                                userData?.user?.gallery &&
-                                userData.user.gallery.length > 0;
-                              console.log("Has gallery:", hasGallery);
-
-                              if (hasGallery) {
-                                console.log(
-                                  "First gallery item:",
-                                  userData.user.gallery[0]
-                                );
-                                console.log(
-                                  "First gallery item URL:",
-                                  userData.user.gallery[0]?.url
-                                );
-                              }
-
-                              return hasGallery;
-                            })() && (
-                              <div className="grid grid-cols-3 gap-3">
-                                {userData.user.gallery.map((image, index) => {
-                                  console.log(`Gallery image ${index}:`, image);
-
-                                  // Handle both base64 data URLs and Cloudinary URLs
-                                  const imageUrl = image.url || image;
-                                  console.log(`Image ${index} URL:`, imageUrl);
-                                  console.log(
-                                    `Image ${index} is base64:`,
-                                    typeof imageUrl === "string" &&
-                                      imageUrl.startsWith("data:")
-                                  );
-
-                                  return (
-                                    <div key={index} className="relative group">
-                                      <img
-                                        src={imageUrl}
-                                        alt={`Gallery photo ${index + 1}`}
-                                        className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                                        onLoad={() =>
-                                          console.log(
-                                            `Image ${index} loaded successfully`
-                                          )
-                                        }
-                                        onError={(e) => {
-                                          console.error(
-                                            `Error loading image ${index}:`,
-                                            e
-                                          );
-                                          console.error(
-                                            `Failed URL:`,
-                                            imageUrl
-                                          );
-                                          e.target.style.display = "none";
-                                        }}
-                                      />
-                                      <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                                        {index === 0 ? "Main" : index + 1}
-                                      </div>
-                                      <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                                        <svg
-                                          className="w-4 h-4 text-white"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="relative group"
+                                      >
+                                        <img
+                                          src={imageUrl}
+                                          alt={`Gallery photo ${index + 1}`}
+                                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                                          style={{ minHeight: "128px" }}
+                                          onError={(e) => {
+                                            // Show error placeholder
+                                            e.target.style.display = "none";
+                                            const fallbackDiv =
+                                              document.createElement("div");
+                                            fallbackDiv.className =
+                                              "w-full h-32 bg-gray-200 rounded-lg border-2 border-gray-200 flex items-center justify-center";
+                                            fallbackDiv.innerHTML = `<span class="text-gray-500 text-sm">Photo ${
+                                              index + 1
+                                            }</span>`;
+                                            e.target.parentNode.appendChild(
+                                              fallbackDiv
+                                            );
+                                          }}
+                                        />
+                                        <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                                          {index === 0 ? "Main" : index + 1}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            console.log("Button clicked!");
+                                            console.log("Image:", image);
+                                            console.log("Image ID:", image._id);
+                                            console.log("Index:", index);
+                                            // Use _id if available, otherwise use index
+                                            const imageId = image._id || index;
+                                            console.log(
+                                              "Final imageId to send:",
+                                              imageId
+                                            );
+                                            handleGalleryImageDelete(imageId);
+                                          }}
+                                          disabled={
+                                            deletingImage ===
+                                            (image._id || index)
+                                          }
+                                          className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
+                                            deletingImage ===
+                                            (image._id || index)
+                                              ? "bg-gray-400 cursor-not-allowed"
+                                              : "bg-red-500 cursor-pointer hover:bg-red-600"
+                                          }`}
                                         >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                          />
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                          />
-                                        </svg>
+                                          {deletingImage ===
+                                          (image._id || index) ? (
+                                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                          ) : (
+                                            "×"
+                                          )}
+                                        </button>
+                                        <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                                          <svg
+                                            className="w-4 h-4 text-white"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                            />
+                                          </svg>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
+                                    );
+                                  })}
+                                </div>
+                              )}
 
                             <p className="text-xs text-gray-500">
                               {userData?.user?.gallery?.length || 0} photo(s)
@@ -1527,6 +1788,198 @@ const Profile = () => {
                                 </p>
                                 <p className="text-xs">
                                   Upload photos to showcase your profile
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Videos Section - Only for Escorts */}
+                  {isEscort && (
+                    <div className="border-b border-gray-200">
+                      <div className="p-6">
+                        <div
+                          className="flex items-center justify-between mb-4 cursor-pointer"
+                          onClick={() => toggleSection("videos")}
+                        >
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <svg
+                              className="w-5 h-5 text-purple-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                              />
+                            </svg>
+                            Public Videos (Max 5 videos)
+                            <span className="text-sm text-gray-500 ml-2">
+                              (Visible to all clients)
+                            </span>
+                          </h3>
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform ${
+                              expandedSections.videos ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+
+                        {expandedSections.videos && (
+                          <div className="space-y-4">
+                            {/* Video Upload */}
+                            <div className="mb-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <Label className="text-sm font-medium">
+                                  Public Videos (Max 5 videos)
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    (Visible to all clients)
+                                  </span>
+                                </Label>
+                                <span className="text-xs text-gray-500">
+                                  {userData?.user?.videos?.length || 0}/5 videos
+                                </span>
+                              </div>
+                              <Dropzone
+                                onDrop={handleVideoUpload}
+                                accept="video/*"
+                                multiple
+                                maxFiles={5}
+                                disabled={
+                                  userData?.user?.videos?.length >= 5 ||
+                                  uploadingVideos
+                                }
+                              >
+                                {({
+                                  getRootProps,
+                                  getInputProps,
+                                  isDragActive,
+                                }) => (
+                                  <div
+                                    {...getRootProps()}
+                                    className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                                      uploadingVideos
+                                        ? "border-purple-400 bg-purple-50"
+                                        : isDragActive
+                                        ? "border-purple-400 bg-purple-50"
+                                        : "border-gray-300 hover:border-gray-400"
+                                    } ${
+                                      userData?.user?.videos?.length >= 5 ||
+                                      uploadingVideos
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
+                                    }`}
+                                  >
+                                    <input {...getInputProps()} />
+                                    {uploadingVideos ? (
+                                      <div className="w-8 h-8 mx-auto mb-2">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                                      </div>
+                                    ) : (
+                                      <svg
+                                        className="w-8 h-8 mx-auto text-gray-400 mb-2"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                        />
+                                      </svg>
+                                    )}
+                                    <p className="text-sm text-gray-600">
+                                      {uploadingVideos
+                                        ? "Uploading videos..."
+                                        : userData?.user?.videos?.length >= 5
+                                        ? "Video gallery is full (5 videos max)"
+                                        : "Click to upload videos"}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Drag & drop or click to select videos
+                                    </p>
+                                    <p className="text-xs text-purple-600 mt-1 font-medium">
+                                      💡 These videos will be visible to all
+                                      clients in your public profile
+                                    </p>
+                                  </div>
+                                )}
+                              </Dropzone>
+                            </div>
+
+                            {/* Video Display */}
+                            {userData?.user?.videos &&
+                            userData.user.videos.length > 0 ? (
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {userData.user.videos.map((video, index) => (
+                                  <div key={index} className="relative group">
+                                    <video
+                                      src={video.url}
+                                      className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                                      controls
+                                    />
+                                    <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">
+                                      Video {index + 1}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleVideoDelete(video._id)
+                                      }
+                                      disabled={deletingVideo === video._id}
+                                      className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+                                        deletingVideo === video._id
+                                          ? "bg-gray-400 cursor-not-allowed"
+                                          : "bg-red-500 cursor-pointer hover:bg-red-600"
+                                      }`}
+                                    >
+                                      {deletingVideo === video._id ? (
+                                        <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                      ) : (
+                                        "×"
+                                      )}
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                                <svg
+                                  className="w-12 h-12 mx-auto text-gray-400 mb-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <p className="text-sm">
+                                  No videos uploaded yet
+                                </p>
+                                <p className="text-xs">
+                                  Upload videos to showcase your profile
                                 </p>
                               </div>
                             )}
@@ -1621,9 +2074,16 @@ const Profile = () => {
                       onClick={() =>
                         console.log("Save Changes button clicked!")
                       }
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      {updating ? "Saving..." : "Save Changes"}
+                      {updating ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
                     </Button>
                   </div>
                 </form>

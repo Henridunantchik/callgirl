@@ -7,7 +7,7 @@ export const getAllEscorts = async (req, res) => {
   try {
     console.log("=== GET ALL ESCORTS DEBUG ===");
     console.log("Request query:", req.query);
-    
+
     const {
       page = 1,
       limit = 20,
@@ -53,7 +53,7 @@ export const getAllEscorts = async (req, res) => {
     sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
 
     console.log("Query:", query);
-    
+
     const escorts = await User.find(query)
       .select("-password -twoFactorSecret -loginAttempts -lockUntil")
       .sort(sortOptions)
@@ -62,7 +62,7 @@ export const getAllEscorts = async (req, res) => {
       .exec();
 
     const total = await User.countDocuments(query);
-    
+
     console.log("Found escorts:", escorts.length);
     console.log("Total escorts:", total);
     console.log("First escort:", escorts[0]);
@@ -125,24 +125,18 @@ export const createEscortProfile = async (req, res) => {
     console.log("Request files:", req.files);
     console.log("Request user:", req.user);
 
-    // Test database connection
-    console.log("Testing database connection...");
-    const testConnection = await User.findOne().limit(1);
-    console.log("Database connection test successful");
-
-    const escortData = req.body; // Direct form data, not JSON
+    const escortData = req.body;
     const files = req.files || {};
     const galleryFiles = files.gallery || [];
     const idDocumentFile = files.idDocument ? files.idDocument[0] : null;
 
-    console.log("Escort data keys:", Object.keys(escortData));
-    console.log("Gallery files count:", galleryFiles.length);
-    console.log(
-      "ID document file:",
-      idDocumentFile ? idDocumentFile.originalname : "None"
-    );
+    console.log("=== FILES DEBUG ===");
+    console.log("req.files:", req.files);
+    console.log("files object:", files);
+    console.log("files.gallery:", files.gallery);
+    console.log("galleryFiles:", galleryFiles);
+    console.log("galleryFiles.length:", galleryFiles.length);
 
-    console.log("Request user object:", req.user);
     const userId = req.user._id;
     console.log("User ID from request:", userId);
 
@@ -172,26 +166,36 @@ export const createEscortProfile = async (req, res) => {
       });
     }
 
-    // Upload gallery images
+    // Process gallery images - NEW APPROACH
     const gallery = [];
     if (galleryFiles && galleryFiles.length > 0) {
       console.log(`Processing ${galleryFiles.length} gallery files for upload`);
+
       for (let i = 0; i < galleryFiles.length; i++) {
         try {
+          const file = galleryFiles[i];
           console.log(
             `Processing gallery file ${i + 1}/${galleryFiles.length}:`,
-            galleryFiles[i].originalname
+            file.originalname
           );
+          console.log(`File path:`, file.path);
+          console.log(`File size:`, file.size);
 
-          // Create a data URL from the uploaded file
-          const fileBuffer = galleryFiles[i].buffer;
+          // Read the file from disk and convert to base64 - OPTIMIZED
+          const fs = await import("fs");
+          console.log(`Reading file from disk: ${file.path}`);
+          const fileBuffer = fs.readFileSync(file.path);
+          console.log(`File size: ${fileBuffer.length} bytes`);
+
+          // Convert to base64 more efficiently
           const base64String = fileBuffer.toString("base64");
-          const mimeType = galleryFiles[i].mimetype;
+          const mimeType = file.mimetype;
           const dataUrl = `data:${mimeType};base64,${base64String}`;
 
           console.log(
-            `Created data URL for gallery file ${i + 1}:`,
-            dataUrl.substring(0, 100) + "..."
+            `Created data URL for gallery file ${i + 1} (${Math.round(
+              dataUrl.length / 1024
+            )}KB)`
           );
 
           gallery.push({
@@ -201,6 +205,10 @@ export const createEscortProfile = async (req, res) => {
             order: i,
             isApproved: false,
           });
+
+          // Clean up the temporary file
+          fs.unlinkSync(file.path);
+          console.log(`Cleaned up temporary file:`, file.path);
         } catch (uploadError) {
           console.error("Error processing gallery image:", uploadError);
           // Fallback to placeholder if processing fails
@@ -216,6 +224,10 @@ export const createEscortProfile = async (req, res) => {
           });
         }
       }
+    } else {
+      console.log("=== NO GALLERY FILES FOUND ===");
+      console.log("galleryFiles is empty or undefined");
+      console.log("This means photos were not uploaded correctly");
     }
 
     // Process ID document if provided
@@ -235,7 +247,7 @@ export const createEscortProfile = async (req, res) => {
       }
     }
 
-    // Create escort profile (without role to avoid validation conflicts)
+    // Create escort profile
     const escortProfile = {
       name: escortData.name,
       alias: escortData.alias,
@@ -245,7 +257,7 @@ export const createEscortProfile = async (req, res) => {
       age: parseInt(escortData.age),
       location: {
         city: escortData.city,
-        country: escortData.country || "ug", // Default to Uganda if not provided
+        country: escortData.country || "ug",
         subLocation: escortData.subLocation || "",
       },
       services,
@@ -281,7 +293,7 @@ export const createEscortProfile = async (req, res) => {
     // Then update all other fields
     const updatedUser = await User.findByIdAndUpdate(userId, escortProfile, {
       new: true,
-      runValidators: false, // Disable validators for update to avoid conflicts
+      runValidators: false,
     }).select("-password -twoFactorSecret");
 
     console.log("=== SAVE SUCCESSFUL ===");
@@ -580,6 +592,11 @@ export const uploadGallery = async (req, res) => {
     const userId = req.user._id;
     const files = req.files || [];
 
+    console.log("=== UPLOAD GALLERY DEBUG ===");
+    console.log("User ID:", userId);
+    console.log("Target ID:", id);
+    console.log("Files received:", files.length);
+
     if (id !== userId.toString()) {
       return res.status(403).json({
         success: false,
@@ -589,19 +606,54 @@ export const uploadGallery = async (req, res) => {
 
     const newImages = [];
     for (let i = 0; i < files.length; i++) {
-      const result = await cloudinary.uploader.upload(files[i].path, {
-        folder: "escort_gallery",
-        transformation: [
-          { width: 800, height: 600, crop: "fill" },
-          { overlay: "watermark", opacity: 30 },
-        ],
-      });
-      newImages.push({
-        url: result.secure_url,
-        isPrivate: false,
-        isWatermarked: true,
-        order: i,
-        isApproved: false,
+      try {
+        const file = files[i];
+        console.log(
+          `Processing gallery file ${i + 1}/${files.length}:`,
+          file.originalname
+        );
+        console.log(`File path:`, file.path);
+        console.log(`File size:`, file.size);
+
+        // Read the file from disk and convert to base64
+        const fs = await import("fs");
+        console.log(`Reading file from disk: ${file.path}`);
+        const fileBuffer = fs.readFileSync(file.path);
+        console.log(`File size: ${fileBuffer.length} bytes`);
+
+        // Convert to base64 more efficiently
+        const base64String = fileBuffer.toString("base64");
+        const mimeType = file.mimetype;
+        const dataUrl = `data:${mimeType};base64,${base64String}`;
+
+        console.log(
+          `Created data URL for gallery file ${i + 1} (${Math.round(
+            dataUrl.length / 1024
+          )}KB)`
+        );
+
+        newImages.push({
+          url: dataUrl,
+          isPrivate: false,
+          isWatermarked: false,
+          order: i,
+          isApproved: false,
+        });
+
+        // Clean up the temporary file
+        fs.unlinkSync(file.path);
+        console.log(`Cleaned up temporary file:`, file.path);
+      } catch (uploadError) {
+        console.error("Error processing gallery image:", uploadError);
+        // Skip this file and continue with others
+        continue;
+      }
+    }
+
+    if (newImages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid images were processed",
       });
     }
 
@@ -611,13 +663,20 @@ export const uploadGallery = async (req, res) => {
       { new: true }
     ).select("-password -twoFactorSecret");
 
+    console.log(`Successfully added ${newImages.length} images to gallery`);
+
     res.json({
       success: true,
-      message: "Images uploaded successfully",
+      message: `${newImages.length} images uploaded successfully`,
       escort,
     });
   } catch (error) {
-    handleError(res, error);
+    console.error("Upload gallery error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload gallery images",
+      error: error.message,
+    });
   }
 };
 
@@ -627,6 +686,11 @@ export const deleteGalleryImage = async (req, res) => {
     const { id, imageId } = req.params;
     const userId = req.user._id;
 
+    console.log("=== DELETE GALLERY IMAGE ===");
+    console.log("User ID:", userId);
+    console.log("Target ID:", id);
+    console.log("Image ID:", imageId);
+
     if (id !== userId.toString()) {
       return res.status(403).json({
         success: false,
@@ -634,19 +698,70 @@ export const deleteGalleryImage = async (req, res) => {
       });
     }
 
-    const escort = await User.findByIdAndUpdate(
-      id,
-      { $pull: { gallery: { _id: imageId } } },
-      { new: true }
-    ).select("-password -twoFactorSecret");
+    // Find the user first
+    const escort = await User.findById(id);
+    if (!escort) {
+      return res.status(404).json({
+        success: false,
+        message: "Escort not found",
+      });
+    }
+
+    console.log("Current gallery:", escort.gallery);
+    console.log("Gallery length:", escort.gallery.length);
+
+    // Try to find image by _id first, then by index
+    let imageIndex = -1;
+
+    if (imageId && imageId !== "undefined") {
+      console.log("Looking for image with ID:", imageId);
+      // Try to find by _id
+      imageIndex = escort.gallery.findIndex(
+        (img) => img._id && img._id.toString() === imageId
+      );
+      console.log("Found by _id at index:", imageIndex);
+    }
+
+    // If not found by _id, try to find by index (for old images without _id)
+    if (imageIndex === -1) {
+      const index = parseInt(imageId);
+      console.log("Trying to find by index:", index);
+      if (!isNaN(index) && index >= 0 && index < escort.gallery.length) {
+        imageIndex = index;
+        console.log("Found by index:", imageIndex);
+      }
+    }
+
+    console.log("Final image index to delete:", imageIndex);
+
+    if (imageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Image not found",
+      });
+    }
+
+    // Remove the image at the found index
+    escort.gallery.splice(imageIndex, 1);
+    console.log("Image removed from array, saving...");
+
+    await escort.save();
+    console.log("Escort saved successfully");
+
+    console.log("Image deleted successfully");
 
     res.json({
       success: true,
       message: "Image deleted successfully",
-      escort,
+      escort: escort.select("-password -twoFactorSecret"),
     });
   } catch (error) {
-    handleError(res, error);
+    console.error("Delete gallery image error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete image",
+      error: error.message,
+    });
   }
 };
 

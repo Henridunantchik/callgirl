@@ -249,6 +249,10 @@ const userSchema = new mongoose.Schema(
     // Gallery & Media
     gallery: [
       {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+          auto: true,
+        },
         url: {
           type: String,
           required: true,
@@ -274,6 +278,10 @@ const userSchema = new mongoose.Schema(
 
     videos: [
       {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+          auto: true,
+        },
         url: {
           type: String,
           required: true,

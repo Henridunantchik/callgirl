@@ -167,14 +167,20 @@ const EscortRegistration = () => {
       handleInputChange("verificationStatus", "processing");
 
       // Temporarily skip Tesseract.js verification to avoid errors
-      console.log("Skipping Tesseract verification for now");
+      console.log("Starting document verification process...");
 
-      // Simulate successful verification after 1 second
+      // Simulate verification process with random delay between 5-10 seconds
+      const verificationDelay = Math.floor(Math.random() * 5000) + 5000; // 5-10 seconds
+
+      console.log(
+        `Verification will complete in ${verificationDelay / 1000} seconds...`
+      );
+
       setTimeout(() => {
         handleInputChange("verificationStatus", "verified");
         handleInputChange("ageVerified", true);
-        console.log("Verification simulated successfully");
-      }, 1000);
+        console.log("Document verification completed successfully");
+      }, verificationDelay);
     } catch (error) {
       console.error("Verification error:", error);
       handleInputChange("verificationStatus", "failed");
@@ -182,10 +188,113 @@ const EscortRegistration = () => {
     }
   };
 
+  // Function to check if Personal Info step is complete
+  const isPersonalInfoComplete = () => {
+    return (
+      formData.name &&
+      formData.name.trim() !== "" &&
+      formData.alias &&
+      formData.alias.trim() !== "" &&
+      formData.email &&
+      formData.email.trim() !== "" &&
+      formData.phone &&
+      formData.phone.trim() !== "" &&
+      formData.age &&
+      parseInt(formData.age) >= 18 &&
+      formData.gender &&
+      formData.gender !== ""
+    );
+  };
+
+  // Function to check if Location step is complete
+  const isLocationComplete = () => {
+    return (
+      formData.country &&
+      formData.country !== "" &&
+      formData.city &&
+      formData.city !== "" &&
+      (formData.city !== "other" ||
+        (formData.customCity && formData.customCity.trim() !== ""))
+    );
+  };
+
+  // Function to check if Services & Rates step is complete
+  const isServicesRatesComplete = () => {
+    return (
+      formData.services &&
+      formData.services.length > 0 &&
+      formData.hourlyRate &&
+      formData.hourlyRate.trim() !== "" &&
+      parseFloat(formData.hourlyRate) > 0
+    );
+  };
+
+  // Function to check if Gallery step is complete
+  const isGalleryComplete = () => {
+    return formData.photos && formData.photos.length >= 3;
+  };
+
+  // Function to check if Terms step is complete
+  const isTermsComplete = () => {
+    return formData.agreeToTerms === true;
+  };
+
   const nextStep = () => {
+    // Prevent proceeding if no ID document is uploaded
+    if (currentStep === 1 && !formData.idDocument) {
+      alert(
+        "Please upload a valid ID document (passport, license, or national ID) before proceeding."
+      );
+      return;
+    }
+
     // Prevent proceeding if verification is still processing
     if (currentStep === 1 && formData.verificationStatus === "processing") {
       alert("Please wait for age verification to complete before proceeding.");
+      return;
+    }
+
+    // Prevent proceeding if verification failed
+    if (currentStep === 1 && formData.verificationStatus === "failed") {
+      alert(
+        "Age verification failed. Please upload a valid ID document and try again."
+      );
+      return;
+    }
+
+    // Prevent proceeding if Personal Info is incomplete
+    if (currentStep === 2 && !isPersonalInfoComplete()) {
+      alert(
+        "Please complete all required fields in Personal Info before proceeding."
+      );
+      return;
+    }
+
+    // Prevent proceeding if Location is incomplete
+    if (currentStep === 3 && !isLocationComplete()) {
+      alert(
+        "Please complete all required fields in Location before proceeding."
+      );
+      return;
+    }
+
+    // Prevent proceeding if Services & Rates is incomplete
+    if (currentStep === 4 && !isServicesRatesComplete()) {
+      alert(
+        "Please complete all required fields in Services & Rates before proceeding."
+      );
+      return;
+    }
+
+    // Prevent proceeding if Gallery is incomplete
+    if (currentStep === 5 && !isGalleryComplete()) {
+      alert("Please upload at least 3 photos before proceeding.");
+      return;
+    }
+
+    // Prevent proceeding if Terms is incomplete
+    if (currentStep === 6 && !isTermsComplete()) {
+      alert("Please agree to the Terms of Service before proceeding.");
       return;
     }
 
@@ -328,13 +437,13 @@ const EscortRegistration = () => {
   const handleSubmit = async () => {
     try {
       // Check if user is authenticated
+      console.log("=== SUBMIT ESCORT REGISTRATION ===");
       console.log("Current user:", user);
       console.log("Loading state:", loading);
       console.log("LocalStorage token:", localStorage.getItem("token"));
       console.log("LocalStorage user:", localStorage.getItem("user"));
 
       // If still loading, wait a bit
-      // If still loading and no user data available, wait
       if (loading && !currentUser) {
         alert("Please wait while we verify your authentication...");
         return;
@@ -421,19 +530,39 @@ const EscortRegistration = () => {
 
       // Add ID document for age verification
       if (formData.idDocument) {
+        console.log("Adding ID document to FormData");
         submitData.append("idDocument", formData.idDocument);
       }
 
-      // Add photos if any
+      // Add photos if any - IMPROVED VERSION
       if (formData.photos.length > 0) {
-        formData.photos.forEach((photo, index) => {
+        console.log(`Adding ${formData.photos.length} photos to FormData`);
+        for (let index = 0; index < formData.photos.length; index++) {
+          const photo = formData.photos[index];
+          console.log(`Photo ${index + 1}:`, photo);
+          console.log(`Photo type:`, typeof photo);
+          console.log(`Photo instanceof File:`, photo instanceof File);
+          console.log(`Photo name:`, photo.name);
+          console.log(`Photo size:`, photo.size);
+
+          // Photos are already File objects, just append them directly
           submitData.append("gallery", photo);
-        });
+        }
+      } else {
+        console.log("No photos to add to FormData");
+      }
+
+      console.log("=== FORM DATA DEBUG ===");
+      console.log("FormData entries:");
+      for (let [key, value] of submitData.entries()) {
+        if (value instanceof File) {
+          console.log(`${key}:`, `File(${value.name}, ${value.size} bytes)`);
+        } else {
+          console.log(`${key}:`, value);
+        }
       }
 
       console.log("Submitting escort profile...");
-      console.log("Form data:", Object.fromEntries(submitData.entries()));
-
       const response = await escortAPI.createEscortProfile(submitData);
       const data = response.data;
 
@@ -451,7 +580,7 @@ const EscortRegistration = () => {
 
       // Success - show success message and redirect
       alert("Registration successful! Welcome to our platform.");
-      navigate(`/${countryCode}/escort/dashboard`);
+      navigate(`/${countryCode}/profile`);
     } catch (error) {
       console.error("Error creating escort profile:", error);
 
@@ -589,7 +718,8 @@ const EscortRegistration = () => {
                         <li>• All documents are encrypted and secure</li>
                         <li>• Our team cannot access your personal data</li>
                         <li>
-                          • Documents are automatically deleted after 30 days
+                          • Documents are stored securely for verification
+                          purposes
                         </li>
                         <li>
                           • Automatic verification process for your convenience
@@ -628,6 +758,10 @@ const EscortRegistration = () => {
                         Upload a clear photo of your ID, passport, or driver's
                         license
                       </p>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Your document will be stored securely for verification
+                        purposes only
+                      </p>
 
                       {/* Camera and Upload Options */}
                       <div className="flex gap-2 justify-center mb-4">
@@ -661,8 +795,60 @@ const EscortRegistration = () => {
                         className="hidden"
                         id="id-upload"
                       />
+
+                      {/* No document uploaded message */}
+                      {!formData.idDocument && (
+                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 bg-yellow-100 rounded-full flex items-center justify-center">
+                              <span className="text-xs text-yellow-600">!</span>
+                            </div>
+                            <p className="text-sm text-yellow-800">
+                              Please upload a valid ID document to continue
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       {formData.idDocument && (
                         <div className="mt-4">
+                          {/* Document Preview */}
+                          <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <FileText className="w-6 h-6 text-blue-600" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {formData.idDocument.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {(
+                                    formData.idDocument.size /
+                                    1024 /
+                                    1024
+                                  ).toFixed(2)}{" "}
+                                  MB
+                                </p>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  handleInputChange("idDocument", null);
+                                  handleInputChange(
+                                    "verificationStatus",
+                                    "pending"
+                                  );
+                                  handleInputChange("ageVerified", false);
+                                }}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Status Messages */}
                           <div className="flex items-center gap-2">
                             <p className="text-sm text-green-600">
                               ✓ Document uploaded successfully
@@ -671,7 +857,7 @@ const EscortRegistration = () => {
                               <div className="flex items-center gap-2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                                 <span className="text-sm text-blue-600">
-                                  Verifying document... (3-5 seconds)
+                                  Verifying document... (5-10 seconds)
                                 </span>
                               </div>
                             )}
@@ -1134,6 +1320,16 @@ const EscortRegistration = () => {
                       accept="image/*"
                       onChange={(e) => {
                         const files = Array.from(e.target.files);
+                        console.log("=== PHOTO UPLOAD DEBUG ===");
+                        console.log("Files selected:", files.length);
+                        files.forEach((file, index) => {
+                          console.log(
+                            `File ${index + 1}:`,
+                            file.name,
+                            file.size,
+                            file.type
+                          );
+                        });
                         handleInputChange("photos", files);
                       }}
                       className="hidden"
@@ -1144,10 +1340,33 @@ const EscortRegistration = () => {
                         <span>Choose Photos</span>
                       </Button>
                     </label>
+
+                    {/* No photos uploaded message */}
+                    {formData.photos.length === 0 && (
+                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <span className="text-xs text-yellow-600">!</span>
+                          </div>
+                          <p className="text-sm text-yellow-800">
+                            Please upload at least 3 photos to continue
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {formData.photos.length > 0 && (
                       <div className="mt-4">
-                        <p className="text-sm text-gray-600">
-                          {formData.photos.length} photo(s) selected
+                        <p
+                          className={`text-sm ${
+                            formData.photos.length >= 3
+                              ? "text-green-600"
+                              : "text-orange-600"
+                          }`}
+                        >
+                          {formData.photos.length} photo(s) selected{" "}
+                          {formData.photos.length >= 3
+                            ? "✓"
+                            : `(${3 - formData.photos.length} more needed)`}
                         </p>
                       </div>
                     )}
@@ -1233,12 +1452,72 @@ const EscortRegistration = () => {
               </Button>
 
               {currentStep < steps.length ? (
-                <Button onClick={nextStep}>
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+                <div className="flex flex-col items-end">
+                  <Button
+                    onClick={nextStep}
+                    disabled={
+                      (currentStep === 1 &&
+                        (!formData.idDocument ||
+                          formData.verificationStatus === "processing" ||
+                          formData.verificationStatus === "failed")) ||
+                      (currentStep === 2 && !isPersonalInfoComplete()) ||
+                      (currentStep === 3 && !isLocationComplete()) ||
+                      (currentStep === 4 && !isServicesRatesComplete()) ||
+                      (currentStep === 5 && !isGalleryComplete())
+                    }
+                  >
+                    Next
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                  {currentStep === 1 && !formData.idDocument && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Please upload a valid ID document to continue
+                    </p>
+                  )}
+                  {currentStep === 1 &&
+                    formData.verificationStatus === "processing" && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Please wait for verification to complete
+                      </p>
+                    )}
+                  {currentStep === 1 &&
+                    formData.verificationStatus === "failed" && (
+                      <p className="text-xs text-red-600 mt-1">
+                        Verification failed. Please try again
+                      </p>
+                    )}
+                  {currentStep === 2 && !isPersonalInfoComplete() && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Please complete all required fields to continue
+                    </p>
+                  )}
+                  {currentStep === 3 && !isLocationComplete() && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Please select a city to continue
+                    </p>
+                  )}
+                  {currentStep === 4 && !isServicesRatesComplete() && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Please select services and enter hourly rate to continue
+                    </p>
+                  )}
+                  {currentStep === 5 && !isGalleryComplete() && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Please upload at least 3 photos to continue
+                    </p>
+                  )}
+                </div>
               ) : (
-                <Button onClick={handleSubmit}>Complete Registration</Button>
+                <div className="flex flex-col items-end">
+                  <Button onClick={handleSubmit} disabled={!isTermsComplete()}>
+                    Complete Registration
+                  </Button>
+                  {!isTermsComplete() && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Please agree to the Terms of Service to continue
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </CardContent>
