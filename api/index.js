@@ -12,6 +12,10 @@ import {
   searchRateLimiter,
 } from "./middleware/rateLimiter.js";
 
+// Import performance optimizations
+import { performanceMiddleware } from "./utils/performanceMonitor.js";
+import { cacheMiddleware } from "./utils/cache.js";
+
 // Import input validation middleware
 import {
   sanitizeAllInput,
@@ -53,11 +57,16 @@ app.use("/api/search", searchRateLimiter);
 // Apply input sanitization globally
 app.use(sanitizeAllInput);
 
+// Apply performance monitoring
+app.use(performanceMiddleware);
+
 // Middleware
-app.use(cors({
-  origin: config.FRONTEND_URL,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: config.FRONTEND_URL,
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -68,6 +77,17 @@ app.get("/health", (req, res) => {
     message: "Server is running",
     timestamp: new Date().toISOString(),
     environment: config.NODE_ENV,
+  });
+});
+
+// Performance monitoring endpoint
+app.get("/api/performance", async (req, res) => {
+  const { getPerformanceStats } = await import("./utils/performanceMonitor.js");
+  const stats = getPerformanceStats();
+  res.status(200).json({
+    success: true,
+    data: stats,
+    message: "Performance statistics retrieved successfully",
   });
 });
 
@@ -117,7 +137,7 @@ mongoose
   .connect(config.MONGODB_CONN)
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    
+
     // Start server
     app.listen(config.PORT, () => {
       console.log(`🚀 Server running on port ${config.PORT}`);
