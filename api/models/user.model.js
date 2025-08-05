@@ -99,6 +99,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    experience: {
+      type: String,
+      trim: true,
+    },
     tattoos: {
       type: Boolean,
       default: false,

@@ -78,6 +78,8 @@ app.use((req, res, next) => {
     "/api/escort/location",
     "/api/escort/category",
     "/api/escort/create",
+    "/api/escort/slug",
+    "/api/escort/debug",
     "/api/user/update",
     "/api/user/update-user",
   ];

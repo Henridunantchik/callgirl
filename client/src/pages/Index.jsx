@@ -27,17 +27,17 @@ const Index = () => {
     online: false,
   });
 
-    // Fetch escort data from API
+  // Fetch escort data from API
   const [escortData, setEscortData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Debug logging
   console.log("=== HOME PAGE DEBUG ===");
   console.log("Escort data:", escortData);
   console.log("Loading:", loading);
   console.log("Error:", error);
-  
+
   // Fetch escorts on component mount
   React.useEffect(() => {
     const fetchEscorts = async () => {
@@ -55,7 +55,7 @@ const Index = () => {
         setLoading(false);
       }
     };
-    
+
     fetchEscorts();
   }, []);
 
@@ -69,6 +69,30 @@ const Index = () => {
       ...prev,
       [key]: value,
     }));
+  };
+
+  const handleContact = (escort, method) => {
+    console.log("=== CONTACT DEBUG (INDEX) ===");
+    console.log("Escort data:", escort);
+    console.log("Method:", method);
+    console.log("Phone:", escort.phone);
+    console.log("Alias:", escort.alias);
+    console.log("Name:", escort.name);
+
+    if (method === "call") {
+      if (escort.phone) {
+        // Copy phone number to clipboard
+        navigator.clipboard.writeText(escort.phone);
+        alert(`Phone number copied to clipboard: ${escort.phone}`);
+      } else {
+        alert("Phone number not available for this escort.");
+      }
+    } else if (method === "message") {
+      // Navigate to message page or open chat
+      console.log("Opening message for:", escort.alias);
+      // You can implement navigation to message page here
+    }
+    console.log("Contacting escort:", escort.alias, "via", method);
   };
 
   if (loading) return <Loading />;
@@ -215,7 +239,13 @@ const Index = () => {
           <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6">
             {escortData.escorts.map((escort) => {
               console.log("Rendering escort:", escort);
-              return <EscortCard key={escort._id} escort={escort} />;
+              return (
+                <EscortCard
+                  key={escort._id}
+                  escort={escort}
+                  onContact={handleContact}
+                />
+              );
             })}
           </div>
         ) : (

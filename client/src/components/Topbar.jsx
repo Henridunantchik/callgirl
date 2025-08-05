@@ -168,7 +168,7 @@ const Topbar = () => {
 
               {/* Profile & Settings */}
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to={RouteProfile(countryCode)}>
+                <Link to={RouteProfile(countryCode, user.user.role)}>
                   <FaRegUser className="mr-2" />
                   Profile
                 </Link>

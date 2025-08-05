@@ -43,6 +43,7 @@ import User from "./pages/User";
 // New escort directory pages
 import EscortList from "./pages/Escort/EscortList";
 import EscortProfile from "./pages/Escort/EscortProfile";
+import EscortProfileEdit from "./pages/Escort/EscortProfileEdit";
 import EscortRegistration from "./pages/Escort/EscortRegistration";
 import EscortDashboard from "./pages/Escort/EscortDashboard";
 import ClientDashboard from "./pages/Client/ClientDashboard";
@@ -83,7 +84,7 @@ const App = () => {
 
             {/* Public Escort Directory Routes */}
             <Route path="escorts" element={<EscortList />} />
-            <Route path="escort/:id" element={<EscortProfile />} />
+            <Route path="escort/:slug" element={<EscortProfile />} />
             <Route path="search" element={<SearchResult />} />
             <Route path="location/:city" element={<EscortList />} />
             <Route path="category/:category" element={<EscortList />} />
@@ -120,6 +121,7 @@ const App = () => {
               {/* Escort Routes */}
               <Route element={<OnlyEscortAllowed />}>
                 <Route path="escort/dashboard" element={<EscortDashboard />} />
+                <Route path="escort/profile" element={<EscortProfileEdit />} />
                 <Route path="victime/add" element={<AddBlog />} />
                 <Route path="victimes" element={<BlogDetails />} />
                 <Route path="victime/edit/:blogid" element={<EditBlog />} />

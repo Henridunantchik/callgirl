@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -33,6 +34,8 @@ import { getEvn } from "@/helpers/getEnv";
 import { userAPI } from "@/services/api";
 
 const Profile = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [filePreview, setPreview] = useState();
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
@@ -42,7 +45,7 @@ const Profile = () => {
     gallery: true,
     videos: true,
   });
-  const user = useSelector((state) => state.user);
+  const user = useSelector((state) => state.user.user);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -52,66 +55,127 @@ const Profile = () => {
   const [deletingVideo, setDeletingVideo] = useState(null);
   const dispatch = useDispatch();
 
-  // Calculate profile completion
+  // Profile completion calculation with detailed breakdown
   const calculateProfileCompletion = (userData) => {
-    if (!userData?.user) return 0;
+    if (!userData?.user) return { percentage: 0, breakdown: {} };
     const user = userData.user;
     const isEscort = user.role === "escort";
 
-    const fields = [
-      { field: user.name, weight: 5 },
-      { field: user.email, weight: 5 },
-      { field: user.phone, weight: 5 },
+    const fieldConfig = [
+      { key: "name", field: user.name, weight: 5, label: "Full Name" },
+      { key: "email", field: user.email, weight: 5, label: "Email" },
+      { key: "phone", field: user.phone, weight: 5, label: "Phone" },
       ...(isEscort
         ? [
-            { field: user.alias, weight: 3 },
-            { field: user.age, weight: 3 },
-            { field: user.gender, weight: 3 },
-            { field: user.location?.city, weight: 3 },
-            { field: user.location?.subLocation, weight: 2 },
-            { field: user.rates?.hourly, weight: 3 },
-            { field: user.services, weight: 4 },
-            { field: user.bio, weight: 4 },
-            { field: user.bodyType, weight: 2 },
-            { field: user.ethnicity, weight: 2 },
-            { field: user.height, weight: 2 },
-            { field: user.weight, weight: 2 },
-            { field: user.hairColor, weight: 2 },
-            { field: user.eyeColor, weight: 2 },
-            { field: user.experience, weight: 3 },
-            { field: user.gallery?.length > 0, weight: 5 },
+            {
+              key: "alias",
+              field: user.alias,
+              weight: 3,
+              label: "Professional Name",
+            },
+            { key: "age", field: user.age, weight: 3, label: "Age" },
+            { key: "gender", field: user.gender, weight: 3, label: "Gender" },
+            {
+              key: "city",
+              field: user.location?.city,
+              weight: 3,
+              label: "City",
+            },
+            {
+              key: "subLocation",
+              field: user.location?.subLocation,
+              weight: 2,
+              label: "Neighborhood",
+            },
+            {
+              key: "hourly",
+              field: user.rates?.hourly,
+              weight: 3,
+              label: "Hourly Rate",
+            },
+            {
+              key: "services",
+              field: user.services,
+              weight: 4,
+              label: "Services",
+            },
+            { key: "bio", field: user.bio, weight: 4, label: "Bio" },
+            {
+              key: "bodyType",
+              field: user.bodyType,
+              weight: 2,
+              label: "Body Type",
+            },
+            {
+              key: "ethnicity",
+              field: user.ethnicity,
+              weight: 2,
+              label: "Ethnicity",
+            },
+            { key: "height", field: user.height, weight: 2, label: "Height" },
+            { key: "weight", field: user.weight, weight: 2, label: "Weight" },
+            {
+              key: "hairColor",
+              field: user.hairColor,
+              weight: 2,
+              label: "Hair Color",
+            },
+            {
+              key: "eyeColor",
+              field: user.eyeColor,
+              weight: 2,
+              label: "Eye Color",
+            },
+            {
+              key: "experience",
+              field: user.experience,
+              weight: 3,
+              label: "Experience",
+            },
+            {
+              key: "gallery",
+              field: user.gallery?.length > 0,
+              weight: 5,
+              label: "Gallery Photos",
+            },
           ]
         : []),
     ];
 
     let totalWeight = 0;
     let completedWeight = 0;
+    const breakdown = {};
 
-    fields.forEach(({ field, weight }) => {
+    fieldConfig.forEach(({ key, field, weight, label }) => {
       totalWeight += weight;
-      if (
+      const isValid =
         field &&
         field !== "" &&
         field !== "Select gender" &&
         field !== "Select body type" &&
         field !== "Select ethnicity" &&
         field !== "Select hair color" &&
-        field !== "Select eye color"
-      ) {
-        if (Array.isArray(field)) {
-          if (field.length > 0) completedWeight += weight;
-        } else {
-          completedWeight += weight;
-        }
+        field !== "Select eye color";
+
+      const isCompleted = Array.isArray(field) ? field.length > 0 : isValid;
+
+      if (isCompleted) {
+        completedWeight += weight;
+        breakdown[key] = { completed: true, weight, label };
+      } else {
+        breakdown[key] = { completed: false, weight, label };
       }
     });
 
-    return totalWeight > 0
-      ? Math.round((completedWeight / totalWeight) * 100)
-      : 0;
+    const percentage =
+      totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+
+    return { percentage, breakdown, totalWeight, completedWeight };
   };
 
   const profileCompletion = calculateProfileCompletion(userData);
+  const { percentage, breakdown, totalWeight, completedWeight } =
+    profileCompletion;
 
   // Fetch fresh user data on page load
   useEffect(() => {
@@ -135,15 +199,15 @@ const Profile = () => {
         } else {
           console.error("Failed to fetch user data");
           // Fallback to Redux data
-          if (user.user && user.user._id) {
-            setUserData({ success: true, user: user.user });
+          if (user && user._id) {
+            setUserData({ success: true, user: user });
           }
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
         // Fallback to Redux data
-        if (user.user && user.user._id) {
-          setUserData({ success: true, user: user.user });
+        if (user && user._id) {
+          setUserData({ success: true, user: user });
         }
       } finally {
         setLoading(false);
@@ -151,9 +215,31 @@ const Profile = () => {
     };
 
     fetchUserData();
-  }, [user.user]);
+  }, [user]);
 
-  const isEscort = userData?.user?.role === "escort";
+  const isEscort = userData?.user?.role === "escort" || user?.role === "escort";
+  const isClient = userData?.user?.role === "client" || user?.role === "client";
+
+  console.log("=== PROFILE DEBUG ===");
+  console.log("userData:", userData);
+  console.log("user:", user);
+  console.log("isEscort:", isEscort);
+  console.log("isClient:", isClient);
+  console.log("current pathname:", location.pathname);
+
+  // Redirect logic: if escort is on /profile, redirect to /escort/profile
+  useEffect(() => {
+    if (
+      isEscort &&
+      location.pathname.includes("/profile") &&
+      !location.pathname.includes("/escort/profile")
+    ) {
+      // Extract country code from current path
+      const pathParts = location.pathname.split("/");
+      const countryCode = pathParts[1]; // e.g., "ug" from "/ug/profile"
+      navigate(`/${countryCode}/escort/profile`, { replace: true });
+    }
+  }, [isEscort, location.pathname, navigate]);
 
   // Form schema
   const formSchema = z.object({
@@ -236,6 +322,7 @@ const Profile = () => {
     }
   }, [userData, form]);
 
+  // Profile update with robust error handling and retry logic
   async function onSubmit(values) {
     try {
       setUpdating(true);
@@ -244,119 +331,200 @@ const Profile = () => {
       console.log("Form values:", values);
       console.log("Starting profile update...");
 
-      // Prepare data for backend
+      // Prepare data for backend with validation
       const updateData = {
-        name: values.name,
-        email: values.email,
-        phone: values.phone,
-        alias: values.alias,
+        name: values.name?.trim(),
+        email: values.email?.trim(),
+        phone: values.phone?.trim(),
+        alias: values.alias?.trim(),
         age: values.age ? parseInt(values.age) : null,
         gender: values.gender,
         location: {
-          city: values.city,
-          subLocation: values.neighborhood,
+          city: values.city?.trim(),
+          subLocation: values.neighborhood?.trim(),
         },
         rates: {
           hourly: values.rates.hourly ? parseInt(values.rates.hourly) : null,
         },
         isStandardPricing: values.pricingType === "standard",
-        services: values.services,
-        bio: values.bio,
+        services: values.services || [],
+        bio: values.bio?.trim(),
         bodyType: values.bodyType,
         ethnicity: values.ethnicity,
         height: values.height ? parseInt(values.height) : null,
         weight: values.weight ? parseInt(values.weight) : null,
         hairColor: values.hairColor,
         eyeColor: values.eyeColor,
-        experience: values.experience,
+        experience: values.experience?.trim(),
       };
 
-      // Make API call to update profile using the proper service
-      try {
-        console.log("Making API call to update profile...");
-        console.log("API endpoint: /api/user/update");
-        console.log("Request data:", updateData);
+      // Progressive saving - only validate fields that are being updated
+      const updatedFields = Object.keys(updateData).filter(
+        (key) =>
+          updateData[key] !== undefined &&
+          updateData[key] !== null &&
+          updateData[key] !== ""
+      );
 
-        // First try with the API service
-        let response;
+      console.log("Fields being updated:", updatedFields);
+
+      // Only validate required fields if they're being updated
+      const requiredFields = ["name", "email", "phone"];
+      const missingRequiredFields = requiredFields.filter(
+        (field) => updatedFields.includes(field) && !updateData[field]
+      );
+
+      if (missingRequiredFields.length > 0) {
+        showToast(
+          `Missing required fields: ${missingRequiredFields.join(", ")}`,
+          "error"
+        );
+        return;
+      }
+
+      // Only send fields that have values (progressive saving)
+      const dataToSend = {};
+      updatedFields.forEach((field) => {
+        if (
+          updateData[field] !== undefined &&
+          updateData[field] !== null &&
+          updateData[field] !== ""
+        ) {
+          dataToSend[field] = updateData[field];
+        }
+      });
+
+      console.log(
+        "Progressive save - sending only updated fields:",
+        dataToSend
+      );
+
+      // Robust API call with retry logic
+      console.log("Making API call to update profile...");
+      console.log("API endpoint: /api/user/update");
+      console.log("Request data:", dataToSend);
+
+      let response;
+      let retryCount = 0;
+      const maxRetries = 2;
+
+      while (retryCount <= maxRetries) {
         try {
-          response = await userAPI.updateUserProfile(updateData);
-          console.log(
-            "Profile updated successfully via API service:",
-            response.data
-          );
-        } catch (apiError) {
-          console.log("API service failed, trying direct fetch...");
+          if (retryCount === 0) {
+            // First try with API service
+            response = await userAPI.updateUserProfile(dataToSend);
+            console.log(
+              "Profile updated successfully via API service:",
+              response.data
+            );
+          } else {
+            // Retry with direct fetch
+            console.log(`Retry ${retryCount}: Using direct fetch...`);
+            const fetchResponse = await fetch("/api/user/update", {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify(dataToSend),
+            });
 
-          // Fallback to direct fetch
-          const fetchResponse = await fetch("/api/user/update", {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: JSON.stringify(updateData),
-          });
+            if (!fetchResponse.ok) {
+              const errorText = await fetchResponse.text();
+              throw new Error(`HTTP ${fetchResponse.status}: ${errorText}`);
+            }
 
-          if (!fetchResponse.ok) {
-            throw new Error(
-              `HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`
+            response = { data: await fetchResponse.json() };
+            console.log(
+              "Profile updated successfully via direct fetch:",
+              response.data
             );
           }
+          break; // Success, exit retry loop
+        } catch (error) {
+          retryCount++;
+          console.error(`Attempt ${retryCount} failed:`, error);
 
-          response = { data: await fetchResponse.json() };
-          console.log(
-            "Profile updated successfully via direct fetch:",
-            response.data
+          if (retryCount > maxRetries) {
+            throw error; // Re-throw after all retries exhausted
+          }
+
+          // Wait before retry
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount)
           );
         }
-
-        // Update Redux store with new data
-        if (response.data.success && response.data.user) {
-          console.log("Updating Redux store with new user data");
-          dispatch(setUser(response.data.user));
-
-          // Also update local user data
-          setUserData({ success: true, user: response.data.user });
-        }
-
-        showToast("Profile updated successfully!", "success");
-
-        // Refresh profile completion calculation
-        const newCompletion = calculateProfileCompletion({
-          success: true,
-          user: response.data.user,
-        });
-        console.log("New profile completion:", newCompletion + "%");
-      } catch (error) {
-        console.error("Failed to update profile:", error);
-        console.error("Error name:", error.name);
-        console.error("Error message:", error.message);
-        console.error("Error code:", error.code);
-        console.error("Error response:", error.response);
-        console.error("Error status:", error.response?.status);
-        console.error("Error data:", error.response?.data);
-        console.error("Error config:", error.config);
-
-        let errorMessage = "Failed to update profile";
-        if (
-          error.code === "ECONNREFUSED" ||
-          error.code === "ERR_NETWORK" ||
-          error.code === "ECONNABORTED"
-        ) {
-          errorMessage =
-            "Server connection failed. Please check your internet connection and try again.";
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        showToast(errorMessage, "error");
       }
+
+      // Update Redux store with new data
+      if (response.data.success && response.data.user) {
+        console.log("Updating Redux store with new user data");
+        dispatch(setUser(response.data.user));
+
+        // Also update local user data
+        setUserData({ success: true, user: response.data.user });
+      }
+
+      const updatedFieldsList = updatedFields.map((field) => {
+        const fieldLabels = {
+          name: "Full Name",
+          email: "Email",
+          phone: "Phone",
+          alias: "Professional Name",
+          age: "Age",
+          gender: "Gender",
+          city: "City",
+          subLocation: "Neighborhood",
+          hourly: "Hourly Rate",
+          services: "Services",
+          bio: "Bio",
+          bodyType: "Body Type",
+          ethnicity: "Ethnicity",
+          height: "Height",
+          weight: "Weight",
+          hairColor: "Hair Color",
+          eyeColor: "Eye Color",
+          experience: "Experience",
+        };
+        return fieldLabels[field] || field;
+      });
+
+      showToast(
+        `${updatedFieldsList.join(", ")} updated successfully!`,
+        "success"
+      );
+
+      // Refresh profile completion calculation
+      const newCompletion = calculateProfileCompletion({
+        success: true,
+        user: response.data.user,
+      });
+      console.log("New profile completion:", newCompletion.percentage + "%");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      showToast("Failed to update profile", "error");
+      console.error("Failed to update profile:", error);
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error code:", error.code);
+      console.error("Error response:", error.response);
+      console.error("Error status:", error.response?.status);
+      console.error("Error data:", error.response?.data);
+      console.error("Error config:", error.config);
+
+      let errorMessage = "Failed to update profile";
+      if (
+        error.code === "ECONNREFUSED" ||
+        error.code === "ERR_NETWORK" ||
+        error.code === "ECONNABORTED"
+      ) {
+        errorMessage =
+          "Server connection failed. Please check your internet connection and try again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      showToast(errorMessage, "error");
     } finally {
       setUpdating(false);
     }
@@ -422,7 +590,7 @@ const Profile = () => {
         console.log(`Starting upload of ${files.length} images...`);
         const startTime = Date.now();
 
-        const response = await fetch("/api/escort/gallery/" + user.user._id, {
+        const response = await fetch("/api/escort/gallery/" + user?._id, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -473,7 +641,7 @@ const Profile = () => {
           formData.append("videos", file);
         });
 
-        const response = await fetch("/api/escort/video/" + user.user._id, {
+        const response = await fetch("/api/escort/video/" + user?._id, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -514,9 +682,9 @@ const Profile = () => {
 
       console.log("=== DELETE GALLERY IMAGE ===");
       console.log("Image ID:", imageId);
-      console.log("User ID:", user.user._id);
+      console.log("User ID:", user?._id);
 
-      const deleteUrl = `/api/escort/gallery/${user.user._id}/${imageId}`;
+      const deleteUrl = `/api/escort/gallery/${user?._id}/${imageId}`;
       console.log("Delete URL:", deleteUrl);
 
       const response = await fetch(deleteUrl, {
@@ -584,7 +752,7 @@ const Profile = () => {
       setDeletingVideo(videoId);
 
       const response = await fetch(
-        `/api/escort/video/${user.user._id}/${videoId}`,
+        `/api/escort/video/${user?._id}/${videoId}`,
         {
           method: "DELETE",
           headers: {
@@ -621,8 +789,46 @@ const Profile = () => {
   };
 
   if (loading) return <Loading />;
-  if (!user.user._id)
-    return <div className="text-center p-8">User not found</div>;
+  if (!user?._id) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            User Not Found
+          </h1>
+          <p className="text-gray-600 mb-4">
+            Please log in to access your profile.
+          </p>
+          <Button onClick={() => navigate("/sign-in")}>Go to Sign In</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure only clients can access this page
+  if (isEscort) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Access Denied
+          </h1>
+          <p className="text-gray-600 mb-4">
+            This page is only available for client profiles.
+          </p>
+          <Button
+            onClick={() => {
+              const pathParts = location.pathname.split("/");
+              const countryCode = pathParts[1];
+              navigate(`/${countryCode}/escort/profile`);
+            }}
+          >
+            Go to Escort Profile
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -646,17 +852,17 @@ const Profile = () => {
               </svg>
             </div>
             <h1 className="text-2xl font-semibold text-gray-900">
-              {isEscort ? "Escort Profile" : "Client Profile"}
+              {isEscort ? "Escort Profile Management" : "Client Profile"}
             </h1>
           </div>
           <p className="text-gray-600 text-sm">
             {isEscort
-              ? "Manage your escort profile and settings"
-              : "Update your personal information"}
+              ? "Manage your escort profile, gallery, services, and settings"
+              : "Update your personal information and preferences"}
           </p>
         </div>
 
-        {/* Profile Completion */}
+        {/* Profile Completion - Only for Escorts */}
         {isEscort && (
           <div className="mb-6 bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
@@ -670,9 +876,11 @@ const Profile = () => {
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold text-blue-600">
-                  {profileCompletion}%
+                  {percentage}%
                 </div>
-                <div className="text-xs text-gray-500">Complete</div>
+                <div className="text-xs text-gray-500">
+                  Complete ({completedWeight}/{totalWeight} points)
+                </div>
               </div>
             </div>
 
@@ -716,7 +924,7 @@ const Profile = () => {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="text-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Profile Picture
+                  {isEscort ? "Escort Profile Picture" : "Profile Picture"}
                 </h3>
                 <div className="relative">
                   <Dropzone onDrop={handleFileSelection}>
@@ -761,6 +969,7 @@ const Profile = () => {
                 </div>
               </div>
 
+              {/* Escort-specific status info */}
               {isEscort && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -780,6 +989,26 @@ const Profile = () => {
                     >
                       {userData?.user?.isOnline ? "Online" : "Offline"}
                     </Badge>
+                  </div>
+                </div>
+              )}
+
+              {/* Client-specific info */}
+              {isClient && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Account Type:</span>
+                    <Badge variant="default" className="bg-blue-500 text-white">
+                      Client Account
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Member Since:</span>
+                    <span className="text-sm text-gray-600">
+                      {userData?.user?.createdAt
+                        ? new Date(userData.user.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </span>
                   </div>
                 </div>
               )}
@@ -855,6 +1084,7 @@ const Profile = () => {
                             )}
                           />
 
+                          {/* Escort-specific fields */}
                           {isEscort && (
                             <FormField
                               control={form.control}
@@ -908,6 +1138,7 @@ const Profile = () => {
                             )}
                           />
 
+                          {/* Escort-specific personal details */}
                           {isEscort && (
                             <>
                               <FormField
@@ -1069,7 +1300,7 @@ const Profile = () => {
                     </div>
                   </div>
 
-                  {/* Personal Details Section */}
+                  {/* Personal Details Section - Only for Escorts */}
                   {isEscort && (
                     <div className="border-b border-gray-200">
                       <div className="p-6">
@@ -1389,7 +1620,7 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* Services Section */}
+                  {/* Services Section - Only for Escorts */}
                   {isEscort && (
                     <div className="border-b border-gray-200">
                       <div className="p-6">
@@ -1535,7 +1766,7 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* Gallery Section for Escorts */}
+                  {/* Gallery Section - Only for Escorts */}
                   {isEscort && (
                     <div className="border-b border-gray-200">
                       <div className="p-6">
@@ -1989,7 +2220,7 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* About Me Section */}
+                  {/* About Me Section - For All Users */}
                   <div className="border-b border-gray-200">
                     <div className="p-6">
                       <div
@@ -2036,7 +2267,7 @@ const Profile = () => {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="flex items-center gap-2">
-                                Bio
+                                {isEscort ? "Professional Bio" : "About Me"}
                                 {!field.value && (
                                   <span className="text-red-500 text-xs">
                                     *Required
@@ -2048,7 +2279,7 @@ const Profile = () => {
                                   placeholder={
                                     isEscort
                                       ? "Tell clients about yourself, your services, and what makes you special..."
-                                      : "Tell us about yourself..."
+                                      : "Tell us about yourself and what you're looking for..."
                                   }
                                   className={`min-h-[120px] ${
                                     !field.value

@@ -219,18 +219,18 @@ const SearchFilters = ({ filters, onFiltersChange, onReset }) => {
         <div className="space-y-2">
           <Label>Age Range</Label>
           <div className="grid grid-cols-2 gap-2">
-                         <Input
-               type="number"
-               placeholder="Min age"
-               min="18"
-               value={filters.minAge || "18"}
-               onChange={(e) => {
-                 const value = parseInt(e.target.value);
-                 if (value >= 18 || e.target.value === "") {
-                   handleFilterChange("minAge", e.target.value);
-                 }
-               }}
-             />
+            <Input
+              type="number"
+              placeholder="Min age"
+              min="18"
+              value={filters.minAge || "18"}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                if (value >= 18 || e.target.value === "") {
+                  handleFilterChange("minAge", e.target.value);
+                }
+              }}
+            />
             <Input
               type="number"
               placeholder="Max age"

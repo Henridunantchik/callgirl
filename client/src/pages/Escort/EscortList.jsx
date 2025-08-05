@@ -62,6 +62,13 @@ const EscortList = () => {
         };
 
         const response = await escortAPI.getAllEscorts(params);
+        console.log("=== ESCORT DATA DEBUG ===");
+        console.log("API Response:", response);
+        console.log("Escorts:", response.data.escorts);
+        if (response.data.escorts && response.data.escorts.length > 0) {
+          console.log("First escort phone:", response.data.escorts[0].phone);
+          console.log("First escort data:", response.data.escorts[0]);
+        }
         setEscorts(response.data.escorts || []);
       } catch (error) {
         console.error("Error fetching escorts:", error);
@@ -118,7 +125,26 @@ const EscortList = () => {
   };
 
   const handleContact = (escort, method) => {
-    // Implement contact functionality
+    console.log("=== CONTACT DEBUG ===");
+    console.log("Escort data:", escort);
+    console.log("Method:", method);
+    console.log("Phone:", escort.phone);
+    console.log("Alias:", escort.alias);
+    console.log("Name:", escort.name);
+
+    if (method === "call") {
+      if (escort.phone) {
+        // Copy phone number to clipboard
+        navigator.clipboard.writeText(escort.phone);
+        alert(`Phone number copied to clipboard: ${escort.phone}`);
+      } else {
+        alert("Phone number not available for this escort.");
+      }
+    } else if (method === "message") {
+      // Navigate to message page or open chat
+      console.log("Opening message for:", escort.alias);
+      // You can implement navigation to message page here
+    }
     console.log("Contacting escort:", escort.alias, "via", method);
   };
 
@@ -164,7 +190,7 @@ const EscortList = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 h-64 rounded-lg mb-4"></div>
+              <div className="bg-gray-200 h-96 rounded-lg mb-4"></div>
               <div className="space-y-2">
                 <div className="bg-gray-200 h-4 rounded w-3/4"></div>
                 <div className="bg-gray-200 h-3 rounded w-1/2"></div>

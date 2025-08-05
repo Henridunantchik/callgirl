@@ -24,7 +24,6 @@ export const getAllEscorts = async (req, res) => {
 
     const query = {
       role: "escort",
-      isActive: true,
     };
 
     // Apply filters
@@ -96,12 +95,7 @@ export const getEscortProfile = async (req, res) => {
       });
     }
 
-    if (!escort.isActive) {
-      return res.status(404).json({
-        success: false,
-        message: "Profile is not available",
-      });
-    }
+    // Removed isActive check to allow all escorts to be viewed
 
     // Increment profile views
     await User.findByIdAndUpdate(id, {
@@ -113,6 +107,83 @@ export const getEscortProfile = async (req, res) => {
       escort,
     });
   } catch (error) {
+    handleError(res, error);
+  }
+};
+
+// Get escort by slug (alias or name)
+export const getEscortBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    console.log("🔍 SEARCHING FOR ESCORT:", slug);
+
+    // NOUVELLE APPROCHE: Recherche dans tous les champs possibles
+    const escort = await User.findOne({
+      $and: [
+        { role: "escort" },
+        {
+          $or: [
+            // Recherche exacte
+            { alias: slug },
+            { name: slug },
+            // Recherche insensible à la casse
+            { alias: { $regex: new RegExp(`^${slug}$`, "i") } },
+            { name: { $regex: new RegExp(`^${slug}$`, "i") } },
+            // Recherche partielle (au cas où)
+            { alias: { $regex: slug, $options: "i" } },
+            { name: { $regex: slug, $options: "i" } },
+          ],
+        },
+      ],
+    }).select("-password -twoFactorSecret -loginAttempts -lockUntil");
+
+    if (!escort) {
+      // DEBUG: Montrer tous les escorts pour diagnostiquer
+      const allEscorts = await User.find({ role: "escort" })
+        .select("alias name _id email")
+        .limit(10);
+
+      console.log(
+        "📋 ALL ESCORTS IN DB:",
+        allEscorts.map((e) => ({
+          id: e._id,
+          name: e.name,
+          alias: e.alias,
+          email: e.email,
+        }))
+      );
+
+      return res.status(404).json({
+        success: false,
+        message: `Escort "${slug}" not found`,
+        debug: {
+          searchedFor: slug,
+          availableEscorts: allEscorts.map((e) => ({
+            name: e.name,
+            alias: e.alias,
+          })),
+        },
+      });
+    }
+
+    console.log("✅ FOUND ESCORT:", {
+      id: escort._id,
+      name: escort.name,
+      alias: escort.alias,
+    });
+
+    // Incrémenter les vues
+    await User.findByIdAndUpdate(escort._id, {
+      $inc: { "stats.profileViews": 1 },
+    });
+
+    res.json({
+      success: true,
+      escort,
+    });
+  } catch (error) {
+    console.error("❌ ERROR in getEscortBySlug:", error);
     handleError(res, error);
   }
 };
