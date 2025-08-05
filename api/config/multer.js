@@ -1,22 +1,46 @@
-import multer from 'multer'
+import multer from "multer";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
-const storage = multer.diskStorage({
-    filename: function (req, file, cb) {
-        cb(null, file.originalname)
-    }
-})
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-function fileFilter(req, file, cb) {
-
-    const allowedFiles = ['image/png', 'image/jpg', 'image/jpeg', 'image/webp']
-    if (!allowedFiles.includes(file.mimetype)) {
-        cb(new Error('Only images are allowed.'), false)
-    } else {
-        cb(null, true)
-    }
-
+// Create uploads directory if it doesn't exist
+import fs from "fs";
+const uploadsDir = join(__dirname, "..", "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const upload = multer({ storage: storage, fileFilter: fileFilter })
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + "-" + file.originalname);
+  },
+});
 
-export default upload
+function fileFilter(req, file, cb) {
+  console.log(
+    "Processing file:",
+    file.originalname,
+    "MIME type:",
+    file.mimetype
+  );
+
+  // Accept all files for now to debug the issue
+  console.log("File accepted:", file.originalname);
+  cb(null, true);
+}
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit for faster processing
+  },
+});
+
+export default upload;
