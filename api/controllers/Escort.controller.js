@@ -888,10 +888,17 @@ export const reorderGallery = async (req, res) => {
 // Upload video
 export const uploadVideo = async (req, res) => {
   try {
+    console.log("=== UPLOAD VIDEO FUNCTION START ===");
     const { id } = req.params;
     const userId = req.user._id;
-    const { type = "gallery" } = req.body;
     const file = req.file;
+
+    console.log("=== UPLOAD VIDEO DEBUG ===");
+    console.log("User ID:", userId);
+    console.log("Target ID:", id);
+    console.log("File received:", file);
+    console.log("Request body:", req.body);
+    console.log("Request files:", req.files);
 
     if (id !== userId.toString()) {
       return res.status(403).json({
@@ -901,24 +908,61 @@ export const uploadVideo = async (req, res) => {
     }
 
     if (!file) {
+      console.log("❌ No file received in request");
+      console.log("Request headers:", req.headers);
+      console.log("Request body keys:", Object.keys(req.body));
+      console.log("Request files:", req.files);
       return res.status(400).json({
         success: false,
         message: "No video file provided",
       });
     }
 
-    const result = await cloudinary.uploader.upload(file.path, {
-      resource_type: "video",
-      folder: "escort_videos",
-      transformation: [{ width: 640, height: 480, crop: "fill" }],
-    });
+    console.log(`Processing video file:`, file.originalname);
+    console.log(`File path:`, file.path);
+    console.log(`File size:`, file.size);
+    console.log(`File mimetype:`, file.mimetype);
+    // Check if file exists
+    const fs = await import("fs");
+    console.log(`File exists:`, fs.existsSync(file.path));
+
+    // Read the file from disk and convert to base64 - EXACTLY like gallery
+    console.log(`Reading file from disk: ${file.path}`);
+    const fileBuffer = fs.readFileSync(file.path);
+    console.log(`File size: ${fileBuffer.length} bytes`);
+
+    // Convert to base64 more efficiently - EXACTLY like gallery
+    const base64String = fileBuffer.toString("base64");
+    const mimeType = file.mimetype;
+    const dataUrl = `data:${mimeType};base64,${base64String}`;
+
+    console.log(
+      `Created data URL for video (${Math.round(dataUrl.length / 1024)}KB)`
+    );
 
     const newVideo = {
-      url: result.secure_url,
-      type,
+      url: dataUrl,
+      type: "gallery",
       isPrivate: false,
       isApproved: false,
     };
+
+    console.log(`Video uploaded (base64):`, dataUrl.substring(0, 100) + "...");
+
+    // Clean up the temporary file - EXACTLY like gallery
+    try {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+        console.log(`Cleaned up temporary file:`, file.path);
+      } else {
+        console.log(`Temporary file already removed:`, file.path);
+      }
+    } catch (cleanupError) {
+      console.log(
+        `Error cleaning up file (non-critical):`,
+        cleanupError.message
+      );
+    }
 
     const escort = await User.findByIdAndUpdate(
       id,
@@ -926,13 +970,21 @@ export const uploadVideo = async (req, res) => {
       { new: true }
     ).select("-password -twoFactorSecret");
 
+    console.log(`Successfully added video`);
+
     res.json({
       success: true,
       message: "Video uploaded successfully",
       escort,
     });
   } catch (error) {
-    handleError(res, error);
+    console.error("Upload video error:", error);
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload video",
+      error: error.message,
+    });
   }
 };
 

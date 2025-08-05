@@ -89,6 +89,7 @@ const EscortProfileEdit = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingVideos, setUploadingVideos] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     location: true,
@@ -569,6 +570,7 @@ const EscortProfileEdit = () => {
   const handleVideoUpload = async (files) => {
     try {
       setUploadingVideos(true);
+      setVideoUploadProgress(0);
       showToast("Uploading videos...", "info");
 
       const formData = new FormData();
@@ -580,21 +582,36 @@ const EscortProfileEdit = () => {
       console.log("User ID:", user._id);
       console.log("Files to upload:", files.length);
 
+      // Simulate realistic progress based on file size
+      const totalFiles = files.length;
+      let completedFiles = 0;
+
+      // Calculate total file size for progress
+      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+      let uploadedSize = 0;
+
+      const progressInterval = setInterval(() => {
+        uploadedSize += totalSize / 20; // Simulate upload progress
+        const progress = Math.min(
+          Math.round((uploadedSize / totalSize) * 100),
+          95
+        );
+        setVideoUploadProgress(progress);
+
+        if (progress >= 95) {
+          clearInterval(progressInterval);
+        }
+      }, 200);
+
       const response = await escortAPI.uploadVideo(user._id, formData);
       console.log("Video upload response:", response.data);
 
+      // Clear interval and set to 100%
+      clearInterval(progressInterval);
+      setVideoUploadProgress(100);
+
       if (response.data.success) {
-        console.log("=== BEFORE UPDATE ===");
-        console.log("Current user videos:", user.videos);
-        console.log("Response escort videos:", response.data.escort.videos);
-
-        // Update user state with new videos - EXACTLY like gallery
-        const updatedUser = { ...user, videos: response.data.escort.videos };
-        dispatch(setUser(updatedUser));
-
-        console.log("=== AFTER UPDATE ===");
-        console.log("Updated user videos:", updatedUser.videos);
-
+        dispatch(setUser({ ...user, videos: response.data.escort.videos }));
         showToast("Videos updated successfully!", "success");
         console.log("✅ Videos uploaded successfully");
       } else {
@@ -606,6 +623,7 @@ const EscortProfileEdit = () => {
       showToast("Failed to upload videos", "error");
     } finally {
       setUploadingVideos(false);
+      setVideoUploadProgress(0);
     }
   };
 
@@ -1629,6 +1647,26 @@ const EscortProfileEdit = () => {
                     </div>
                   )}
                 </Dropzone>
+
+                {/* Progress bar for video upload */}
+                {uploadingVideos && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">
+                        Uploading video...
+                      </span>
+                      <span className="text-sm font-medium text-blue-600">
+                        {videoUploadProgress}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${videoUploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
