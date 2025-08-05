@@ -36,6 +36,7 @@ import {
 } from "../../helpers/countries";
 import { DocumentVerificationService } from "../../services/documentVerification";
 import { escortAPI } from "../../services/api";
+import { storeUserData } from "../../helpers/storage";
 
 const EscortRegistration = () => {
   // Initialize the real verification service
@@ -570,7 +571,7 @@ const EscortRegistration = () => {
 
       // Update the user data in AuthContext and localStorage with the new escort profile
       if (data.escort) {
-        localStorage.setItem("user", JSON.stringify(data.escort));
+        storeUserData(data.escort);
         // Update AuthContext user data
         if (updateUser) {
           updateUser(data.escort);

@@ -20,6 +20,7 @@ import { getEvn } from "@/helpers/getEnv";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/redux/user/user.slice";
 import GoogleLogin from "@/components/GoogleLogin";
+import { storeToken, storeUserData } from "@/helpers/storage";
 import logo from "@/assets/images/logo-white.png";
 const SignIn = () => {
   const dispath = useDispatch();
@@ -52,8 +53,8 @@ const SignIn = () => {
       }
 
       // Store user data in localStorage for AuthContext
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      storeToken(data.token);
+      storeUserData(data.user);
 
       dispath(setUser(data.user));
       navigate(RouteIndex);

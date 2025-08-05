@@ -2,6 +2,7 @@ import { handleError } from "../helpers/handleError.js";
 import User from "../models/user.model.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import config from "../config/env.js";
 export const Register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -29,7 +30,7 @@ export const Register = async (req, res, next) => {
         email: user.email,
         avatar: user.avatar,
       },
-      "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca"
+      config.JWT_SECRET
     );
 
     res.cookie("access_token", token, {
@@ -54,7 +55,6 @@ export const Register = async (req, res, next) => {
 
 export const Login = async (req, res, next) => {
   try {
-    console.log("JWT_SECRET:", process.env.JWT_SECRET);
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
@@ -74,13 +74,13 @@ export const Login = async (req, res, next) => {
         email: user.email,
         avatar: user.avatar,
       },
-      "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca"
+      config.JWT_SECRET
     );
 
     res.cookie("access_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      secure: config.NODE_ENV === "production",
+      sameSite: config.NODE_ENV === "production" ? "none" : "strict",
       path: "/",
     });
 

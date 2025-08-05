@@ -9,6 +9,7 @@ import { getEvn } from "@/helpers/getEnv";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/redux/user/user.slice";
+import { storeToken, storeUserData } from "@/helpers/storage";
 
 const GoogleLogin = () => {
   const dispath = useDispatch();
@@ -34,8 +35,8 @@ const GoogleLogin = () => {
       }
 
       // Store user data in localStorage for AuthContext
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      storeToken(data.token);
+      storeUserData(data.user);
 
       dispath(setUser(data.user));
       navigate(RouteIndex);
