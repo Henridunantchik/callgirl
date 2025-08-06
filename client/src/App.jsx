@@ -59,6 +59,7 @@ import AgeVerification from "./pages/Auth/AgeVerification";
 import PrivacyPolicy from "./pages/Legal/PrivacyPolicy";
 import TermsOfService from "./pages/Legal/TermsOfService";
 import AgeDisclaimer from "./pages/Legal/AgeDisclaimer";
+import TestPage from "./pages/TestPage";
 
 import AuthRouteProtechtion from "./components/AuthRouteProtechtion";
 import OnlyAdminAllowed from "./components/OnlyAdminAllowed";
@@ -93,6 +94,9 @@ const App = () => {
             <Route path="legal/privacy" element={<PrivacyPolicy />} />
             <Route path="legal/terms" element={<TermsOfService />} />
             <Route path="legal/age-disclaimer" element={<AgeDisclaimer />} />
+
+            {/* Test Page */}
+            <Route path="test" element={<TestPage />} />
 
             {/* Legacy Blog Routes (to be deprecated) */}
             <Route

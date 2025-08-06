@@ -8,30 +8,29 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import React from "react";
+import React, { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Card } from "@/components/ui/card";
 import { RouteSignIn } from "@/helpers/RouteName";
 import { Link, useNavigate } from "react-router-dom";
-import { getEvn } from "@/helpers/getEnv";
 import { showToast } from "@/helpers/showToast";
 import GoogleLogin from "@/components/GoogleLogin";
+import { authAPI } from "@/services/api";
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
   const formSchema = z.object({
-    name: z.string().min(3, "Name must be at least 3 character long."),
-    email: z.string().email(),
-    password: z.string().min(8, "Password must be at least 8 character long"),
-    confirmPassword: z
-      .string()
-      .refine(
-        (data) => data.password === data.confirmPassword,
-        "Password and confirm password should be same."
-      ),
+    name: z.string().min(3, "Name must be at least 3 characters long."),
+    email: z.string().email("Please enter a valid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters long"),
+    confirmPassword: z.string(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
   });
 
   const form = useForm({
@@ -45,24 +44,25 @@ const SignUp = () => {
   });
 
   async function onSubmit(values) {
+    setIsLoading(true);
     try {
-      const response = await fetch(
-        `${getEvn("VITE_API_BASE_URL")}/auth/register`,
-        {
-          method: "post",
-          headers: { "Content-type": "application/json" },
-          body: JSON.stringify(values),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        return showToast("error", data.message);
-      }
-
+      console.log("📝 Attempting registration for:", values.email);
+      
+      // Remove confirmPassword from the data sent to API
+      const { confirmPassword, ...registrationData } = values;
+      
+      const response = await authAPI.register(registrationData);
+      
+      console.log("✅ Registration successful for:", values.email);
+      
       navigate(RouteSignIn);
-      showToast("success", data.message);
+      showToast("success", "Registration successful! Please sign in.");
     } catch (error) {
-      showToast("error", error.message);
+      console.error("❌ Registration failed:", error);
+      const errorMessage = error.response?.data?.message || "Registration failed. Please try again.";
+      showToast("error", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -89,7 +89,11 @@ const SignUp = () => {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your name" {...field} />
+                      <Input 
+                        placeholder="Enter your name" 
+                        {...field} 
+                        disabled={isLoading}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -107,6 +111,7 @@ const SignUp = () => {
                       <Input
                         placeholder="Enter your email address"
                         {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -126,6 +131,7 @@ const SignUp = () => {
                         type="password"
                         placeholder="Enter your password"
                         {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -143,8 +149,9 @@ const SignUp = () => {
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="Enter  password again"
+                        placeholder="Enter password again"
                         {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -154,8 +161,8 @@ const SignUp = () => {
             </div>
 
             <div className="mt-5">
-              <Button type="submit" className="w-full">
-                Sign Up
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Sign Up"}
               </Button>
               <div className="mt-5 text-sm flex justify-center items-center gap-2">
                 <p>Already have account?</p>

@@ -1,44 +1,44 @@
-import { ApiError } from '../utils/ApiError.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { User } from '../models/user.model.js';
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import User from "../models/user.model.js";
 
 export const onlyEscort = asyncHandler(async (req, res, next) => {
   try {
     // Check if user exists in request (set by authenticate middleware)
     if (!req.user) {
-      throw new ApiError(401, 'Authentication required');
+      throw new ApiError(401, "Authentication required");
     }
 
     // Check if user has escort role
-    if (req.user.role !== 'escort') {
+    if (req.user.role !== "escort") {
       // Log unauthorized access attempt
-      console.warn(`Unauthorized escort access attempt by user ${req.user._id} (${req.user.email}) - Role: ${req.user.role}`);
-      
-      throw new ApiError(403, 'Escort access required');
+      console.warn(
+        `Unauthorized escort access attempt by user ${req.user._id} (${req.user.email})`
+      );
+
+      throw new ApiError(403, "Escort access required");
     }
 
     // Verify user still exists in database and is active
-    const user = await User.findById(req.user._id).select('+isActive +role +isVerified');
-    
+    const user = await User.findById(req.user._id).select("+isActive +role");
+
     if (!user) {
-      throw new ApiError(401, 'User not found');
+      throw new ApiError(401, "User not found");
     }
 
     if (!user.isActive) {
-      throw new ApiError(403, 'Account is deactivated');
+      throw new ApiError(403, "Account is deactivated");
     }
 
-    if (user.role !== 'escort') {
-      throw new ApiError(403, 'Escort privileges required');
+    if (user.role !== "escort") {
+      throw new ApiError(403, "Escort privileges required");
     }
-
-    // Optional: Check if escort profile is verified (you can make this configurable)
-    // if (!user.isVerified) {
-    //   throw new ApiError(403, 'Profile verification required');
-    // }
 
     // Log successful escort access
-    console.log(`Escort access granted to user ${req.user._id} (${req.user.email})`);
+    console.log(
+      `Escort access granted to user ${req.user._id} (${req.user.email})`
+    );
 
     next();
   } catch (error) {
@@ -46,10 +46,9 @@ export const onlyEscort = asyncHandler(async (req, res, next) => {
     console.error(`Escort authorization failed: ${error.message}`, {
       userId: req.user?._id,
       userEmail: req.user?.email,
-      userRole: req.user?.role,
       ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      timestamp: new Date().toISOString()
+      userAgent: req.get("User-Agent"),
+      timestamp: new Date().toISOString(),
     });
 
     next(error);
@@ -57,83 +56,176 @@ export const onlyEscort = asyncHandler(async (req, res, next) => {
 });
 
 // Enhanced escort middleware with profile completion check
-export const escortWithCompleteProfile = asyncHandler(async (req, res, next) => {
+export const escortWithCompleteProfile = asyncHandler(
+  async (req, res, next) => {
+    try {
+      // This should run after onlyEscort middleware
+      const user = req.user;
+
+      if (!user.isProfileComplete()) {
+        throw new ApiError(
+          403,
+          "Profile completion required. Please complete your profile before accessing this feature"
+        );
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Middleware to ensure escort has verified age
+export const escortWithVerifiedAge = asyncHandler(async (req, res, next) => {
   try {
-    // First check if user is escort
-    if (!req.user || req.user.role !== 'escort') {
-      throw new ApiError(403, 'Escort access required');
+    // This should run after onlyEscort middleware
+    const user = req.user;
+
+    if (!user.isAgeVerified) {
+      throw new ApiError(
+        403,
+        "Age verification required. Please verify your age before accessing this feature"
+      );
     }
-
-    // Get full escort profile
-    const escort = await User.findById(req.user._id).select('+bio +rates +services +gallery +location');
-    
-    if (!escort) {
-      throw new ApiError(401, 'User not found');
-    }
-
-    // Check if profile is complete (you can customize these requirements)
-    const requiredFields = ['bio', 'rates', 'location'];
-    const missingFields = requiredFields.filter(field => !escort[field]);
-
-    if (missingFields.length > 0) {
-      throw new ApiError(400, `Profile incomplete. Missing: ${missingFields.join(', ')}`);
-    }
-
-    // Check if escort has at least one service
-    if (!escort.services || escort.services.length === 0) {
-      throw new ApiError(400, 'At least one service must be added to your profile');
-    }
-
-    // Check if escort has at least one gallery image
-    if (!escort.gallery || escort.gallery.length === 0) {
-      throw new ApiError(400, 'At least one gallery image must be uploaded');
-    }
-
-    // Log profile completion check
-    console.log(`Escort profile completion check passed for user ${req.user._id}`);
 
     next();
   } catch (error) {
-    console.error(`Escort profile completion check failed: ${error.message}`, {
-      userId: req.user?._id,
-      ip: req.ip,
-      timestamp: new Date().toISOString()
-    });
-
     next(error);
   }
 });
 
-// Escort middleware for verified profiles only
-export const onlyVerifiedEscort = asyncHandler(async (req, res, next) => {
+// Middleware to ensure escort has active subscription
+export const escortWithActiveSubscription = asyncHandler(
+  async (req, res, next) => {
+    try {
+      // This should run after onlyEscort middleware
+      const user = req.user;
+
+      if (user.subscriptionTier === "free") {
+        throw new ApiError(
+          403,
+          "Active subscription required. Please upgrade your subscription to access this feature"
+        );
+      }
+
+      if (user.subscriptionStatus !== "active") {
+        throw new ApiError(
+          403,
+          "Active subscription required. Your subscription is not active"
+        );
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Middleware to ensure escort has premium or elite subscription
+export const escortWithPremiumSubscription = asyncHandler(
+  async (req, res, next) => {
+    try {
+      // This should run after onlyEscort middleware
+      const user = req.user;
+
+      if (!["premium", "elite"].includes(user.subscriptionTier)) {
+        throw new ApiError(
+          403,
+          "Premium subscription required. Please upgrade to premium or elite to access this feature"
+        );
+      }
+
+      if (user.subscriptionStatus !== "active") {
+        throw new ApiError(
+          403,
+          "Active subscription required. Your subscription is not active"
+        );
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Middleware to ensure escort has elite subscription
+export const escortWithEliteSubscription = asyncHandler(
+  async (req, res, next) => {
+    try {
+      // This should run after onlyEscort middleware
+      const user = req.user;
+
+      if (user.subscriptionTier !== "elite") {
+        throw new ApiError(
+          403,
+          "Elite subscription required. Please upgrade to elite to access this feature"
+        );
+      }
+
+      if (user.subscriptionStatus !== "active") {
+        throw new ApiError(
+          403,
+          "Active subscription required. Your subscription is not active"
+        );
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Middleware to check media upload limits based on subscription
+export const checkMediaUploadLimit = asyncHandler(async (req, res, next) => {
   try {
-    // First check if user is escort
-    if (!req.user || req.user.role !== 'escort') {
-      throw new ApiError(403, 'Escort access required');
+    const user = req.user;
+    const { mediaType } = req.body; // 'photo' or 'video'
+
+    if (!mediaType) {
+      throw new ApiError(400, "Media type is required");
     }
 
-    // Check if escort is verified
-    const escort = await User.findById(req.user._id).select('+isVerified');
-    
-    if (!escort) {
-      throw new ApiError(401, 'User not found');
+    const currentCount =
+      mediaType === "photo" ? user.gallery.length : user.videos.length;
+    const canUpload = user.canUploadMedia(mediaType, currentCount);
+
+    if (!canUpload) {
+      const limit =
+        mediaType === "photo"
+          ? user.subscriptionTier === "verified"
+            ? 20
+            : 10
+          : user.subscriptionTier === "verified"
+          ? 10
+          : 5;
+
+      throw new ApiError(
+        403,
+        `Media upload limit reached. You can upload up to ${limit} ${mediaType}s with your current subscription. Upgrade to upload more.`
+      );
     }
 
-    if (!escort.isVerified) {
-      throw new ApiError(403, 'Profile verification required. Please contact support.');
-    }
-
-    // Log verified escort access
-    console.log(`Verified escort access granted to user ${req.user._id}`);
+    // Add media count info to request for use in controller
+    req.mediaInfo = {
+      mediaType,
+      currentCount,
+      canUpload,
+      limit:
+        user.subscriptionTier === "verified"
+          ? mediaType === "photo"
+            ? 20
+            : 10
+          : mediaType === "photo"
+          ? 10
+          : 5,
+    };
 
     next();
   } catch (error) {
-    console.error(`Verified escort authorization failed: ${error.message}`, {
-      userId: req.user?._id,
-      ip: req.ip,
-      timestamp: new Date().toISOString()
-    });
-
     next(error);
   }
 });
