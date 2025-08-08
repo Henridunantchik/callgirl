@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "/api", // This will be proxied to http://localhost:5000
+  baseURL: "http://localhost:5000/api", // Direct API server URL
   withCredentials: true,
   timeout: 60000, // Increased to 60 seconds for file uploads
 });
@@ -10,16 +10,21 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("auth");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Log API requests in development
     if (import.meta.env.DEV) {
-      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(
+        `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`
+      );
+      console.log(`🔑 Auth Token: ${token ? "Present" : "Missing"}`);
+      console.log(`📦 Request Data:`, config.data);
+      console.log(`🌐 Full URL: ${config.baseURL}${config.url}`);
     }
-    
+
     return config;
   },
   (error) => {
@@ -38,11 +43,16 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error("❌ API Response Error:", error.response?.status, error.response?.data);
-    
+    console.error(
+      "❌ API Response Error:",
+      error.response?.status,
+      error.response?.data
+    );
+
     if (error.response?.status === 401) {
       // Unauthorized - redirect to login
       localStorage.removeItem("token");
+      localStorage.removeItem("auth");
       localStorage.removeItem("user");
       window.location.href = "/signin";
     }
@@ -88,10 +98,14 @@ export const escortAPI = {
   searchEscorts: (params) => api.get("/escort/search", { params }),
 
   // Create escort profile
-  createEscortProfile: (formData) =>
-    api.post("/escort/create", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+  createEscortProfile: (formData) => {
+    console.log("📤 Creating escort profile with data:", formData);
+    return api.post("/escort/create", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
 
   // Update escort profile
   updateEscortProfile: (id, formData) =>

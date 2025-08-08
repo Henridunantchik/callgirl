@@ -1,18 +1,39 @@
-import { RouteIndex, RouteSignIn } from '@/helpers/RouteName'
-import React from 'react'
-import { useSelector } from 'react-redux'
-import { Navigate, Outlet } from 'react-router-dom'
+import { RouteIndex, RouteSignIn } from "@/helpers/RouteName";
+import React from "react";
+import { useSelector } from "react-redux";
+import { Navigate, Outlet } from "react-router-dom";
 
 const OnlyAdminAllowed = () => {
-    const user = useSelector(state => state.user)
-    if (user && user.isLoggedIn && user.user.role === 'admin') {
-        return (
-            <Outlet />
-        )
-    } else {
-        return <Navigate to={RouteSignIn} />
+  const user = useSelector((state) => state.user);
+
+  // Check if user is logged in via Redux
+  if (!user?.isLoggedIn) {
+    // Fallback to localStorage check
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+
+    if (!storedUser || !token) {
+      return <Navigate to={RouteSignIn} replace />;
     }
 
-}
+    // Try to parse stored user
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser.role !== "admin") {
+        return <Navigate to="/" replace />;
+      }
+    } catch (error) {
+      console.error("Error parsing stored user:", error);
+      return <Navigate to={RouteSignIn} replace />;
+    }
+  } else {
+    // Check Redux user role
+    if (user?.user?.role !== "admin") {
+      return <Navigate to="/" replace />;
+    }
+  }
 
-export default OnlyAdminAllowed
+  return <Outlet />;
+};
+
+export default OnlyAdminAllowed;

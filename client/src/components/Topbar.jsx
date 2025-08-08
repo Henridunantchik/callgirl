@@ -50,6 +50,12 @@ const Topbar = () => {
   const { countryCode } = useParams();
   const user = useSelector((state) => state.user);
 
+  // Debug user state
+  React.useEffect(() => {
+    console.log("🔍 Topbar - User state:", user);
+    console.log("🔍 Topbar - User role:", user?.user?.role);
+  }, [user]);
+
   const handleLogout = async () => {
     try {
       const response = await fetch(
@@ -80,21 +86,24 @@ const Topbar = () => {
   };
 
   const getRoleBadge = () => {
-    if (!user.isLoggedIn) return null;
+    if (!user?.user?.role) return null;
 
     const roleColors = {
-      admin: "bg-red-500",
-      escort: "bg-purple-500",
-      client: "bg-blue-500",
+      client: "bg-blue-100 text-blue-800",
+      escort: "bg-purple-100 text-purple-800",
+      admin: "bg-red-100 text-red-800",
     };
 
-    return (
-      <Badge
-        className={`${roleColors[user.user.role]} text-white text-xs ml-2`}
-      >
-        {user.user.role.toUpperCase()}
-      </Badge>
-    );
+    const roleLabels = {
+      client: "Client",
+      escort: "Escort",
+      admin: "Admin",
+    };
+
+    const color = roleColors[user.user.role] || "bg-gray-100 text-gray-800";
+    const label = roleLabels[user.user.role] || user.user.role;
+
+    return <Badge className={`text-xs ${color}`}>{label}</Badge>;
   };
 
   return (
@@ -143,10 +152,12 @@ const Topbar = () => {
             <DropdownMenuTrigger>
               <div className="flex items-center gap-2">
                 <Avatar>
-                  <AvatarImage src={user.user.avatar || usericon} />
+                  <AvatarImage src={user?.user?.avatar || usericon} />
                 </Avatar>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium">{user.user.name}</p>
+                  <p className="text-sm font-medium">
+                    {user?.user?.name || "User"}
+                  </p>
                   {getRoleBadge()}
                 </div>
               </div>
@@ -155,11 +166,13 @@ const Topbar = () => {
               <DropdownMenuLabel>
                 <div className="flex items-center gap-2">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={user.user.avatar || usericon} />
+                    <AvatarImage src={user?.user?.avatar || usericon} />
                   </Avatar>
                   <div>
-                    <p className="font-medium">{user.user.name}</p>
-                    <p className="text-sm text-gray-500">{user.user.email}</p>
+                    <p className="font-medium">{user?.user?.name || "User"}</p>
+                    <p className="text-sm text-gray-500">
+                      {user?.user?.email || ""}
+                    </p>
                     {getRoleBadge()}
                   </div>
                 </div>
@@ -168,14 +181,16 @@ const Topbar = () => {
 
               {/* Profile & Settings */}
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to={RouteProfile(countryCode, user.user.role)}>
+                <Link
+                  to={RouteProfile(countryCode, user?.user?.role || "client")}
+                >
                   <FaRegUser className="mr-2" />
                   Profile
                 </Link>
               </DropdownMenuItem>
 
               {/* Role-specific menu items */}
-              {user.user.role === "escort" && (
+              {user?.user?.role === "escort" && (
                 <>
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link to={`/${countryCode}/escort/dashboard`}>
@@ -186,7 +201,7 @@ const Topbar = () => {
                 </>
               )}
 
-              {user.user.role === "client" && (
+              {user?.user?.role === "client" && (
                 <>
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link to="/client/favorites">
@@ -200,22 +215,28 @@ const Topbar = () => {
                       My Bookings
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to={`/${countryCode}/escort/registration`}>
-                      <FaUserTie className="mr-2" />
-                      Join as Escort
-                    </Link>
-                  </DropdownMenuItem>
                 </>
               )}
 
-              {user.user.role === "admin" && (
+              {user?.user?.role === "admin" && (
                 <>
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link to="/admin/dashboard">
                       <FaCog className="mr-2" />
                       Admin Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {/* Join as Escort - Only visible to clients */}
+              {user?.user?.role === "client" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link to={`/${countryCode}/escort/registration`}>
+                      <FaUserTie className="mr-2" />
+                      Join as Escort
                     </Link>
                   </DropdownMenuItem>
                 </>

@@ -95,5 +95,11 @@ export const storeUserData = (user) => {
 
 // Store token safely
 export const storeToken = (token) => {
-  return safeSetItem("token", token);
+  try {
+    localStorage.setItem("token", token);
+    return true;
+  } catch (error) {
+    console.error("Failed to store token in localStorage:", error);
+    return false;
+  }
 };

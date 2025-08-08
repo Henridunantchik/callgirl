@@ -18,9 +18,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { showToast } from "@/helpers/showToast";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/redux/user/user.slice";
-import GoogleLogin from "@/components/GoogleLogin";
 import { storeToken, storeUserData } from "@/helpers/storage";
 import { authAPI } from "@/services/api";
+import { store } from "@/store";
+import GoogleLogin from "@/components/GoogleLogin";
 import logo from "@/assets/images/logo-white.png";
 
 const SignIn = () => {
@@ -47,16 +48,30 @@ const SignIn = () => {
       console.log("🔐 Attempting login with:", values.email);
       
       const response = await authAPI.login(values);
+      console.log("📦 Raw API response:", response);
+      console.log("📦 Response data:", response.data);
+      
       const { token, user } = response.data;
 
       console.log("✅ Login successful for:", user.email);
+      console.log("🔑 Token received:", token ? "Present" : "Missing");
+      console.log("👤 User data:", user);
 
       // Store user data in localStorage for AuthContext
-      storeToken(token);
-      storeUserData(user);
+      const tokenStored = storeToken(token);
+      const userStored = storeUserData(user);
+      
+      console.log("💾 Token stored:", tokenStored);
+      console.log("💾 User stored:", userStored);
+      console.log("🔍 localStorage after storage:");
+      console.log("  - token:", localStorage.getItem("token"));
+      console.log("  - user:", localStorage.getItem("user"));
 
       // Update Redux store
       dispatch(setUser(user));
+      
+      // Force Redux to persist to sessionStorage
+      console.log("🔄 Redux state after dispatch:", store.getState());
       
       // Navigate to home page
       navigate(RouteIndex);

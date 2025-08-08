@@ -8,15 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useParams } from "react-router-dom";
 import {
   FaSearch,
   FaFilter,
   FaMapMarkerAlt,
   FaStar,
   FaEye,
+  FaUserTie,
+  FaCrown,
+  FaShieldAlt,
 } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const Index = () => {
+  const { user } = useAuth();
+  const { countryCode } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     city: "",
@@ -109,6 +117,61 @@ const Index = () => {
           professional.
         </p>
       </div>
+
+      {/* Join as Escort CTA - Show for logged-in users who are not escorts */}
+      {user && user.user && user.user.role !== "escort" && (
+        <Card className="bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-3 rounded-full">
+                  <FaUserTie className="text-white text-2xl" />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Are You an Escort?
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  Join our platform and connect with clients in your area. Get
+                  verified, build your profile, and start earning today.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button
+                    asChild
+                    className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                  >
+                    <Link to={`/${countryCode}/escort/registration`}>
+                      <FaUserTie className="mr-2" />
+                      Join as Escort
+                    </Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link to={`/${countryCode}/escort/list`}>
+                      <FaEye className="mr-2" />
+                      See How It Works
+                    </Link>
+                  </Button>
+                </div>
+                <div className="flex justify-center gap-6 mt-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <FaShieldAlt className="text-green-500" />
+                    <span>Verified Profiles</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <FaCrown className="text-yellow-500" />
+                    <span>Premium Features</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <FaUserTie className="text-blue-500" />
+                    <span>Professional Support</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search and Filters */}
       <Card>
