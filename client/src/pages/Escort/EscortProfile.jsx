@@ -7,6 +7,7 @@ import { MapPin, Phone, Mail, Calendar, DollarSign, Shield, CheckCircle, Clock }
 import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
 import { useAuth } from "../../contexts/AuthContext";
+import { RouteSignIn } from "../../helpers/RouteName";
 
 const EscortProfile = () => {
   const { id } = useParams();
@@ -51,7 +52,7 @@ const EscortProfile = () => {
   const handleContact = () => {
     if (!user) {
       showToast("error", "Please log in to contact this escort");
-      navigate("/signin");
+              navigate(RouteSignIn);
       return;
     }
     

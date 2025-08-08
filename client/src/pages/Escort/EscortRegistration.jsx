@@ -40,6 +40,7 @@ import { storeUserData, storeToken } from "../../helpers/storage";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "../../redux/user/user.slice";
 import { showToast } from "../../helpers/showToast";
+import { RouteSignIn } from "../../helpers/RouteName";
 
 const EscortRegistration = () => {
   // Initialize the real verification service
@@ -471,8 +472,8 @@ const EscortRegistration = () => {
         if (reduxUser?.isLoggedIn && reduxUser?.user) {
           console.log("✅ Using Redux user for authentication");
         } else {
-          alert("Please log in to create an escort profile.");
-          navigate("/signin");
+                  alert("Please log in to create an escort profile.");
+        navigate(RouteSignIn);
           return;
         }
       }
@@ -481,7 +482,7 @@ const EscortRegistration = () => {
       const authToken = localStorage.getItem("token");
       if (!authToken) {
         alert("Authentication token missing. Please log in again.");
-        navigate("/signin");
+        navigate(RouteSignIn);
         return;
       }
 

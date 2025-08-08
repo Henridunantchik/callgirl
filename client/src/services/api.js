@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "http://localhost:5000/api", // Direct API server URL
+  baseURL: "/api", // Use Vite proxy instead of direct URL
   withCredentials: true,
   timeout: 60000, // Increased to 60 seconds for file uploads
 });
@@ -54,7 +54,7 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
       localStorage.removeItem("auth");
       localStorage.removeItem("user");
-      window.location.href = "/signin";
+      window.location.href = "/sign-in";
     }
     return Promise.reject(error);
   }

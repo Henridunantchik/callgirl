@@ -18,6 +18,7 @@ import {
 import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
 import { useAuth } from "../../contexts/AuthContext";
+import { RouteSignIn } from "../../helpers/RouteName";
 
 const EscortList = () => {
   const navigate = useNavigate();
@@ -94,7 +95,7 @@ const EscortList = () => {
   const handleFavorite = (escortId) => {
     if (!user) {
       showToast("error", "Please log in to add favorites");
-      navigate("/signin");
+      navigate(RouteSignIn);
       return;
     }
     
