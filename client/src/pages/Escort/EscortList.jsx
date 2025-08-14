@@ -312,10 +312,21 @@ const EscortList = () => {
                     </div>
                     
                     <div className="space-y-1 text-sm text-gray-600">
-                      {escort.location?.city && (
+                      {escort.location && (
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          <span>{escort.location.city}</span>
+                          <span>
+                            {(() => {
+                              // Handle location whether it's an object or string
+                              if (typeof escort.location === 'object' && escort.location.city) {
+                                return escort.location.city;
+                              } else if (typeof escort.location === 'string') {
+                                return escort.location;
+                              } else {
+                                return 'Location not specified';
+                              }
+                            })()}
+                          </span>
                         </div>
                       )}
                       
@@ -334,19 +345,34 @@ const EscortList = () => {
                       )}
                     </div>
                     
-                    {escort.services && escort.services.length > 0 && (
+                    {escort.services && (
                       <div className="mt-3">
                         <div className="flex flex-wrap gap-1">
-                          {escort.services.slice(0, 3).map((service, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {service}
-                            </Badge>
-                          ))}
-                          {escort.services.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{escort.services.length - 3} more
-                            </Badge>
-                          )}
+                          {(() => {
+                            // Handle services whether it's a string or array
+                            let servicesArray = escort.services;
+                            if (typeof servicesArray === 'string') {
+                              // Split by common delimiters and clean up
+                              servicesArray = servicesArray.split(/[,\s]+/).filter(s => s.trim());
+                            }
+                            
+                            // Show first 3 services
+                            const displayServices = servicesArray.slice(0, 3);
+                            return (
+                              <>
+                                {displayServices.map((service, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs">
+                                    {service}
+                                  </Badge>
+                                ))}
+                                {servicesArray.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{servicesArray.length - 3} more
+                                  </Badge>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}

@@ -154,12 +154,20 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           {/* Location */}
           <div className="flex items-center text-xs text-gray-600 mb-1">
             <MapPin className="w-3 h-3 mr-1" />
-            {escort.location?.city}
-            {escort.location?.subLocation && (
-              <span className="text-gray-500">
-                , {escort.location.subLocation}
-              </span>
-            )}
+            {(() => {
+              // Handle location whether it's an object or string
+              if (typeof escort.location === "object" && escort.location.city) {
+                return `${escort.location.city}${
+                  escort.location.subLocation
+                    ? `, ${escort.location.subLocation}`
+                    : ""
+                }`;
+              } else if (typeof escort.location === "string") {
+                return escort.location;
+              } else {
+                return "Location not specified";
+              }
+            })()}
           </div>
 
           {/* Rating */}
@@ -203,31 +211,63 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           </div>
 
           {/* Services */}
-          {escort.services && escort.services.length > 0 && (
+          {escort.services && (
             <div className="mb-2">
               <div className="flex flex-wrap gap-1">
-                {escort.services.slice(0, 3).map((service, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="text-xs bg-blue-100 text-blue-800"
-                  >
-                    {service}
-                  </Badge>
-                ))}
-                {escort.services.length > 3 && (
-                  <Badge
-                    variant="secondary"
-                    className="text-xs bg-gray-100 text-gray-600"
-                  >
-                    +{escort.services.length - 3} more
-                  </Badge>
-                )}
+                {(() => {
+                  // Handle services whether it's a string or array
+                  let servicesArray = escort.services;
+                  if (typeof servicesArray === "string") {
+                    // Split by common delimiters and clean up
+                    servicesArray = servicesArray
+                      .split(/[,\s]+/)
+                      .filter((s) => s.trim());
+                  }
+
+                  // Show first 3 services
+                  const displayServices = servicesArray.slice(0, 3);
+                  return (
+                    <>
+                      {displayServices.map((service, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="text-xs bg-blue-100 text-blue-800"
+                        >
+                          {service}
+                        </Badge>
+                      ))}
+                      {servicesArray.length > 3 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs bg-gray-100 text-gray-600"
+                        >
+                          +{servicesArray.length - 3} more
+                        </Badge>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
 
-          {/* Price removed - will be shown elsewhere */}
+          {/* Price */}
+          {escort.rates && (
+            <div className="flex items-center text-xs text-gray-600 mb-1">
+              <DollarSign className="w-3 h-3 mr-1" />
+              {(() => {
+                // Handle rates whether it's an object or string
+                if (typeof escort.rates === "object" && escort.rates.hourly) {
+                  return `$${escort.rates.hourly}/hour`;
+                } else if (typeof escort.rates === "string") {
+                  return escort.rates;
+                } else {
+                  return "Price not specified";
+                }
+              })()}
+            </div>
+          )}
         </CardContent>
 
         <CardFooter className="p-3 pt-0">

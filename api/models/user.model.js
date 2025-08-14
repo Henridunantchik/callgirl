@@ -81,10 +81,10 @@ const userSchema = new mongoose.Schema(
         type: {
           type: String,
           enum: ["Point"],
-          default: "Point",
         },
         coordinates: {
           type: [Number],
+          required: false,
         },
       },
     },
@@ -123,8 +123,24 @@ const userSchema = new mongoose.Schema(
     },
     availability: {
       type: [String],
-      enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
-      default: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+      enum: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
+      default: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
     },
     workingHours: {
       start: {
@@ -262,8 +278,8 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Create geospatial index for location-based queries
-userSchema.index({ "location.coordinates": "2dsphere" });
+// Create geospatial index for location-based queries (only if coordinates exist)
+userSchema.index({ "location.coordinates": "2dsphere" }, { sparse: true });
 
 // Create text index for search functionality
 userSchema.index({
@@ -285,7 +301,7 @@ userSchema.index({ age: 1, isActive: 1 });
 // Add methods to the schema
 userSchema.methods.isProfileComplete = function () {
   if (this.role !== "escort") return false;
-  
+
   const requiredFields = [
     "name",
     "alias",
@@ -300,7 +316,7 @@ userSchema.methods.isProfileComplete = function () {
     "gallery",
   ];
 
-  const completedFields = requiredFields.filter(field => {
+  const completedFields = requiredFields.filter((field) => {
     const value = this.get(field);
     return value && (Array.isArray(value) ? value.length > 0 : value);
   });
@@ -310,10 +326,10 @@ userSchema.methods.isProfileComplete = function () {
 
 userSchema.methods.getProfileCompletionPercentage = function () {
   if (this.role !== "escort") return 0;
-  
+
   const requiredFields = [
     "name",
-    "alias", 
+    "alias",
     "email",
     "phone",
     "age",
@@ -325,7 +341,7 @@ userSchema.methods.getProfileCompletionPercentage = function () {
     "gallery",
   ];
 
-  const completedFields = requiredFields.filter(field => {
+  const completedFields = requiredFields.filter((field) => {
     const value = this.get(field);
     return value && (Array.isArray(value) ? value.length > 0 : value);
   });

@@ -85,6 +85,7 @@ const App = () => {
 
             {/* Public Escort Directory Routes */}
             <Route path="escorts" element={<EscortList />} />
+            <Route path="escort/list" element={<EscortList />} />
             <Route path="escort/:slug" element={<EscortProfile />} />
             <Route path="search" element={<SearchResult />} />
             <Route path="location/:city" element={<EscortList />} />

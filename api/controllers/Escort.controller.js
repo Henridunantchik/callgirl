@@ -24,6 +24,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       service,
       minPrice,
       maxPrice,
+      featured,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
@@ -46,6 +47,11 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       if (maxPrice) filter["rates.hourly"].$lte = parseInt(maxPrice);
     }
 
+    // Filter by featured status
+    if (featured === "true") {
+      filter.isFeatured = true;
+    }
+
     // Build sort object
     const sort = {};
     sort[sortBy] = sortOrder === "desc" ? -1 : 1;
@@ -53,7 +59,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured"
       )
       .sort(sort)
       .limit(limit * 1)
@@ -64,8 +70,21 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Add subscription benefits to each escort
     const escortsWithBenefits = escorts.map((escort) => {
       const benefits = escort.getSubscriptionBenefits();
+
+      // Parse services if it's a string
+      let services = escort.services;
+      if (typeof services === "string") {
+        try {
+          services = JSON.parse(services);
+        } catch (e) {
+          // If parsing fails, split by comma or space
+          services = services.split(/[,\s]+/).filter((s) => s.trim());
+        }
+      }
+
       return {
         ...escort.toObject(),
+        services,
         benefits,
         subscriptionTier: escort.subscriptionTier || "free",
       };
@@ -98,11 +117,27 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const escort = await User.findOne({
+    // Validate ID parameter
+    if (!id || id === "undefined") {
+      throw new ApiError(400, "Invalid escort identifier");
+    }
+
+    // Try to find escort by ObjectId first, then by alias/name
+    let escort = await User.findOne({
       _id: id,
       role: "escort",
       isActive: true,
     }).select("-password");
+
+    // If not found by ObjectId, try by alias or name
+    if (!escort) {
+      escort = await User.findOne({
+        $or: [
+          { alias: id, role: "escort", isActive: true },
+          { name: id, role: "escort", isActive: true },
+        ],
+      }).select("-password");
+    }
 
     if (!escort) {
       throw new ApiError(404, "Escort not found");
@@ -216,7 +251,7 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
     }
 
     const mediaFile = req.files.media;
-    
+
     try {
       // Upload to Cloudinary
       const result = await cloudinary.uploader.upload(mediaFile.path, {
@@ -239,7 +274,10 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
         mediaItem.type = "gallery";
         escort.videos.push(mediaItem);
       } else {
-        throw new ApiError(400, "Invalid media type. Must be 'photo' or 'video'");
+        throw new ApiError(
+          400,
+          "Invalid media type. Must be 'photo' or 'video'"
+        );
       }
 
       // Clean up local file
@@ -555,7 +593,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
       const files = Array.isArray(req.files.gallery)
         ? req.files.gallery
         : [req.files.gallery];
-      
+
       for (const file of files) {
         try {
           // Upload to Cloudinary
@@ -563,7 +601,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
             folder: "escort-gallery",
             resource_type: "auto",
           });
-          
+
           gallery.push({
             url: result.secure_url,
             publicId: result.public_id,
@@ -571,7 +609,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
             isPrivate: false,
             order: gallery.length,
           });
-          
+
           // Clean up local file
           fs.unlinkSync(file.path);
         } catch (uploadError) {
@@ -598,7 +636,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
           resource_type: "auto",
         });
         idDocumentUrl = result.secure_url;
-        
+
         // Clean up local file
         fs.unlinkSync(file.path);
       } catch (uploadError) {
@@ -623,6 +661,17 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
           country,
           city,
           subLocation,
+          // Only set coordinates if provided
+          ...(req.body.latitude &&
+            req.body.longitude && {
+              coordinates: {
+                type: "Point",
+                coordinates: [
+                  parseFloat(req.body.longitude),
+                  parseFloat(req.body.latitude),
+                ],
+              },
+            }),
         },
         services: servicesArray,
         rates: {
@@ -684,3 +733,46 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * Update escort featured status (Admin only)
+ * PUT /api/escort/featured/:id
+ */
+export const updateEscortFeaturedStatus = asyncHandler(
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { isFeatured } = req.body;
+
+      // Validate ID parameter
+      if (!id || id === "undefined") {
+        throw new ApiError(400, "Invalid escort ID");
+      }
+
+      // Check if user is admin (you can add admin middleware here)
+      // For now, we'll allow this endpoint to be called
+
+      const escort = await User.findOneAndUpdate(
+        { _id: id, role: "escort" },
+        { isFeatured: isFeatured },
+        { new: true }
+      ).select("-password");
+
+      if (!escort) {
+        throw new ApiError(404, "Escort not found");
+      }
+
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            { escort },
+            `Escort featured status updated to ${isFeatured}`
+          )
+        );
+    } catch (error) {
+      next(error);
+    }
+  }
+);

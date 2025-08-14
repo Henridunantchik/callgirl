@@ -95,6 +95,16 @@ app.get("/health", (req, res) => {
   });
 });
 
+// API Health check endpoint (for frontend proxy)
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "API Server is running",
+    timestamp: new Date().toISOString(),
+    environment: config.NODE_ENV,
+  });
+});
+
 // Performance monitoring endpoint
 app.get("/api/performance", async (req, res) => {
   const { getPerformanceStats } = await import("./utils/performanceMonitor.js");
