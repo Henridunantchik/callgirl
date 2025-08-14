@@ -613,7 +613,7 @@ const Profile = () => {
 
           // Refresh user data to show new gallery
           const userResponse = await fetch(
-            "http://localhost:5000/api/auth/me",
+            "/api/auth/me",
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -667,7 +667,7 @@ const Profile = () => {
 
           // Refresh user data to show new videos
           const userResponse = await fetch(
-            "http://localhost:5000/api/auth/me",
+            "/api/auth/me",
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -727,7 +727,7 @@ const Profile = () => {
         }
 
         // Refresh user data
-        const userResponse = await fetch("http://localhost:5000/api/auth/me", {
+        const userResponse = await fetch("/api/auth/me", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -767,7 +767,7 @@ const Profile = () => {
       setDeletingVideo(videoId);
 
       const response = await fetch(
-        `http://localhost:5000/api/escort/video/${user?._id}/${videoId}`,
+        `/api/escort/video/${user?._id}/${videoId}`,
         {
           method: "DELETE",
           headers: {
@@ -778,7 +778,7 @@ const Profile = () => {
 
       if (response.ok) {
         // Refresh user data
-        const userResponse = await fetch("http://localhost:5000/api/auth/me", {
+        const userResponse = await fetch("/api/auth/me", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },

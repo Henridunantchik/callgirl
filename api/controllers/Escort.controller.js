@@ -6,6 +6,7 @@ import Subscription from "../models/subscription.model.js";
 import cloudinary from "../config/cloudinary.js";
 import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
+import fs from "fs";
 
 /**
  * Get all escorts with filtering and pagination
@@ -38,7 +39,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       filter["location.country"] = { $regex: country, $options: "i" };
     if (age) filter.age = { $gte: parseInt(age) - 5, $lte: parseInt(age) + 5 };
     if (bodyType) filter.bodyType = bodyType;
-    if (service) filter["services.name"] = { $regex: service, $options: "i" };
+    if (service) filter["services"] = { $regex: service, $options: "i" };
     if (minPrice || maxPrice) {
       filter["rates.hourly"] = {};
       if (minPrice) filter["rates.hourly"].$gte = parseInt(minPrice);
@@ -52,7 +53,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name bio age location bodyType rates services gallery stats badges subscriptionTier"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion"
       )
       .sort(sort)
       .limit(limit * 1)
@@ -163,7 +164,7 @@ export const updateEscortProfile = asyncHandler(async (req, res, next) => {
     Object.assign(escort, safeUpdateData);
 
     // Update profile completion percentage
-    escort.profileCompletion = escort.profileCompletionPercentage;
+    escort.profileCompletion = escort.getProfileCompletionPercentage();
 
     await escort.save();
 
@@ -215,40 +216,56 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
     }
 
     const mediaFile = req.files.media;
-    const mediaUrl = mediaFile.tempFilePath; // This would be uploaded to Cloudinary in production
+    
+    try {
+      // Upload to Cloudinary
+      const result = await cloudinary.uploader.upload(mediaFile.path, {
+        folder: mediaType === "photo" ? "escort-gallery" : "escort-videos",
+        resource_type: "auto",
+      });
 
-    // Add media to escort's gallery or videos
-    const mediaItem = {
-      url: mediaUrl,
-      caption: caption || "",
-      isPrivate: false,
-    };
+      // Add media to escort's gallery or videos
+      const mediaItem = {
+        url: result.secure_url,
+        publicId: result.public_id,
+        caption: caption || "",
+        isPrivate: false,
+      };
 
-    if (mediaType === "photo") {
-      escort.gallery.push(mediaItem);
-    } else if (mediaType === "video") {
-      escort.videos.push(mediaItem);
-    } else {
-      throw new ApiError(400, "Invalid media type. Must be 'photo' or 'video'");
+      if (mediaType === "photo") {
+        mediaItem.order = escort.gallery.length;
+        escort.gallery.push(mediaItem);
+      } else if (mediaType === "video") {
+        mediaItem.type = "gallery";
+        escort.videos.push(mediaItem);
+      } else {
+        throw new ApiError(400, "Invalid media type. Must be 'photo' or 'video'");
+      }
+
+      // Clean up local file
+      fs.unlinkSync(mediaFile.path);
+
+      await escort.save();
+
+      return res.status(200).json(
+        new ApiResponse(
+          200,
+          {
+            mediaItem,
+            currentCount:
+              mediaType === "photo"
+                ? escort.gallery.length
+                : escort.videos.length,
+            subscriptionTier: escort.subscriptionTier,
+            benefits: escort.getSubscriptionBenefits(),
+          },
+          "Media uploaded successfully"
+        )
+      );
+    } catch (uploadError) {
+      console.error("Cloudinary upload error:", uploadError);
+      throw new ApiError(500, "Failed to upload media to cloud storage");
     }
-
-    await escort.save();
-
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          mediaItem,
-          currentCount:
-            mediaType === "photo"
-              ? escort.gallery.length
-              : escort.videos.length,
-          subscriptionTier: escort.subscriptionTier,
-          benefits: escort.getSubscriptionBenefits(),
-        },
-        "Media uploaded successfully"
-      )
-    );
   } catch (error) {
     next(error);
   }
@@ -313,10 +330,13 @@ export const getProfileCompletion = asyncHandler(async (req, res, next) => {
 
     const requiredFields = [
       "name",
+      "alias",
       "email",
-      "bio",
+      "phone",
       "age",
+      "gender",
       "location.city",
+      "location.country",
       "services",
       "rates.hourly",
       "gallery",
@@ -392,8 +412,9 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
     if (query) {
       filter.$or = [
         { name: { $regex: query, $options: "i" } },
+        { alias: { $regex: query, $options: "i" } },
         { bio: { $regex: query, $options: "i" } },
-        { "services.name": { $regex: query, $options: "i" } },
+        { services: { $regex: query, $options: "i" } },
       ];
     }
 
@@ -414,7 +435,7 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
     // Services filter
     if (services) {
       const serviceArray = services.split(",");
-      filter["services.name"] = { $in: serviceArray };
+      filter["services"] = { $in: serviceArray };
     }
 
     // Price range filter
@@ -435,7 +456,7 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name bio age location bodyType rates services gallery stats badges subscriptionTier"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion"
       )
       .sort(sort)
       .limit(limit * 1)
@@ -534,15 +555,36 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
       const files = Array.isArray(req.files.gallery)
         ? req.files.gallery
         : [req.files.gallery];
+      
       for (const file of files) {
-        // Upload to Cloudinary
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "escort-gallery",
-        });
-        gallery.push({
-          url: result.secure_url,
-          publicId: result.public_id,
-        });
+        try {
+          // Upload to Cloudinary
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: "escort-gallery",
+            resource_type: "auto",
+          });
+          
+          gallery.push({
+            url: result.secure_url,
+            publicId: result.public_id,
+            caption: "",
+            isPrivate: false,
+            order: gallery.length,
+          });
+          
+          // Clean up local file
+          fs.unlinkSync(file.path);
+        } catch (uploadError) {
+          console.error("Cloudinary upload error:", uploadError);
+          // If Cloudinary fails, use local file path as fallback
+          gallery.push({
+            url: file.path,
+            publicId: `local-${Date.now()}`,
+            caption: "",
+            isPrivate: false,
+            order: gallery.length,
+          });
+        }
       }
     }
 
@@ -550,10 +592,20 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
     let idDocumentUrl = null;
     if (req.files && req.files.idDocument) {
       const file = req.files.idDocument;
-      const result = await cloudinary.uploader.upload(file.path, {
-        folder: "id-documents",
-      });
-      idDocumentUrl = result.secure_url;
+      try {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "id-documents",
+          resource_type: "auto",
+        });
+        idDocumentUrl = result.secure_url;
+        
+        // Clean up local file
+        fs.unlinkSync(file.path);
+      } catch (uploadError) {
+        console.error("ID document upload error:", uploadError);
+        // If Cloudinary fails, use local file path as fallback
+        idDocumentUrl = file.path;
+      }
     }
 
     // Update user with escort profile
@@ -576,15 +628,28 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
         rates: {
           hourly: parseFloat(hourlyRate),
           isStandardPricing: isStandardPricing === "true",
+          currency: "USD", // Default currency
         },
         gallery,
         idDocument: idDocumentUrl,
         isAgeVerified: !!idDocumentUrl, // Set to true if ID document is uploaded
         subscriptionTier: "free",
         subscriptionStatus: "active",
+        isActive: true,
+        isAvailable: true,
+        stats: {
+          views: 0,
+          favorites: 0,
+          reviews: 0,
+          rating: 0,
+        },
       },
       { new: true }
     );
+
+    if (!updatedUser) {
+      throw new ApiError(500, "Failed to update user profile");
+    }
 
     // Ensure password is not returned
     const userObject = updatedUser.toObject({ getters: true });
@@ -615,6 +680,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
       message: "Escort profile created successfully",
     });
   } catch (error) {
+    console.error("Escort profile creation error:", error);
     next(error);
   }
 });
