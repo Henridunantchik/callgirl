@@ -7,6 +7,7 @@ import cloudinary from "../config/cloudinary.js";
 import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
 import fs from "fs";
+import mongoose from "mongoose";
 
 /**
  * Get all escorts with filtering and pagination
@@ -59,7 +60,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone"
       )
       .sort(sort)
       .limit(limit * 1)
@@ -122,14 +123,19 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
       throw new ApiError(400, "Invalid escort identifier");
     }
 
-    // Try to find escort by ObjectId first, then by alias/name
-    let escort = await User.findOne({
-      _id: id,
-      role: "escort",
-      isActive: true,
-    }).select("-password");
+    let escort = null;
 
-    // If not found by ObjectId, try by alias or name
+    // Check if id is a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      // Try to find escort by ObjectId first
+      escort = await User.findOne({
+        _id: id,
+        role: "escort",
+        isActive: true,
+      }).select("-password");
+    }
+
+    // If not found by ObjectId or id is not a valid ObjectId, try by alias or name
     if (!escort) {
       escort = await User.findOne({
         $or: [

@@ -57,9 +57,10 @@ const Index = () => {
           _t: Date.now(), // Cache busting parameter
         });
         console.log("API response:", response.data);
-        console.log("Escorts count:", response.data?.escorts?.length || 0);
-        console.log("Total count:", response.data?.total || 0);
-        setEscortData(response.data);
+        console.log("Escorts count:", response.data?.data?.escorts?.length || 0);
+        console.log("Total count:", response.data?.data?.total || 0);
+        // Fix: Set the correct data structure - response.data.data contains the actual data
+        setEscortData(response.data.data);
         setError(null);
       } catch (err) {
         console.error("Error fetching escorts:", err);
@@ -305,7 +306,7 @@ const Index = () => {
           </Button>
         </div>
 
-        {escortData && escortData.escorts && escortData.escorts.length > 0 ? (
+        {escortData?.escorts && escortData.escorts.length > 0 ? (
           <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6">
             {console.log(
               "Rendering escorts, count:",

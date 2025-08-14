@@ -14,6 +14,7 @@ import {
   Eye,
   Shield,
   Crown,
+  DollarSign,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -21,6 +22,21 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
   const { countryCode } = useParams();
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Function to get currency symbol based on country
+  const getCurrencySymbol = (countryCode) => {
+    const currencies = {
+      'ug': 'UGX',
+      'ke': 'KES', 
+      'tz': 'TZS',
+      'rw': 'RWF',
+      'bi': 'BIF',
+      'cd': 'CDF'
+    };
+    return currencies[countryCode?.toLowerCase()] || 'USD';
+  };
+
+  const currencySymbol = getCurrencySymbol(countryCode);
 
   const handleImageError = () => {
     setImageError(true);
@@ -252,22 +268,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
             </div>
           )}
 
-          {/* Price */}
-          {escort.rates && (
-            <div className="flex items-center text-xs text-gray-600 mb-1">
-              <DollarSign className="w-3 h-3 mr-1" />
-              {(() => {
-                // Handle rates whether it's an object or string
-                if (typeof escort.rates === "object" && escort.rates.hourly) {
-                  return `$${escort.rates.hourly}/hour`;
-                } else if (typeof escort.rates === "string") {
-                  return escort.rates;
-                } else {
-                  return "Price not specified";
-                }
-              })()}
-            </div>
-          )}
+
         </CardContent>
 
         <CardFooter className="p-3 pt-0">
@@ -288,7 +289,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
               onClick={() => onContact(escort, "call")}
             >
               <Phone className="w-4 h-4 mr-1" />
-              {escort.phone ? escort.phone : "Call"}
+              {escort.phone || "Call"}
             </Button>
           </div>
         </CardFooter>
