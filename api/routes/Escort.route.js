@@ -178,6 +178,64 @@ EscortRoute.post(
   uploadMedia
 );
 
+// Gallery upload
+EscortRoute.post(
+  "/gallery/:id",
+  authenticate,
+  onlyEscort,
+  upload.array("gallery", 20),
+  uploadMedia
+);
+
+// Video upload
+EscortRoute.post(
+  "/video/:id",
+  authenticate,
+  onlyEscort,
+  upload.array("video", 5),
+  uploadMedia
+);
+
+// Delete gallery image
+EscortRoute.delete("/gallery/:id/:imageId", authenticate, onlyEscort, async (req, res) => {
+  try {
+    const { id, imageId } = req.params;
+    const user = await User.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Remove image from gallery
+    user.gallery = user.gallery.filter(img => img._id.toString() !== imageId);
+    await user.save();
+
+    res.json({ success: true, message: "Image deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete video
+EscortRoute.delete("/video/:id/:videoId", authenticate, onlyEscort, async (req, res) => {
+  try {
+    const { id, videoId } = req.params;
+    const user = await User.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Remove video from videos array
+    user.videos = user.videos.filter(video => video._id.toString() !== videoId);
+    await user.save();
+
+    res.json({ success: true, message: "Video deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Subscription and profile info
 EscortRoute.get("/subscription/:id", authenticate, onlyEscort, getEscortSubscription);
 EscortRoute.get("/profile-completion/:id", authenticate, onlyEscort, getProfileCompletion);

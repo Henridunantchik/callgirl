@@ -70,6 +70,8 @@ export const updateUser = async (req, res, next) => {
     if (data.email !== undefined) user.email = data.email;
     if (data.bio !== undefined) user.bio = data.bio;
     if (data.phone !== undefined) user.phone = data.phone;
+    if (data.whatsapp !== undefined) user.whatsapp = data.whatsapp;
+    if (data.telegram !== undefined) user.telegram = data.telegram;
 
     // Escort-specific fields (only update if provided)
     if (user.role === "escort") {

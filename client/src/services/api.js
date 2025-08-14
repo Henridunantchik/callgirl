@@ -119,6 +119,26 @@ export const escortAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 
+  // Upload gallery photos
+  uploadGallery: (id, formData) =>
+    api.post(`/escort/gallery/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  // Upload videos
+  uploadVideo: (id, formData) =>
+    api.post(`/escort/video/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  // Delete gallery image
+  deleteGalleryImage: (id, imageId) =>
+    api.delete(`/escort/gallery/${id}/${imageId}`),
+
+  // Delete video
+  deleteVideo: (id, videoId) =>
+    api.delete(`/escort/video/${id}/${videoId}`),
+
   // Get escort subscription info
   getEscortSubscription: (id) => api.get(`/escort/subscription/${id}`),
 

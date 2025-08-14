@@ -58,6 +58,8 @@ const escortProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  whatsapp: z.string().optional(),
+  telegram: z.string().optional(),
   alias: z.string().min(2, "Professional name must be at least 2 characters"),
   age: z
     .number()
@@ -108,6 +110,8 @@ const EscortProfileEdit = () => {
       name: "",
       email: "",
       phone: "",
+      whatsapp: "",
+      telegram: "",
       alias: "",
       age: 18,
       gender: "",
@@ -140,6 +144,8 @@ const EscortProfileEdit = () => {
         name: user.name || "",
         email: user.email || "",
         phone: user.phone || "",
+        whatsapp: user.whatsapp || "",
+        telegram: user.telegram || "",
         alias: user.alias || "",
         age: user.age || 18,
         gender: user.gender || "",
@@ -214,6 +220,8 @@ const EscortProfileEdit = () => {
         name: values.name?.trim(),
         email: values.email?.trim(),
         phone: values.phone?.trim(),
+        whatsapp: values.whatsapp?.trim(),
+        telegram: values.telegram?.trim(),
         alias: values.alias?.trim(),
         age: values.age,
         gender: values.gender,
@@ -235,6 +243,8 @@ const EscortProfileEdit = () => {
           name: response.data.user.name || currentValues.name,
           email: response.data.user.email || currentValues.email,
           phone: response.data.user.phone || currentValues.phone,
+          whatsapp: response.data.user.whatsapp || currentValues.whatsapp,
+          telegram: response.data.user.telegram || currentValues.telegram,
           alias: response.data.user.alias || currentValues.alias,
           age: response.data.user.age || currentValues.age,
           gender: response.data.user.gender || currentValues.gender,
@@ -866,6 +876,32 @@ const EscortProfileEdit = () => {
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
                           <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="whatsapp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>WhatsApp (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="+1234567890" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="telegram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telegram Username (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="@username or username" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
