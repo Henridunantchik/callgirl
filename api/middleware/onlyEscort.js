@@ -10,6 +10,10 @@ export const onlyEscort = asyncHandler(async (req, res, next) => {
       throw new ApiError(401, "Authentication required");
     }
 
+    console.log("=== ONLY ESCORT DEBUG ===");
+    console.log("req.user from token:", req.user);
+    console.log("req.user.role from token:", req.user.role);
+
     // Check if user has escort role
     if (req.user.role !== "escort") {
       // Log unauthorized access attempt

@@ -92,6 +92,7 @@ const EscortProfileEdit = () => {
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingVideos, setUploadingVideos] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [deletingVideo, setDeletingVideo] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     location: true,
@@ -576,7 +577,7 @@ const EscortProfileEdit = () => {
     }
   };
 
-  // Handle video upload
+  // Handle video upload with real progress
   const handleVideoUpload = async (files) => {
     try {
       setUploadingVideos(true);
@@ -592,36 +593,24 @@ const EscortProfileEdit = () => {
       console.log("User ID:", user._id);
       console.log("Files to upload:", files.length);
 
-      // Simulate realistic progress based on file size
-      const totalFiles = files.length;
-      let completedFiles = 0;
-
-      // Calculate total file size for progress
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      let uploadedSize = 0;
-
-      const progressInterval = setInterval(() => {
-        uploadedSize += totalSize / 20; // Simulate upload progress
-        const progress = Math.min(
-          Math.round((uploadedSize / totalSize) * 100),
-          95
-        );
-        setVideoUploadProgress(progress);
-
-        if (progress >= 95) {
-          clearInterval(progressInterval);
-        }
-      }, 200);
-
-      const response = await escortAPI.uploadVideo(user._id, formData);
-      console.log("Video upload response:", response.data);
-
-      // Clear interval and set to 100%
-      clearInterval(progressInterval);
-      setVideoUploadProgress(100);
+      // Use axios with progress tracking
+      const response = await escortAPI.uploadVideo(user._id, formData, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setVideoUploadProgress(progress);
+            console.log(`Upload progress: ${progress}%`);
+          }
+        },
+      });
+      console.log("Video upload response:", response);
 
       if (response.data.success) {
-        dispatch(setUser({ ...user, videos: response.data.escort.videos }));
+        dispatch(
+          setUser({ ...user, videos: response.data.data.escort.videos })
+        );
         showToast("Videos updated successfully!", "success");
         console.log("✅ Videos uploaded successfully");
       } else {
@@ -701,7 +690,7 @@ const EscortProfileEdit = () => {
   // Delete video
   const deleteVideo = async (videoId) => {
     try {
-      setSaving(true);
+      setDeletingVideo(videoId);
       showToast("Deleting video...", "info");
 
       console.log("=== DELETE VIDEO DEBUG ===");
@@ -725,7 +714,7 @@ const EscortProfileEdit = () => {
       console.error("Error deleting video:", error);
       showToast("Failed to delete video", "error");
     } finally {
-      setSaving(false);
+      setDeletingVideo(null);
     }
   };
 
@@ -901,7 +890,10 @@ const EscortProfileEdit = () => {
                       <FormItem>
                         <FormLabel>Telegram Username (Optional)</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="@username or username" />
+                          <Input
+                            {...field}
+                            placeholder="@username or username"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1704,11 +1696,12 @@ const EscortProfileEdit = () => {
                   </div>
                 )}
 
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium">
-                      {user.videos ? user.videos.length : 0}/5 videos
-                    </p>
+                {/* Video Gallery Display */}
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      Uploaded Videos ({user.videos ? user.videos.length : 0}/5)
+                    </h4>
                     <Button
                       type="button"
                       onClick={saveVideos}
@@ -1720,25 +1713,52 @@ const EscortProfileEdit = () => {
                       {saving ? "Saving..." : "Save Videos"}
                     </Button>
                   </div>
+
                   {user.videos && user.videos.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {user.videos.map((video, index) => (
                         <div key={index} className="relative group">
                           <video
                             src={video.url}
+                            className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
                             controls
-                            className="w-full rounded"
+                            preload="metadata"
                           />
-                          <Button
+                          <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                            Video {index + 1}
+                          </div>
+                          <button
                             type="button"
-                            onClick={() => deleteVideo(video._id)}
-                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            size="sm"
+                            onClick={() => deleteVideo(video._id || index)}
+                            disabled={deletingVideo === (video._id || index)}
+                            className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
+                              deletingVideo === (video._id || index)
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-red-500 cursor-pointer hover:bg-red-600"
+                            }`}
                           >
-                            <X className="w-3 h-3" />
-                          </Button>
+                            {deletingVideo === (video._id || index) ? (
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Deleting...</span>
+                              </div>
+                            ) : (
+                              "×"
+                            )}
+                          </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* No videos message */}
+                  {(!user.videos || user.videos.length === 0) && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Video className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm">No videos uploaded yet</p>
+                      <p className="text-xs">
+                        Upload videos to showcase your profile
+                      </p>
                     </div>
                   )}
                 </div>

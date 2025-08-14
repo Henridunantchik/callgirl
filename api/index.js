@@ -1,8 +1,14 @@
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import fs from "fs";
 import config from "./config/env.js";
 import { securityHeaders } from "./utils/security.js";
+import { authenticate } from "./middleware/authenticate.js";
+import { onlyEscort } from "./middleware/onlyEscort.js";
+import upload from "./config/multer.js";
+import cloudinary from "./config/cloudinary.js";
+import User from "./models/user.model.js";
 
 // Import rate limiters
 import {
@@ -138,6 +144,7 @@ if (config.NODE_ENV === "development") {
 app.use("/api/auth", AuthRoute);
 app.use("/api/user", UserRoute);
 app.use("/api/escort", EscortRoute);
+
 app.use("/api/category", CategoryRoute);
 app.use("/api/blog", BlogRoute);
 app.use("/api/bloglike", BloglikeRoute);
