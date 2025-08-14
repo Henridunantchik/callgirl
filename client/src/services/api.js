@@ -285,7 +285,7 @@ export const userAPI = {
 
   // Upload avatar
   uploadAvatar: (formData) =>
-    api.post("/user/avatar", formData, {
+    api.put("/user/update", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };

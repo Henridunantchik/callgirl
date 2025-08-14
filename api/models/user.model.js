@@ -99,6 +99,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    avatar: {
+      type: String,
+      trim: true,
+    },
     experience: {
       type: String,
       maxlength: 1000,

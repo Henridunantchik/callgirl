@@ -93,6 +93,7 @@ const EscortProfileEdit = () => {
   const [uploadingVideos, setUploadingVideos] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [deletingVideo, setDeletingVideo] = useState(null);
+  const [avatarKey, setAvatarKey] = useState(0); // Force avatar re-render
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     location: true,
@@ -529,15 +530,41 @@ const EscortProfileEdit = () => {
       const formData = new FormData();
       formData.append("file", file);
 
+      console.log("=== AVATAR UPLOAD DEBUG ===");
+      console.log("File to upload:", file.name);
+      console.log("File size:", file.size);
+
       const response = await userAPI.uploadAvatar(formData);
+      console.log("Avatar upload response:", response.data);
 
       if (response.data.success) {
-        dispatch(setUser({ ...user, avatar: response.data.avatar }));
-        showToast("Avatar updated successfully!", "success");
+        console.log("=== AVATAR UPLOAD SUCCESS DEBUG ===");
+        console.log("Full response:", response.data);
+        console.log("User from response:", response.data.user);
+        console.log("Avatar URL from response:", response.data.user?.avatar);
+        console.log("Current user state:", user);
+
+        // Update the user state with new avatar
+        const updatedUser = { ...user, avatar: response.data.user.avatar };
+        console.log("Updated user object:", updatedUser);
+
+        dispatch(setUser(updatedUser));
+
+        // Force avatar re-render
+        setAvatarKey((prev) => prev + 1);
+
+        console.log("✅ Avatar uploaded successfully");
+        console.log("New avatar URL:", response.data.user.avatar);
+        console.log("Updated user state:", updatedUser);
+
+        showToast("Profile picture updated successfully!", "success");
+      } else {
+        showToast("Failed to upload profile picture", "error");
+        console.log("❌ Avatar upload failed");
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      showToast("Failed to upload avatar", "error");
+      showToast("Failed to upload profile picture", "error");
     } finally {
       setUploadingAvatar(false);
     }
@@ -764,6 +791,61 @@ const EscortProfileEdit = () => {
           Manage your escort profile, gallery, services, and settings
         </p>
       </div>
+
+      {/* Profile Picture */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Profile Picture
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-6">
+            {/* Current Avatar */}
+            <div className="flex flex-col items-center gap-2">
+              <Avatar className="w-24 h-24" key={avatarKey}>
+                <AvatarImage
+                  src={user.avatar || "/default-avatar.png"}
+                  alt="Profile picture"
+                  className="object-cover"
+                />
+              </Avatar>
+              <p className="text-xs text-gray-500">Current Picture</p>
+            </div>
+
+            {/* Upload New Avatar */}
+            <div className="flex-1">
+              <p className="text-sm text-gray-600 mb-3">
+                Upload a new profile picture
+              </p>
+              <Dropzone
+                onDrop={handleAvatarUpload}
+                accept={{ "image/*": [] }}
+                maxFiles={1}
+              >
+                {({ getRootProps, getInputProps }) => (
+                  <div
+                    {...getRootProps()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                  >
+                    <input {...getInputProps()} />
+                    <Upload className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600">
+                      {uploadingAvatar
+                        ? "Uploading..."
+                        : "Click to upload new profile picture"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Drag & drop or click to select image
+                    </p>
+                  </div>
+                )}
+              </Dropzone>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Profile Completion */}
       <Card className="mb-6">
