@@ -89,6 +89,9 @@ const App = () => {
             <Route path="search" element={<SearchResult />} />
             <Route path="location/:city" element={<EscortList />} />
             <Route path="category/:category" element={<EscortList />} />
+            
+            {/* Public Escort Profile Route - Must be BEFORE authenticated routes */}
+            <Route path="escort/:slug" element={<EscortProfile />} />
 
             {/* Legal Pages */}
             <Route path="legal/privacy" element={<PrivacyPolicy />} />
@@ -132,9 +135,6 @@ const App = () => {
                 <Route path="hommages" element={<Comments />} />
               </Route>
             </Route>
-
-            {/* Public Escort Profile Route - Must be after authenticated routes */}
-            <Route path="escort/:slug" element={<EscortProfile />} />
 
             {/* Admin Routes */}
             <Route element={<OnlyAdminAllowed />}>

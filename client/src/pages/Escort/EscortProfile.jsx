@@ -68,12 +68,22 @@ const EscortProfile = () => {
       console.log("🔍 Response structure:", {
         hasData: !!response.data,
         hasEscort: !!response.data?.escort,
-        escortData: response.data?.escort || response.data,
+        hasDataData: !!response.data?.data,
+        hasDataDataEscort: !!response.data?.data?.escort,
+        escortData:
+          response.data?.escort || response.data?.data?.escort || response.data,
       });
 
       if (response.data && response.data.escort) {
         console.log("✅ Setting escort from response.data.escort");
         setEscort(response.data.escort);
+      } else if (
+        response.data &&
+        response.data.data &&
+        response.data.data.escort
+      ) {
+        console.log("✅ Setting escort from response.data.data.escort");
+        setEscort(response.data.data.escort);
       } else if (response.data) {
         console.log("✅ Setting escort from response.data");
         setEscort(response.data);
