@@ -8,7 +8,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import React from "react";
+import React, { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -16,19 +16,22 @@ import { Card } from "@/components/ui/card";
 import { RouteIndex, RouteSignUp } from "@/helpers/RouteName";
 import { Link, useNavigate } from "react-router-dom";
 import { showToast } from "@/helpers/showToast";
-import { getEvn } from "@/helpers/getEnv";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/redux/user/user.slice";
-import GoogleLogin from "@/components/GoogleLogin";
 import { storeToken, storeUserData } from "@/helpers/storage";
+import { authAPI } from "@/services/api";
+import { store } from "@/store";
+import GoogleLogin from "@/components/GoogleLogin";
 import logo from "@/assets/images/logo-white.png";
-const SignIn = () => {
-  const dispath = useDispatch();
 
+const SignIn = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
   const formSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(3, "Password field  required."),
+    email: z.string().email("Please enter a valid email address"),
+    password: z.string().min(3, "Password field is required."),
   });
 
   const form = useForm({
@@ -40,27 +43,45 @@ const SignIn = () => {
   });
 
   async function onSubmit(values) {
+    setIsLoading(true);
     try {
-      const response = await fetch(`/api/auth/login`, {
-        method: "post",
-        headers: { "Content-type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(values),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        return showToast("error", data.message);
-      }
+      console.log("🔐 Attempting login with:", values.email);
+      
+      const response = await authAPI.login(values);
+      console.log("📦 Raw API response:", response);
+      console.log("📦 Response data:", response.data);
+      
+      const { token, user } = response.data;
+
+      console.log("✅ Login successful for:", user.email);
+      console.log("🔑 Token received:", token ? "Present" : "Missing");
+      console.log("👤 User data:", user);
 
       // Store user data in localStorage for AuthContext
-      storeToken(data.token);
-      storeUserData(data.user);
+      const tokenStored = storeToken(token);
+      const userStored = storeUserData(user);
+      
+      console.log("💾 Token stored:", tokenStored);
+      console.log("💾 User stored:", userStored);
+      console.log("🔍 localStorage after storage:");
+      console.log("  - token:", localStorage.getItem("token"));
+      console.log("  - user:", localStorage.getItem("user"));
 
-      dispath(setUser(data.user));
+      // Update Redux store
+      dispatch(setUser(user));
+      
+      // Force Redux to persist to sessionStorage
+      console.log("🔄 Redux state after dispatch:", store.getState());
+      
+      // Navigate to home page
       navigate(RouteIndex);
-      showToast("success", data.message);
+      showToast("success", "Login successful! Welcome back.");
     } catch (error) {
-      showToast("error", error.message);
+      console.error("❌ Login failed:", error);
+      const errorMessage = error.response?.data?.message || "Login failed. Please try again.";
+      showToast("error", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -69,7 +90,7 @@ const SignIn = () => {
       <Card className="w-[400px] p-5">
         <div className="flex justify-center items-center mb-2">
           <Link to={RouteIndex}>
-            <img src={logo} />
+            <img src={logo} alt="Logo" />
           </Link>
         </div>
         <h1 className="text-2xl font-bold text-center mb-5">
@@ -95,6 +116,7 @@ const SignIn = () => {
                       <Input
                         placeholder="Enter your email address"
                         {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -114,6 +136,7 @@ const SignIn = () => {
                         type="password"
                         placeholder="Enter your password"
                         {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -123,8 +146,8 @@ const SignIn = () => {
             </div>
 
             <div className="mt-5">
-              <Button type="submit" className="w-full">
-                Sign In
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
               <div className="mt-5 text-sm flex justify-center items-center gap-2">
                 <p>Don&apos;t have account?</p>

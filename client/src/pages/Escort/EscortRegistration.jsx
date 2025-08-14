@@ -36,7 +36,11 @@ import {
 } from "../../helpers/countries";
 import { DocumentVerificationService } from "../../services/documentVerification";
 import { escortAPI } from "../../services/api";
-import { storeUserData } from "../../helpers/storage";
+import { storeUserData, storeToken } from "../../helpers/storage";
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "../../redux/user/user.slice";
+import { showToast } from "../../helpers/showToast";
+import { RouteSignIn } from "../../helpers/RouteName";
 
 const EscortRegistration = () => {
   // Initialize the real verification service
@@ -44,14 +48,24 @@ const EscortRegistration = () => {
   const navigate = useNavigate();
   const { countryCode } = useParams();
   const { user, loading, updateUser } = useAuth(); // Get current user from AuthContext
+  const dispatch = useDispatch();
+  const reduxUser = useSelector((state) => state.user);
 
   // Fallback to localStorage if AuthContext user is null
-  const currentUser =
-    user ||
-    (() => {
-      const storedUser = localStorage.getItem("user");
-      return storedUser ? JSON.parse(storedUser) : null;
-    })();
+  const getCurrentUser = () => {
+    if (user) return user;
+
+    // Fallback to Redux store
+    if (reduxUser?.isLoggedIn && reduxUser?.user) {
+      return reduxUser.user;
+    }
+
+    // Fallback to localStorage
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  };
+
+  const currentUser = getCurrentUser();
 
   // Debug authentication state
   React.useEffect(() => {
@@ -61,7 +75,8 @@ const EscortRegistration = () => {
     console.log("LocalStorage user:", localStorage.getItem("user"));
     console.log("LocalStorage token:", localStorage.getItem("token"));
     console.log("Current user (with fallback):", currentUser);
-  }, [user, loading, currentUser]);
+    console.log("Redux user state:", reduxUser);
+  }, [user, loading, currentUser, reduxUser]);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [showCamera, setShowCamera] = useState(false);
@@ -450,162 +465,217 @@ const EscortRegistration = () => {
         return;
       }
 
-      // Use the currentUser from the component state (which includes fallback)
-      console.log("Current user for submission:", currentUser);
-
+      // Check if user is authenticated
       if (!currentUser) {
-        alert("Please log in to create an escort profile.");
+        // Try to get user from Redux as fallback
+        const reduxUser = useSelector((state) => state.user);
+        if (reduxUser?.isLoggedIn && reduxUser?.user) {
+          console.log("✅ Using Redux user for authentication");
+        } else {
+                  alert("Please log in to create an escort profile.");
+        navigate(RouteSignIn);
+          return;
+        }
+      }
+
+      // Check if we have a valid token
+      const authToken = localStorage.getItem("token");
+      if (!authToken) {
+        alert("Authentication token missing. Please log in again.");
+        navigate(RouteSignIn);
         return;
       }
 
-      // Ensure we have a valid user ID
-      if (!currentUser._id) {
-        console.error("No user ID found in currentUser:", currentUser);
-        alert("Authentication error: Please log in again.");
-        return;
-      }
+      console.log(
+        "✅ Authentication verified - proceeding with escort registration"
+      );
+      console.log("Current user:", currentUser);
+      console.log("Token present:", !!authToken);
 
       // Validate required fields
       if (
-        !formData.ageVerified ||
-        formData.verificationStatus !== "verified" ||
-        !formData.idDocument ||
         !formData.name ||
-        !formData.alias ||
-        !formData.email ||
-        !formData.phone ||
         !formData.age ||
         !formData.gender ||
+        !formData.country ||
         !formData.city ||
-        (formData.city === "other" && !formData.customCity) ||
-        !formData.services.length ||
-        !formData.hourlyRate ||
-        formData.photos.length < 3
+        !formData.hourlyRate
       ) {
-        if (formData.verificationStatus === "failed") {
-          alert(
-            "Age verification failed. Please upload a valid ID document and try again."
-          );
-        } else if (formData.verificationStatus === "processing") {
-          alert("Please wait for age verification to complete.");
-        } else {
-          let missingFields = [];
-          if (!formData.name) missingFields.push("Legal Name");
-          if (!formData.alias) missingFields.push("Professional Name");
-          if (!formData.email) missingFields.push("Email");
-          if (!formData.phone) missingFields.push("Phone");
-          if (!formData.age) missingFields.push("Age");
-          if (!formData.gender) missingFields.push("Gender");
-          if (!formData.city) missingFields.push("City");
-          if (formData.city === "other" && !formData.customCity)
-            missingFields.push("Custom City");
-          if (!formData.services.length) missingFields.push("Services");
-          if (!formData.hourlyRate) missingFields.push("Hourly Rate");
-          if (formData.photos.length < 3)
-            missingFields.push("At least 3 photos");
-
-          alert(
-            `Please complete all required fields: ${missingFields.join(", ")}`
-          );
-        }
+        alert("Please fill in all required fields.");
         return;
       }
 
-      // Create FormData for file uploads
-      const submitData = new FormData();
-      submitData.append("name", formData.name);
-      submitData.append("alias", formData.alias);
-      submitData.append("email", formData.email);
-      submitData.append("phone", formData.phone);
-      submitData.append("age", formData.age);
-      submitData.append("gender", formData.gender);
-      submitData.append("country", formData.country);
-      // Use custom city if "other" is selected, otherwise use selected city
-      const finalCity =
-        formData.city === "other" ? formData.customCity : formData.city;
-      submitData.append("city", finalCity);
-      submitData.append("subLocation", formData.subLocation || "");
-      submitData.append("services", JSON.stringify(formData.services));
-      submitData.append("hourlyRate", formData.hourlyRate);
-      submitData.append("isStandardPricing", formData.isStandardPricing);
+      // Validate age
+      const age = parseInt(formData.age);
+      if (age < 18) {
+        alert("You must be at least 18 years old to register as an escort.");
+        return;
+      }
 
-      // Add ID document for age verification
+      // Validate services
+      if (!formData.services || formData.services.length === 0) {
+        alert("Please select at least one service.");
+        return;
+      }
+
+      // Validate photos
+      if (!formData.photos || formData.photos.length === 0) {
+        alert("Please upload at least one photo.");
+        return;
+      }
+
+      // Validate terms agreement
+      if (!formData.agreeToTerms) {
+        alert("Please agree to the terms and conditions to continue.");
+        return;
+      }
+
+      console.log("🚀 Creating escort profile...");
+      console.log("Form data:", formData);
+
+      // Prepare form data for API
+      const apiFormData = new FormData();
+
+      // Add basic user info
+      apiFormData.append("name", formData.name);
+      apiFormData.append("alias", formData.alias);
+      apiFormData.append("email", formData.email);
+      apiFormData.append("phone", formData.phone);
+      apiFormData.append("age", formData.age);
+      apiFormData.append("gender", formData.gender);
+      apiFormData.append("country", formData.country);
+      apiFormData.append(
+        "city",
+        formData.city === "other" ? formData.customCity : formData.city
+      );
+      apiFormData.append("subLocation", formData.subLocation || "");
+      apiFormData.append("services", JSON.stringify(formData.services));
+      apiFormData.append("hourlyRate", formData.hourlyRate);
+      apiFormData.append(
+        "isStandardPricing",
+        formData.isStandardPricing.toString()
+      );
+
+      // Add photos
+      formData.photos.forEach((photo, index) => {
+        apiFormData.append("gallery", photo);
+      });
+
+      // Add ID document if available
       if (formData.idDocument) {
-        console.log("Adding ID document to FormData");
-        submitData.append("idDocument", formData.idDocument);
+        apiFormData.append("idDocument", formData.idDocument);
       }
 
-      // Add photos if any - IMPROVED VERSION
-      if (formData.photos.length > 0) {
-        console.log(`Adding ${formData.photos.length} photos to FormData`);
-        for (let index = 0; index < formData.photos.length; index++) {
-          const photo = formData.photos[index];
-          console.log(`Photo ${index + 1}:`, photo);
-          console.log(`Photo type:`, typeof photo);
-          console.log(`Photo instanceof File:`, photo instanceof File);
-          console.log(`Photo name:`, photo.name);
-          console.log(`Photo size:`, photo.size);
+      console.log("📤 Sending escort profile to API...");
 
-          // Photos are already File objects, just append them directly
-          submitData.append("gallery", photo);
+      // Test API connection first
+      try {
+        console.log("🧪 Testing API connection...");
+        const testResponse = await fetch("http://localhost:5000/health");
+        console.log("✅ API Health Check:", testResponse.status);
+
+        if (!testResponse.ok) {
+          throw new Error(`API server not responding: ${testResponse.status}`);
         }
-      } else {
-        console.log("No photos to add to FormData");
+      } catch (error) {
+        console.error("❌ API Health Check Failed:", error);
+        showToast(
+          "error",
+          "Cannot connect to server. Please check if API server is running."
+        );
+        return;
       }
 
-      console.log("=== FORM DATA DEBUG ===");
-      console.log("FormData entries:");
-      for (let [key, value] of submitData.entries()) {
-        if (value instanceof File) {
-          console.log(`${key}:`, `File(${value.name}, ${value.size} bytes)`);
-        } else {
-          console.log(`${key}:`, value);
-        }
+      // Call the API
+      console.log(
+        "🌐 Making API call to:",
+        "http://localhost:5000/api/escort/create"
+      );
+      console.log("📋 FormData contents:");
+      for (let [key, value] of apiFormData.entries()) {
+        console.log(`  ${key}:`, value);
       }
 
-      console.log("Submitting escort profile...");
-      const response = await escortAPI.createEscortProfile(submitData);
-      const data = response.data;
+      const response = await escortAPI.createEscortProfile(apiFormData);
+      console.log("✅ Escort profile created successfully:", response.data);
 
-      console.log("Response received:", data);
-
-      // Update the user data in AuthContext and localStorage with the new escort profile
-      if (data.escort) {
-        storeUserData(data.escort);
-        // Update AuthContext user data
-        if (updateUser) {
-          updateUser(data.escort);
-        }
-        console.log("Updated user data with escort profile:", data.escort);
-      }
-
-      // Success - show success message and redirect
-      alert("Registration successful! Welcome to our platform.");
-      navigate(`/${countryCode}/profile`);
-    } catch (error) {
-      console.error("Error creating escort profile:", error);
-
+      // Check if response is HTML (proxy issue)
       if (
-        error.code === "ERR_NETWORK" ||
-        error.message.includes("Failed to fetch") ||
-        error.message.includes("ERR_CONNECTION_RESET")
+        typeof response.data === "string" &&
+        response.data.includes("<!doctype html>")
       ) {
-        console.error("Network error details:", error);
-        alert(
-          "Network error: Please check if the backend server is running and try again. Error: " +
-            error.message
+        console.error("❌ API returned HTML instead of JSON - proxy issue");
+        showToast(
+          "error",
+          "Server connection issue. Please refresh and try again."
         );
-      } else if (error.response?.status === 401) {
-        alert("Authentication error: Please log in again.");
-      } else if (error.response?.status === 400) {
-        alert(
-          `Registration failed: ${
-            error.response.data?.message || error.message
-          }`
-        );
-      } else {
-        alert(`Registration failed: ${error.message}`);
+        return;
       }
+
+      // Check if response has the expected structure
+      if (!response.data || !response.data.user) {
+        console.error("❌ Invalid API response structure:", response.data);
+        showToast("error", "Invalid response from server. Please try again.");
+        return;
+      }
+
+      // Extract updated user and token
+      const { user: updatedUser, token } = response.data;
+
+      console.log("🔄 Updating user state with:", updatedUser);
+
+      // Persist auth
+      if (token) {
+        storeToken(token);
+      }
+      storeUserData(updatedUser);
+
+      // Update AuthContext
+      if (updateUser) {
+        updateUser(updatedUser);
+        console.log("✅ AuthContext updated with role:", updatedUser.role);
+      }
+
+      // Update Redux state
+      dispatch(setUser(updatedUser));
+      console.log("✅ Redux state updated with role:", updatedUser.role);
+
+      // Log the current state after updates
+      setTimeout(() => {
+        console.log("🔍 State after updates:");
+        console.log("- localStorage user:", localStorage.getItem("user"));
+        console.log(
+          "- Redux state:",
+          useSelector((state) => state.user)
+        );
+      }, 100);
+
+      // Force a page reload to ensure all components pick up the new role
+      setTimeout(() => {
+        console.log("🔄 Reloading page to apply role change...");
+        window.location.reload();
+      }, 1000);
+
+      // Nice success toast
+      showToast(
+        "success",
+        "Escort profile created successfully! You can now start receiving bookings."
+      );
+
+      // Navigate to escort dashboard (country-scoped)
+      navigate(`/${countryCode}/escort/dashboard`);
+    } catch (error) {
+      console.error("❌ Failed to create escort profile:", error);
+
+      let errorMessage = "Failed to create escort profile. Please try again.";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      showToast("error", errorMessage);
     }
   };
 

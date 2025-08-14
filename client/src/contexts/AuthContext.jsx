@@ -20,39 +20,97 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const storedUser = localStorage.getItem("user");
+        // Check multiple possible key names for token and user
+        const token = localStorage.getItem("token") || localStorage.getItem("auth");
+        const storedUser = localStorage.getItem("user") || localStorage.getItem("authUser");
 
         console.log("=== AUTH CONTEXT DEBUG ===");
         console.log("Token:", token ? "Present" : "Missing");
         console.log("Stored user:", storedUser ? "Present" : "Missing");
+        console.log("Raw token value:", token);
+        console.log("Raw stored user value:", storedUser);
+        console.log("All localStorage keys:", Object.keys(localStorage));
+        console.log("All sessionStorage keys:", Object.keys(sessionStorage));
+        
+        // Debug: Check what's in the 'auth' key
+        const authKey = localStorage.getItem("auth");
+        console.log("🔍 'auth' key content:", authKey);
+        if (authKey) {
+          try {
+            const parsedAuth = JSON.parse(authKey);
+            console.log("🔍 Parsed 'auth' content:", parsedAuth);
+          } catch (e) {
+            console.log("🔍 'auth' is not JSON:", authKey);
+          }
+        }
+
+        // Check Redux persisted data in sessionStorage
+        const reduxData = sessionStorage.getItem("persist:root");
+        console.log("🔍 Redux persisted data:", reduxData);
+        let reduxUser = null;
+        if (reduxData) {
+          try {
+            const parsedRedux = JSON.parse(reduxData);
+            console.log("🔍 Parsed Redux data:", parsedRedux);
+            if (parsedRedux.user) {
+              const userData = JSON.parse(parsedRedux.user);
+              console.log("🔍 Redux user data:", userData);
+              if (userData.isLoggedIn && userData.user) {
+                reduxUser = userData.user;
+              }
+            }
+          } catch (e) {
+            console.log("🔍 Redux data is not JSON:", reduxData);
+          }
+        }
+
+        // If we have a token but no stored user, try to use Redux user
+        if (token && !storedUser && reduxUser) {
+          console.log("✅ Using Redux user data since localStorage user is missing");
+          setUser(reduxUser);
+          // Store the user data in localStorage for consistency
+          localStorage.setItem("user", JSON.stringify(reduxUser));
+          setLoading(false);
+          return;
+        }
 
         if (token && storedUser) {
-          // Try to get fresh user data from server
           try {
-            console.log("Attempting to get fresh user data...");
-            const response = await authAPI.getCurrentUser();
-            console.log("Fresh user data received:", response.data.user);
-            setUser(response.data.user);
-          } catch (error) {
-            console.error("Auth check failed:", error);
-            // If server check fails, still use stored user data
-            // Don't clear localStorage immediately
+            // Parse stored user data first
             const parsedUser = JSON.parse(storedUser);
-            console.log("Using stored user data:", parsedUser);
+            console.log("✅ Successfully parsed user data:", parsedUser);
             setUser(parsedUser);
+            
+            // Try to get fresh user data from server (optional)
+            try {
+              console.log("Attempting to get fresh user data...");
+              const response = await authAPI.getCurrentUser();
+              console.log("Fresh user data received:", response.data.user);
+              setUser(response.data.user);
+              localStorage.setItem("user", JSON.stringify(response.data.user));
+            } catch (error) {
+              console.error(
+                "Server auth check failed, using stored data:",
+                error
+              );
+              // Keep using stored data if server check fails
+            }
+          } catch (parseError) {
+            console.error("❌ Error parsing stored user:", parseError);
+            console.error("Raw stored user value:", storedUser);
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            setUser(null);
           }
         } else {
-          console.log("No token or stored user found");
+          console.log("❌ No token or stored user found");
+          console.log("Token exists:", !!token);
+          console.log("Stored user exists:", !!storedUser);
+          setUser(null);
         }
       } catch (error) {
-        console.error("Auth check failed:", error);
-        // Only clear if there's no stored user data
-        const storedUser = localStorage.getItem("user");
-        if (!storedUser) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-        }
+        console.error("❌ Auth check failed:", error);
+        setUser(null);
       } finally {
         setLoading(false);
       }

@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: "/api", // Use Vite proxy instead of direct URL
   withCredentials: true,
   timeout: 60000, // Increased to 60 seconds for file uploads
 });
@@ -10,26 +10,51 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("auth");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Log API requests in development
+    if (import.meta.env.DEV) {
+      console.log(
+        `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`
+      );
+      console.log(`🔑 Auth Token: ${token ? "Present" : "Missing"}`);
+      console.log(`📦 Request Data:`, config.data);
+      console.log(`🌐 Full URL: ${config.baseURL}${config.url}`);
+    }
+
     return config;
   },
   (error) => {
+    console.error("❌ API Request Error:", error);
     return Promise.reject(error);
   }
 );
 
 // Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log successful responses in development
+    if (import.meta.env.DEV) {
+      console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+    }
+    return response;
+  },
   (error) => {
+    console.error(
+      "❌ API Response Error:",
+      error.response?.status,
+      error.response?.data
+    );
+
     if (error.response?.status === 401) {
       // Unauthorized - redirect to login
       localStorage.removeItem("token");
+      localStorage.removeItem("auth");
       localStorage.removeItem("user");
-      window.location.href = "/signin";
+      window.location.href = "/sign-in";
     }
     return Promise.reject(error);
   }
@@ -45,6 +70,9 @@ export const authAPI = {
 
   // Login
   login: (credentials) => api.post("/auth/login", credentials),
+
+  // Google Login
+  googleLogin: (userData) => api.post("/auth/google-login", userData),
 
   // Logout
   logout: () => api.post("/auth/logout"),
@@ -69,17 +97,15 @@ export const escortAPI = {
   // Search escorts
   searchEscorts: (params) => api.get("/escort/search", { params }),
 
-  // Get escorts by location
-  getEscortsByLocation: (city) => api.get(`/escort/location/${city}`),
-
-  // Get escorts by category
-  getEscortsByCategory: (category) => api.get(`/escort/category/${category}`),
-
   // Create escort profile
-  createEscortProfile: (formData) =>
-    api.post("/escort/create", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+  createEscortProfile: (formData) => {
+    console.log("📤 Creating escort profile with data:", formData);
+    return api.post("/escort/create", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
 
   // Update escort profile
   updateEscortProfile: (id, formData) =>
@@ -87,36 +113,17 @@ export const escortAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 
-  // Delete escort profile
-  deleteEscortProfile: (id) => api.delete(`/escort/delete/${id}`),
-
-  // Update escort status
-  updateEscortStatus: (id, status) =>
-    api.put(`/escort/status/${id}`, { status }),
-
-  // Gallery management
-  uploadGallery: (id, formData) =>
-    api.post(`/escort/gallery/${id}`, formData, {
+  // Upload media
+  uploadMedia: (id, formData) =>
+    api.post(`/escort/media/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 
-  deleteGalleryImage: (id, imageId) =>
-    api.delete(`/escort/gallery/${id}/${imageId}`),
+  // Get escort subscription info
+  getEscortSubscription: (id) => api.get(`/escort/subscription/${id}`),
 
-  reorderGallery: (id, order) =>
-    api.put(`/escort/gallery/reorder/${id}`, { order }),
-
-  // Video management
-  uploadVideo: (id, formData) =>
-    api.post(`/escort/video/${id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
-
-  deleteVideo: (id, videoId) => api.delete(`/escort/video/${id}/${videoId}`),
-
-  // Stats and analytics
-  getEscortStats: (id) => api.get(`/escort/stats/${id}`),
-  getEscortAnalytics: (id) => api.get(`/escort/analytics/${id}`),
+  // Get profile completion status
+  getProfileCompletion: (id) => api.get(`/escort/profile-completion/${id}`),
 };
 
 // Booking API

@@ -27,7 +27,7 @@ import {
 // Import routes
 import AuthRoute from "./routes/Auth.route.js";
 import UserRoute from "./routes/User.route.js";
-// import EscortRoute from "./routes/Escort.route.js";
+import EscortRoute from "./routes/Escort.route.js";
 import CategoryRoute from "./routes/Category.route.js";
 import BlogRoute from "./routes/Blog.route.js";
 import BloglikeRoute from "./routes/Bloglike.route.js";
@@ -94,7 +94,7 @@ app.get("/api/performance", async (req, res) => {
 // API Routes
 app.use("/api/auth", AuthRoute);
 app.use("/api/user", UserRoute);
-// app.use("/api/escort", EscortRoute);
+app.use("/api/escort", EscortRoute);
 app.use("/api/category", CategoryRoute);
 app.use("/api/blog", BlogRoute);
 app.use("/api/bloglike", BloglikeRoute);

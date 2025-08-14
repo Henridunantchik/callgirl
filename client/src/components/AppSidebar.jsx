@@ -79,8 +79,20 @@ const AppSidebar = () => {
 
             {user && user.isLoggedIn && (
               <>
+                {/* Join as Escort - Only for clients */}
+                {user?.user?.role === "client" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton className="bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700">
+                      <FaUserTie />
+                      <Link to={`/${countryCode}/escort/registration`}>
+                        Join as Escort
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+
                 {/* Client Navigation */}
-                {user.user.role === "client" && (
+                {user?.user?.role === "client" && (
                   <>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
@@ -110,7 +122,7 @@ const AppSidebar = () => {
                 )}
 
                 {/* Escort Navigation */}
-                {user.user.role === "escort" && (
+                {user?.user?.role === "escort" && (
                   <>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
@@ -146,7 +158,7 @@ const AppSidebar = () => {
                 )}
 
                 {/* Admin Navigation */}
-                {user.user.role === "admin" && (
+                {user?.user?.role === "admin" && (
                   <>
                     <SidebarMenuItem>
                       <SidebarMenuButton>
@@ -218,13 +230,17 @@ const AppSidebar = () => {
             <SidebarMenuItem>
               <SidebarMenuButton>
                 <GoDot />
-                <Link to={`/${countryCode}/category/gfe`}>GFE (Girlfriend Experience)</Link>
+                <Link to={`/${countryCode}/category/gfe`}>
+                  GFE (Girlfriend Experience)
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton>
                 <GoDot />
-                <Link to={`/${countryCode}/category/pse`}>PSE (Porn Star Experience)</Link>
+                <Link to={`/${countryCode}/category/pse`}>
+                  PSE (Porn Star Experience)
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

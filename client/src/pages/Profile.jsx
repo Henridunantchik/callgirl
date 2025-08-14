@@ -186,7 +186,7 @@ const Profile = () => {
         console.log("Fetching fresh user data...");
 
         // Get fresh user data from API
-        const response = await fetch("/api/auth/me", {
+        const response = await fetch("http://localhost:5000/api/auth/me", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -420,14 +420,17 @@ const Profile = () => {
           } else {
             // Retry with direct fetch
             console.log(`Retry ${retryCount}: Using direct fetch...`);
-            const fetchResponse = await fetch("/api/user/update", {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-              body: JSON.stringify(dataToSend),
-            });
+            const fetchResponse = await fetch(
+              "http://localhost:5000/api/user/update",
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify(dataToSend),
+              }
+            );
 
             if (!fetchResponse.ok) {
               const errorText = await fetchResponse.text();
@@ -543,7 +546,7 @@ const Profile = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch("/api/user/update", {
+        const response = await fetch("http://localhost:5000/api/user/update", {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -590,13 +593,16 @@ const Profile = () => {
         console.log(`Starting upload of ${files.length} images...`);
         const startTime = Date.now();
 
-        const response = await fetch("/api/escort/gallery/" + user?._id, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: formData,
-        });
+        const response = await fetch(
+          "http://localhost:5000/api/escort/gallery/" + user?._id,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: formData,
+          }
+        );
 
         const uploadTime = Date.now() - startTime;
         console.log(`Upload completed in ${uploadTime}ms`);
@@ -606,11 +612,14 @@ const Profile = () => {
           showToast("Gallery photos uploaded successfully!", "success");
 
           // Refresh user data to show new gallery
-          const userResponse = await fetch("/api/auth/me", {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          });
+          const userResponse = await fetch(
+            "http://localhost:5000/api/auth/me",
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
 
           if (userResponse.ok) {
             const userData = await userResponse.json();
@@ -641,24 +650,30 @@ const Profile = () => {
           formData.append("videos", file);
         });
 
-        const response = await fetch("/api/escort/video/" + user?._id, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: formData,
-        });
+        const response = await fetch(
+          "http://localhost:5000/api/escort/video/" + user?._id,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: formData,
+          }
+        );
 
         if (response.ok) {
           const data = await response.json();
           showToast("Videos uploaded successfully!", "success");
 
           // Refresh user data to show new videos
-          const userResponse = await fetch("/api/auth/me", {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          });
+          const userResponse = await fetch(
+            "http://localhost:5000/api/auth/me",
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
 
           if (userResponse.ok) {
             const userData = await userResponse.json();
@@ -684,7 +699,7 @@ const Profile = () => {
       console.log("Image ID:", imageId);
       console.log("User ID:", user?._id);
 
-      const deleteUrl = `/api/escort/gallery/${user?._id}/${imageId}`;
+      const deleteUrl = `http://localhost:5000/api/escort/gallery/${user?._id}/${imageId}`;
       console.log("Delete URL:", deleteUrl);
 
       const response = await fetch(deleteUrl, {
@@ -712,7 +727,7 @@ const Profile = () => {
         }
 
         // Refresh user data
-        const userResponse = await fetch("/api/auth/me", {
+        const userResponse = await fetch("http://localhost:5000/api/auth/me", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -752,7 +767,7 @@ const Profile = () => {
       setDeletingVideo(videoId);
 
       const response = await fetch(
-        `/api/escort/video/${user?._id}/${videoId}`,
+        `http://localhost:5000/api/escort/video/${user?._id}/${videoId}`,
         {
           method: "DELETE",
           headers: {
@@ -763,7 +778,7 @@ const Profile = () => {
 
       if (response.ok) {
         // Refresh user data
-        const userResponse = await fetch("/api/auth/me", {
+        const userResponse = await fetch("http://localhost:5000/api/auth/me", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },

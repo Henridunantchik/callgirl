@@ -1,398 +1,363 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams, useParams } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
-import EscortCard from "../../components/EscortCard";
-import SearchFilters from "../../components/SearchFilters";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Card, CardContent } from "../../components/ui/card";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "../../components/ui/tabs";
-import { escortAPI, favoriteAPI } from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
-import { getCountryByCode } from "../../helpers/countries";
-import {
-  Search,
-  MapPin,
-  Grid,
-  List,
-  Filter,
-  SortAsc,
-  SortDesc,
-  Heart,
+import { 
+  Search, 
+  Filter, 
+  MapPin, 
+  Calendar, 
+  DollarSign, 
+  Shield, 
+  CheckCircle,
   Star,
-  Users,
-  TrendingUp,
+  Heart
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { escortAPI } from "../../services/api";
+import { showToast } from "../../helpers/showToast";
+import { useAuth } from "../../contexts/AuthContext";
+import { RouteSignIn } from "../../helpers/RouteName";
 
 const EscortList = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { countryCode } = useParams();
+  const { user } = useAuth();
+  
   const [escorts, setEscorts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState("grid");
-  const [sortBy, setSortBy] = useState("featured");
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [filters, setFilters] = useState({
     location: searchParams.get("location") || "",
-    minPrice: parseInt(searchParams.get("minPrice")) || 0,
-    maxPrice: parseInt(searchParams.get("maxPrice")) || 1000,
-    services: searchParams.get("services")?.split(",") || [],
-    verified: searchParams.get("verified") === "true",
-    online: searchParams.get("online") === "true",
+    age: searchParams.get("age") || "",
+    services: searchParams.get("services") || "",
+    priceRange: searchParams.get("priceRange") || "",
   });
+  const [showFilters, setShowFilters] = useState(false);
 
-  const { user } = useAuth();
-
-  // Fetch escorts from API
   useEffect(() => {
-    const fetchEscorts = async () => {
-      try {
-        setLoading(true);
-        const params = {
-          ...filters,
-          country: countryCode,
-          sortBy,
-          limit: 50,
-        };
-
-        const response = await escortAPI.getAllEscorts(params);
-        console.log("=== ESCORT DATA DEBUG ===");
-        console.log("API Response:", response);
-        console.log("Escorts:", response.data.escorts);
-        if (response.data.escorts && response.data.escorts.length > 0) {
-          console.log("First escort phone:", response.data.escorts[0].phone);
-          console.log("First escort data:", response.data.escorts[0]);
-        }
-        setEscorts(response.data.escorts || []);
-      } catch (error) {
-        console.error("Error fetching escorts:", error);
-        // Fallback to mock data if API fails
-        setEscorts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchEscorts();
-  }, [filters, sortBy, countryCode]);
+  }, [searchTerm, filters]);
 
-  useEffect(() => {
-    // Update URL params when filters change
-    const params = new URLSearchParams();
-    if (filters.location) params.set("location", filters.location);
-    if (filters.minPrice > 0)
-      params.set("minPrice", filters.minPrice.toString());
-    if (filters.maxPrice < 1000)
-      params.set("maxPrice", filters.maxPrice.toString());
-    if (filters.services.length > 0)
-      params.set("services", filters.services.join(","));
-    if (filters.verified) params.set("verified", "true");
-    if (filters.online) params.set("online", "true");
-
-    setSearchParams(params);
-  }, [filters, setSearchParams]);
-
-  const handleSearch = (searchTerm) => {
-    // Implement search functionality
-    console.log("Searching for:", searchTerm);
-  };
-
-  const handleFavorite = async (escortId) => {
+  const fetchEscorts = async () => {
     try {
-      if (user) {
-        await favoriteAPI.addToFavorites(escortId);
-        // Update the escort's favorited status in the list
-        setEscorts((prev) =>
-          prev.map((escort) =>
-            escort._id === escortId
-              ? { ...escort, isFavorited: !escort.isFavorited }
-              : escort
-          )
-        );
+      setLoading(true);
+      setError(null);
+      console.log("🔍 Fetching escorts with filters:", { searchTerm, filters });
+      
+      const params = {
+        ...(searchTerm && { q: searchTerm }),
+        ...(filters.location && { location: filters.location }),
+        ...(filters.age && { age: filters.age }),
+        ...(filters.services && { services: filters.services }),
+        ...(filters.priceRange && { priceRange: filters.priceRange }),
+      };
+      
+      const response = await escortAPI.getAllEscorts(params);
+      console.log("✅ Escorts fetched:", response.data);
+      
+      if (response.data && response.data.escorts) {
+        setEscorts(response.data.escorts);
+      } else if (response.data && Array.isArray(response.data)) {
+        // Handle case where the response is an array directly
+        setEscorts(response.data);
       } else {
-        // Redirect to login if not authenticated
-        window.location.href = "/signin";
+        setEscorts([]);
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      console.error("❌ Failed to fetch escorts:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to load escorts";
+      setError(errorMessage);
+      showToast("error", errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleContact = (escort, method) => {
-    console.log("=== CONTACT DEBUG ===");
-    console.log("Escort data:", escort);
-    console.log("Method:", method);
-    console.log("Phone:", escort.phone);
-    console.log("Alias:", escort.alias);
-    console.log("Name:", escort.name);
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const newParams = new URLSearchParams();
+    if (searchTerm) newParams.set("q", searchTerm);
+    if (filters.location) newParams.set("location", filters.location);
+    if (filters.age) newParams.set("age", filters.age);
+    if (filters.services) newParams.set("services", filters.services);
+    if (filters.priceRange) newParams.set("priceRange", filters.priceRange);
+    
+    setSearchParams(newParams);
+  };
 
-    if (method === "call") {
-      if (escort.phone) {
-        // Copy phone number to clipboard
-        navigator.clipboard.writeText(escort.phone);
-        alert(`Phone number copied to clipboard: ${escort.phone}`);
-      } else {
-        alert("Phone number not available for this escort.");
-      }
-    } else if (method === "message") {
-      // Navigate to message page or open chat
-      console.log("Opening message for:", escort.alias);
-      // You can implement navigation to message page here
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleFavorite = (escortId) => {
+    if (!user) {
+      showToast("error", "Please log in to add favorites");
+      navigate(RouteSignIn);
+      return;
     }
-    console.log("Contacting escort:", escort.alias, "via", method);
+    
+    // TODO: Implement favorite functionality
+    showToast("success", "Added to favorites!");
   };
 
-  const handleFiltersChange = (newFilters) => {
-    setFilters(newFilters);
+  const handleEscortClick = (escortId) => {
+    navigate(`/escort/${escortId}`);
   };
-
-  const handleFiltersReset = () => {
-    setFilters({
-      location: "",
-      minPrice: 0,
-      maxPrice: 1000,
-      services: [],
-      verified: false,
-      online: false,
-    });
-  };
-
-  const sortEscorts = (escortList) => {
-    switch (sortBy) {
-      case "price-low":
-        return [...escortList].sort((a, b) => a.rates.hourly - b.rates.hourly);
-      case "price-high":
-        return [...escortList].sort((a, b) => b.rates.hourly - a.rates.hourly);
-      case "rating":
-        return [...escortList].sort((a, b) => b.rating - a.rating);
-      case "newest":
-        return [...escortList].sort(
-          (a, b) => new Date(b.lastSeen) - new Date(a.lastSeen)
-        );
-      case "online":
-        return [...escortList].sort((a, b) => b.isOnline - a.isOnline);
-      default:
-        return escortList;
-    }
-  };
-
-  const filteredAndSortedEscorts = sortEscorts(escorts);
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 h-96 rounded-lg mb-4"></div>
-              <div className="space-y-2">
-                <div className="bg-gray-200 h-4 rounded w-3/4"></div>
-                <div className="bg-gray-200 h-3 rounded w-1/2"></div>
-                <div className="bg-gray-200 h-3 rounded w-2/3"></div>
-              </div>
-            </div>
-          ))}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading escorts...</p>
         </div>
       </div>
     );
   }
 
-  const countryInfo = getCountryByCode(countryCode);
-
   return (
-    <>
-      <Helmet>
-        <title>
-          {countryInfo ? `Escorts in ${countryInfo.name}` : "Escorts Directory"}{" "}
-          - Call Girls
-        </title>
-        <meta
-          name="description"
-          content={`Find verified escorts in ${
-            countryInfo?.name || "your area"
-          }. Browse profiles, read reviews, and book appointments safely and discreetly.`}
-        />
-        <meta
-          name="keywords"
-          content="escorts, call girls, adult services, verified profiles"
-        />
-      </Helmet>
-
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {countryInfo
-              ? `Escorts in ${countryInfo.name}`
-              : "Find Your Perfect Companion"}
-          </h1>
-          <p className="text-gray-600">
-            Browse verified escorts in {countryInfo?.name || "your area"}. Safe,
-            discreet, and professional.
-          </p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative max-w-2xl">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <Input
-              placeholder="Search by name, location, or services..."
-              className="pl-10 pr-4 py-3 text-lg"
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch(e.target.value);
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-              <div className="text-2xl font-bold">{escorts.length}</div>
-              <div className="text-sm text-gray-600">Active Escorts</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Star className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
-              <div className="text-2xl font-bold">4.7</div>
-              <div className="text-sm text-gray-600">Avg Rating</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="w-6 h-6 mx-auto mb-2 text-green-500" />
-              <div className="text-2xl font-bold">98%</div>
-              <div className="text-sm text-gray-600">Verified</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Heart className="w-6 h-6 mx-auto mb-2 text-red-500" />
-              <div className="text-2xl font-bold">2.5k+</div>
-              <div className="text-sm text-gray-600">Happy Clients</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <SearchFilters
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onReset={handleFiltersReset}
-            />
-          </div>
-
-          {/* Results */}
-          <div className="lg:col-span-3">
-            {/* Results Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl font-semibold">
-                  {filteredAndSortedEscorts.length} escorts found
-                </h2>
-                {filters.location && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {filters.location}
-                  </Badge>
-                )}
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Find Escorts</h1>
+          
+          {/* Search Bar */}
+          <form onSubmit={handleSearch} className="mb-6">
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Search escorts by name, location, or services..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-
-              <div className="flex items-center gap-2">
-                {/* Sort */}
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm"
-                >
-                  <option value="featured">Featured</option>
-                  <option value="rating">Highest Rated</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="online">Online Now</option>
-                  <option value="newest">Newest</option>
-                </select>
-
-                {/* View Mode */}
-                <div className="flex border border-gray-300 rounded-md">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("grid")}
-                    className="rounded-r-none"
-                  >
-                    <Grid className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("list")}
-                    className="rounded-l-none"
-                  >
-                    <List className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Results Grid */}
-            <AnimatePresence>
-              <motion.div
-                key={viewMode}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-                    : "space-y-4"
-                }
+              <Button type="submit">Search</Button>
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
               >
-                {filteredAndSortedEscorts.map((escort) => (
-                  <EscortCard
-                    key={escort._id}
-                    escort={escort}
-                    onFavorite={handleFavorite}
-                    onContact={handleContact}
-                  />
-                ))}
-              </motion.div>
-            </AnimatePresence>
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+              </Button>
+            </div>
+          </form>
 
-            {/* No Results */}
-            {filteredAndSortedEscorts.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <Users className="w-16 h-16 mx-auto" />
+          {/* Filters */}
+          {showFilters && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Filters</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Location
+                    </label>
+                    <Input
+                      placeholder="City or area"
+                      value={filters.location}
+                      onChange={(e) => handleFilterChange("location", e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Age Range
+                    </label>
+                    <select
+                      value={filters.age}
+                      onChange={(e) => handleFilterChange("age", e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Any Age</option>
+                      <option value="18-25">18-25</option>
+                      <option value="26-35">26-35</option>
+                      <option value="36-45">36-45</option>
+                      <option value="46+">46+</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Services
+                    </label>
+                    <select
+                      value={filters.services}
+                      onChange={(e) => handleFilterChange("services", e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Any Service</option>
+                      <option value="in-call">In-call</option>
+                      <option value="out-call">Out-call</option>
+                      <option value="massage">Massage</option>
+                      <option value="gfe">GFE</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Price Range
+                    </label>
+                    <select
+                      value={filters.priceRange}
+                      onChange={(e) => handleFilterChange("priceRange", e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Any Price</option>
+                      <option value="0-100">$0-$100</option>
+                      <option value="100-200">$100-$200</option>
+                      <option value="200-300">$200-$300</option>
+                      <option value="300+">$300+</option>
+                    </select>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No escorts found
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Try adjusting your filters or search criteria
-                </p>
-                <Button onClick={handleFiltersReset}>Clear All Filters</Button>
-              </div>
-            )}
-          </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
+
+        {/* Results */}
+        {error ? (
+          <Card>
+            <CardContent className="text-center p-6">
+              <h2 className="text-xl font-semibold mb-2">Error Loading Escorts</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={fetchEscorts}>Try Again</Button>
+            </CardContent>
+          </Card>
+        ) : escorts.length === 0 ? (
+          <Card>
+            <CardContent className="text-center p-6">
+              <h2 className="text-xl font-semibold mb-2">No Escorts Found</h2>
+              <p className="text-gray-600 mb-4">
+                Try adjusting your search criteria or filters.
+              </p>
+              <Button onClick={() => {
+                setSearchTerm("");
+                setFilters({});
+                setSearchParams({});
+              }}>
+                Clear Filters
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {escorts.map((escort) => (
+              <Card 
+                key={escort._id} 
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => handleEscortClick(escort._id)}
+              >
+                <CardContent className="p-0">
+                  {/* Image */}
+                  <div className="relative h-48 bg-gray-200 rounded-t-lg overflow-hidden">
+                    {escort.gallery && escort.gallery.length > 0 ? (
+                      <img
+                        src={escort.gallery[0].url}
+                        alt={escort.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500">
+                        No Photo
+                      </div>
+                    )}
+                    
+                    {/* Favorite Button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFavorite(escort._id);
+                      }}
+                    >
+                      <Heart className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Verification Badge */}
+                    {escort.isVerified && (
+                      <div className="absolute top-2 left-2">
+                        <Badge variant="secondary" className="bg-green-500 text-white">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Verified
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-lg truncate">
+                        {escort.name}
+                      </h3>
+                      {escort.subscriptionTier && escort.subscriptionTier !== "free" && (
+                        <Badge variant="outline" className="text-xs">
+                          <Shield className="h-3 w-3 mr-1" />
+                          {escort.subscriptionTier}
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-1 text-sm text-gray-600">
+                      {escort.location?.city && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{escort.location.city}</span>
+                        </div>
+                      )}
+                      
+                      {escort.age && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>{escort.age} years old</span>
+                        </div>
+                      )}
+                      
+                      {escort.rates?.hourly && (
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          <span>${escort.rates.hourly}/hour</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {escort.services && escort.services.length > 0 && (
+                      <div className="mt-3">
+                        <div className="flex flex-wrap gap-1">
+                          {escort.services.slice(0, 3).map((service, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {service}
+                            </Badge>
+                          ))}
+                          {escort.services.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{escort.services.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 };
 

@@ -5,12 +5,31 @@ import { RouteSignIn } from "@/helpers/RouteName";
 const OnlyEscortAllowed = () => {
   const user = useSelector((state) => state.user);
 
-  if (!user.isLoggedIn) {
-    return <Navigate to={RouteSignIn} replace />;
-  }
+  // Check if user is logged in via Redux
+  if (!user?.isLoggedIn) {
+    // Fallback to localStorage check
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
 
-  if (user.user.role !== "escort") {
-    return <Navigate to="/" replace />;
+    if (!storedUser || !token) {
+      return <Navigate to={RouteSignIn} replace />;
+    }
+
+    // Try to parse stored user
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser.role !== "escort") {
+        return <Navigate to="/" replace />;
+      }
+    } catch (error) {
+      console.error("Error parsing stored user:", error);
+      return <Navigate to={RouteSignIn} replace />;
+    }
+  } else {
+    // Check Redux user role
+    if (user?.user?.role !== "escort") {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <Outlet />;

@@ -3,6 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
+import cloudinary from "../config/cloudinary.js";
 
 /**
  * Get all escorts with filtering and pagination
@@ -470,6 +471,115 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
           },
         },
         "Search results retrieved successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Create escort profile
+ * POST /api/escort/create
+ */
+export const createEscortProfile = asyncHandler(async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    
+    // Check if user already has an escort profile
+    const existingEscort = await User.findOne({ _id: userId, role: "escort" });
+    if (existingEscort) {
+      throw new ApiError(400, "Escort profile already exists");
+    }
+
+    // Extract data from request
+    const {
+      name,
+      alias,
+      email,
+      phone,
+      age,
+      gender,
+      country,
+      city,
+      subLocation,
+      services,
+      hourlyRate,
+      isStandardPricing,
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !age || !gender || !country || !city || !hourlyRate) {
+      throw new ApiError(400, "Missing required fields");
+    }
+
+    // Parse services if it's a string
+    const servicesArray = typeof services === "string" ? JSON.parse(services) : services;
+
+    // Handle file uploads
+    const gallery = [];
+    if (req.files && req.files.gallery) {
+      const files = Array.isArray(req.files.gallery) ? req.files.gallery : [req.files.gallery];
+      for (const file of files) {
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "escort-gallery",
+        });
+        gallery.push({
+          url: result.secure_url,
+          publicId: result.public_id,
+        });
+      }
+    }
+
+    // Handle ID document upload
+    let idDocumentUrl = null;
+    if (req.files && req.files.idDocument) {
+      const file = req.files.idDocument;
+      const result = await cloudinary.uploader.upload(file.path, {
+        folder: "id-documents",
+      });
+      idDocumentUrl = result.secure_url;
+    }
+
+    // Update user with escort profile
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        role: "escort",
+        name,
+        alias,
+        email,
+        phone,
+        age: parseInt(age),
+        gender,
+        location: {
+          country,
+          city,
+          subLocation,
+        },
+        services: servicesArray,
+        rates: {
+          hourly: parseFloat(hourlyRate),
+          isStandardPricing: isStandardPricing === "true",
+        },
+        gallery,
+        idDocument: idDocumentUrl,
+        isAgeVerified: !!idDocumentUrl, // Set to true if ID document is uploaded
+        subscriptionTier: "free",
+        subscriptionStatus: "active",
+      },
+      { new: true }
+    );
+
+    return res.status(201).json(
+      new ApiResponse(
+        201,
+        {
+          user: updatedUser,
+          message: "Escort profile created successfully",
+        },
+        "Escort profile created successfully"
       )
     );
   } catch (error) {

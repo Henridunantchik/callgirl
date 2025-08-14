@@ -76,11 +76,14 @@ const EscortDashboard = () => {
         }
 
         // Fetch recent bookings (placeholder for now)
-        const bookingsResponse = await fetch("/api/booking/escort", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const bookingsResponse = await fetch(
+          "http://localhost:5000/api/booking/escort",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
 
         if (bookingsResponse.ok) {
           const bookingsData = await bookingsResponse.json();

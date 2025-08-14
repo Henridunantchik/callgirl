@@ -2,23 +2,13 @@ import express from "express";
 import User from "../models/user.model.js";
 import {
   getAllEscorts,
-  getEscortProfile,
-  getEscortBySlug,
+  getEscortById,
   createEscortProfile,
   updateEscortProfile,
-  deleteEscortProfile,
+  uploadMedia,
+  getEscortSubscription,
+  getProfileCompletion,
   searchEscorts,
-  getEscortsByLocation,
-  getEscortsByCategory,
-  updateEscortStatus,
-  uploadGallery,
-  deleteGalleryImage,
-  reorderGallery,
-  uploadVideo,
-  deleteVideo,
-  verifyEscort,
-  getEscortStats,
-  getEscortAnalytics,
 } from "../controllers/Escort.controller.js";
 import upload from "../config/multer.js";
 import { authenticate } from "../middleware/authenticate.js";
@@ -28,11 +18,19 @@ const EscortRoute = express.Router();
 
 // Public routes (age verification required)
 EscortRoute.get("/all", getAllEscorts);
-EscortRoute.get("/profile/:id", getEscortProfile);
-EscortRoute.get("/slug/:slug", getEscortBySlug);
+EscortRoute.get("/profile/:id", getEscortById);
 EscortRoute.get("/search", searchEscorts);
-EscortRoute.get("/location/:city", getEscortsByLocation);
-EscortRoute.get("/category/:category", getEscortsByCategory);
+
+// Create escort profile (requires authentication)
+EscortRoute.post(
+  "/create",
+  authenticate,
+  upload.fields([
+    { name: "gallery", maxCount: 20 },
+    { name: "idDocument", maxCount: 1 },
+  ]),
+  createEscortProfile
+);
 
 // Debug route to see all escorts
 EscortRoute.get("/debug/all", async (req, res) => {
@@ -161,35 +159,6 @@ EscortRoute.get("/debug/complete", async (req, res) => {
   }
 });
 
-// Public routes (for registration)
-EscortRoute.post(
-  "/create",
-  (req, res, next) => {
-    console.log("=== ESCORT CREATE ROUTE HIT ===");
-    console.log("Request method:", req.method);
-    console.log("Request path:", req.path);
-    console.log("Request headers:", req.headers);
-    next();
-  },
-  authenticate,
-  (req, res, next) => {
-    console.log("=== AFTER AUTHENTICATION ===");
-    console.log("User:", req.user);
-    next();
-  },
-  upload.fields([
-    { name: "gallery", maxCount: 20 },
-    { name: "idDocument", maxCount: 1 },
-  ]),
-  (req, res, next) => {
-    console.log("=== AFTER MULTER ===");
-    console.log("Files:", req.files);
-    console.log("Body:", req.body);
-    next();
-  },
-  createEscortProfile
-);
-
 // Authenticated routes
 EscortRoute.put(
   "/update/:id",
@@ -198,53 +167,18 @@ EscortRoute.put(
   upload.array("gallery", 20),
   updateEscortProfile
 );
-EscortRoute.delete(
-  "/delete/:id",
-  authenticate,
-  onlyEscort,
-  deleteEscortProfile
-);
-EscortRoute.put("/status/:id", authenticate, onlyEscort, updateEscortStatus);
 
-// Gallery management
+// Media upload
 EscortRoute.post(
-  "/gallery/:id",
+  "/media/:id",
   authenticate,
   onlyEscort,
-  upload.array("gallery", 10),
-  uploadGallery
-);
-EscortRoute.delete(
-  "/gallery/:id/:imageId",
-  authenticate,
-  onlyEscort,
-  deleteGalleryImage
-);
-EscortRoute.put(
-  "/gallery/reorder/:id",
-  authenticate,
-  onlyEscort,
-  reorderGallery
+  upload.array("media", 10),
+  uploadMedia
 );
 
-// Video management
-EscortRoute.post(
-  "/video/:id",
-  authenticate,
-  onlyEscort,
-  upload.single("video"),
-  uploadVideo
-);
-EscortRoute.delete(
-  "/video/:id/:videoId",
-  authenticate,
-  onlyEscort,
-  deleteVideo
-);
-
-// Admin routes
-EscortRoute.put("/verify/:id", authenticate, verifyEscort);
-EscortRoute.get("/stats/:id", authenticate, onlyEscort, getEscortStats);
-EscortRoute.get("/analytics/:id", authenticate, onlyEscort, getEscortAnalytics);
+// Subscription and profile info
+EscortRoute.get("/subscription/:id", authenticate, onlyEscort, getEscortSubscription);
+EscortRoute.get("/profile-completion/:id", authenticate, onlyEscort, getProfileCompletion);
 
 export default EscortRoute;
