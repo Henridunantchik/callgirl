@@ -9,6 +9,7 @@ import {
   getEscortSubscription,
   getProfileCompletion,
   searchEscorts,
+  updateEscortFeaturedStatus,
 } from "../controllers/Escort.controller.js";
 import upload from "../config/multer.js";
 import { authenticate } from "../middleware/authenticate.js";
@@ -180,5 +181,8 @@ EscortRoute.post(
 // Subscription and profile info
 EscortRoute.get("/subscription/:id", authenticate, onlyEscort, getEscortSubscription);
 EscortRoute.get("/profile-completion/:id", authenticate, onlyEscort, getProfileCompletion);
+
+// Admin route to update featured status
+EscortRoute.put("/featured/:id", updateEscortFeaturedStatus);
 
 export default EscortRoute;

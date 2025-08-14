@@ -9,10 +9,15 @@ export const authenticate = async (req, res, next) => {
     console.log("Authorization header:", req.headers.authorization);
 
     // Check for token in cookies first, then Authorization header
-    let token = req.cookies.access_token;
+    let token = null;
+    
+    // Check cookies if they exist
+    if (req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+    }
 
+    // If no token in cookies, check Authorization header
     if (!token) {
-      // Check Authorization header
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith("Bearer ")) {
         token = authHeader.substring(7); // Remove 'Bearer ' prefix

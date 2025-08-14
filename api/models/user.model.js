@@ -7,12 +7,20 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    alias: {
+      type: String,
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       lowercase: true,
+    },
+    phone: {
+      type: String,
+      trim: true,
     },
     password: {
       type: String,
@@ -21,8 +29,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "escort", "admin"],
-      default: "user",
+      enum: ["user", "client", "escort", "admin"],
+      default: "client",
     },
     isActive: {
       type: Boolean,
@@ -46,16 +54,299 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "inactive", "cancelled", "expired"],
       default: "active",
     },
+    // Escort-specific fields
+    age: {
+      type: Number,
+      min: 18,
+      max: 100,
+    },
+    gender: {
+      type: String,
+      enum: ["female", "male", "transgender", "non-binary", "other"],
+    },
+    location: {
+      country: {
+        type: String,
+        trim: true,
+      },
+      city: {
+        type: String,
+        trim: true,
+      },
+      subLocation: {
+        type: String,
+        trim: true,
+      },
+      coordinates: {
+        type: {
+          type: String,
+          enum: ["Point"],
+        },
+        coordinates: {
+          type: [Number],
+          required: false,
+        },
+      },
+    },
+    bio: {
+      type: String,
+      maxlength: 2000,
+    },
+    services: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    rates: {
+      hourly: {
+        type: Number,
+        min: 0,
+      },
+      overnight: {
+        type: Number,
+        min: 0,
+      },
+      weekend: {
+        type: Number,
+        min: 0,
+      },
+      currency: {
+        type: String,
+        default: "USD",
+        enum: ["USD", "EUR", "GBP", "CAD", "AUD"],
+      },
+      isStandardPricing: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    availability: {
+      type: [String],
+      enum: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
+      default: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
+    },
+    workingHours: {
+      start: {
+        type: String,
+        default: "09:00",
+      },
+      end: {
+        type: String,
+        default: "23:00",
+      },
+    },
+    gallery: [
+      {
+        url: {
+          type: String,
+          required: true,
+        },
+        publicId: {
+          type: String,
+          required: true,
+        },
+        caption: {
+          type: String,
+          trim: true,
+        },
+        isPrivate: {
+          type: Boolean,
+          default: false,
+        },
+        order: {
+          type: Number,
+          default: 0,
+        },
+      },
+    ],
+    videos: [
+      {
+        url: {
+          type: String,
+          required: true,
+        },
+        publicId: {
+          type: String,
+          required: true,
+        },
+        caption: {
+          type: String,
+          trim: true,
+        },
+        type: {
+          type: String,
+          enum: ["intro", "gallery"],
+          default: "gallery",
+        },
+        isPrivate: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    idDocument: {
+      type: String,
+    },
+    verification: {
+      isVerified: {
+        type: Boolean,
+        default: false,
+      },
+      documents: [
+        {
+          type: {
+            type: String,
+            enum: ["id", "passport", "drivers_license"],
+            required: true,
+          },
+          url: {
+            type: String,
+            required: true,
+          },
+          publicId: {
+            type: String,
+            required: true,
+          },
+          verified: {
+            type: Boolean,
+            default: false,
+          },
+          verifiedAt: {
+            type: Date,
+          },
+        },
+      ],
+    },
+    stats: {
+      views: {
+        type: Number,
+        default: 0,
+      },
+      favorites: {
+        type: Number,
+        default: 0,
+      },
+      reviews: {
+        type: Number,
+        default: 0,
+      },
+      rating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5,
+      },
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
+    profileCompletion: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
   },
   {
     timestamps: true,
   }
 );
 
+// Create geospatial index for location-based queries (only if coordinates exist)
+userSchema.index({ "location.coordinates": "2dsphere" }, { sparse: true });
+
+// Create text index for search functionality
+userSchema.index({
+  name: "text",
+  alias: "text",
+  bio: "text",
+  "location.city": "text",
+  "location.country": "text",
+  services: "text",
+});
+
+// Create compound indexes for common queries
+userSchema.index({ isActive: 1, isAvailable: 1 });
+userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ "location.city": 1, "location.country": 1 });
+userSchema.index({ gender: 1, isActive: 1 });
+userSchema.index({ age: 1, isActive: 1 });
+
 // Add methods to the schema
 userSchema.methods.isProfileComplete = function () {
   if (this.role !== "escort") return false;
-  return true; // Simplified for testing
+
+  const requiredFields = [
+    "name",
+    "alias",
+    "email",
+    "phone",
+    "age",
+    "gender",
+    "location.city",
+    "location.country",
+    "services",
+    "rates.hourly",
+    "gallery",
+  ];
+
+  const completedFields = requiredFields.filter((field) => {
+    const value = this.get(field);
+    return value && (Array.isArray(value) ? value.length > 0 : value);
+  });
+
+  return completedFields.length === requiredFields.length;
+};
+
+userSchema.methods.getProfileCompletionPercentage = function () {
+  if (this.role !== "escort") return 0;
+
+  const requiredFields = [
+    "name",
+    "alias",
+    "email",
+    "phone",
+    "age",
+    "gender",
+    "location.city",
+    "location.country",
+    "services",
+    "rates.hourly",
+    "gallery",
+  ];
+
+  const completedFields = requiredFields.filter((field) => {
+    const value = this.get(field);
+    return value && (Array.isArray(value) ? value.length > 0 : value);
+  });
+
+  return Math.round((completedFields.length / requiredFields.length) * 100);
 };
 
 userSchema.methods.canUploadMedia = function (mediaType, currentCount) {
@@ -125,6 +416,15 @@ userSchema.methods.getSubscriptionBenefits = function () {
 
   return benefits[this.subscriptionTier] || benefits.free;
 };
+
+// Pre-save middleware to update lastSeen and profile completion
+userSchema.pre("save", function (next) {
+  if (this.role === "escort") {
+    this.lastSeen = new Date();
+    this.profileCompletion = this.getProfileCompletionPercentage();
+  }
+  next();
+});
 
 const User = mongoose.model("User", userSchema);
 

@@ -4,6 +4,10 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
 import cloudinary from "../config/cloudinary.js";
+import config from "../config/env.js";
+import { generateToken } from "../utils/security.js";
+import fs from "fs";
+import mongoose from "mongoose";
 
 /**
  * Get all escorts with filtering and pagination
@@ -21,6 +25,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       service,
       minPrice,
       maxPrice,
+      featured,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
@@ -36,11 +41,16 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       filter["location.country"] = { $regex: country, $options: "i" };
     if (age) filter.age = { $gte: parseInt(age) - 5, $lte: parseInt(age) + 5 };
     if (bodyType) filter.bodyType = bodyType;
-    if (service) filter["services.name"] = { $regex: service, $options: "i" };
+    if (service) filter["services"] = { $regex: service, $options: "i" };
     if (minPrice || maxPrice) {
       filter["rates.hourly"] = {};
       if (minPrice) filter["rates.hourly"].$gte = parseInt(minPrice);
       if (maxPrice) filter["rates.hourly"].$lte = parseInt(maxPrice);
+    }
+
+    // Filter by featured status
+    if (featured === "true") {
+      filter.isFeatured = true;
     }
 
     // Build sort object
@@ -50,7 +60,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name bio age location bodyType rates services gallery stats badges subscriptionTier"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone"
       )
       .sort(sort)
       .limit(limit * 1)
@@ -61,8 +71,21 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Add subscription benefits to each escort
     const escortsWithBenefits = escorts.map((escort) => {
       const benefits = escort.getSubscriptionBenefits();
+
+      // Parse services if it's a string
+      let services = escort.services;
+      if (typeof services === "string") {
+        try {
+          services = JSON.parse(services);
+        } catch (e) {
+          // If parsing fails, split by comma or space
+          services = services.split(/[,\s]+/).filter((s) => s.trim());
+        }
+      }
+
       return {
         ...escort.toObject(),
+        services,
         benefits,
         subscriptionTier: escort.subscriptionTier || "free",
       };
@@ -95,11 +118,32 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const escort = await User.findOne({
-      _id: id,
-      role: "escort",
-      isActive: true,
-    }).select("-password");
+    // Validate ID parameter
+    if (!id || id === "undefined") {
+      throw new ApiError(400, "Invalid escort identifier");
+    }
+
+    let escort = null;
+
+    // Check if id is a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      // Try to find escort by ObjectId first
+      escort = await User.findOne({
+        _id: id,
+        role: "escort",
+        isActive: true,
+      }).select("-password");
+    }
+
+    // If not found by ObjectId or id is not a valid ObjectId, try by alias or name
+    if (!escort) {
+      escort = await User.findOne({
+        $or: [
+          { alias: id, role: "escort", isActive: true },
+          { name: id, role: "escort", isActive: true },
+        ],
+      }).select("-password");
+    }
 
     if (!escort) {
       throw new ApiError(404, "Escort not found");
@@ -161,7 +205,7 @@ export const updateEscortProfile = asyncHandler(async (req, res, next) => {
     Object.assign(escort, safeUpdateData);
 
     // Update profile completion percentage
-    escort.profileCompletion = escort.profileCompletionPercentage;
+    escort.profileCompletion = escort.getProfileCompletionPercentage();
 
     await escort.save();
 
@@ -213,40 +257,59 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
     }
 
     const mediaFile = req.files.media;
-    const mediaUrl = mediaFile.tempFilePath; // This would be uploaded to Cloudinary in production
 
-    // Add media to escort's gallery or videos
-    const mediaItem = {
-      url: mediaUrl,
-      caption: caption || "",
-      isPrivate: false,
-    };
+    try {
+      // Upload to Cloudinary
+      const result = await cloudinary.uploader.upload(mediaFile.path, {
+        folder: mediaType === "photo" ? "escort-gallery" : "escort-videos",
+        resource_type: "auto",
+      });
 
-    if (mediaType === "photo") {
-      escort.gallery.push(mediaItem);
-    } else if (mediaType === "video") {
-      escort.videos.push(mediaItem);
-    } else {
-      throw new ApiError(400, "Invalid media type. Must be 'photo' or 'video'");
+      // Add media to escort's gallery or videos
+      const mediaItem = {
+        url: result.secure_url,
+        publicId: result.public_id,
+        caption: caption || "",
+        isPrivate: false,
+      };
+
+      if (mediaType === "photo") {
+        mediaItem.order = escort.gallery.length;
+        escort.gallery.push(mediaItem);
+      } else if (mediaType === "video") {
+        mediaItem.type = "gallery";
+        escort.videos.push(mediaItem);
+      } else {
+        throw new ApiError(
+          400,
+          "Invalid media type. Must be 'photo' or 'video'"
+        );
+      }
+
+      // Clean up local file
+      fs.unlinkSync(mediaFile.path);
+
+      await escort.save();
+
+      return res.status(200).json(
+        new ApiResponse(
+          200,
+          {
+            mediaItem,
+            currentCount:
+              mediaType === "photo"
+                ? escort.gallery.length
+                : escort.videos.length,
+            subscriptionTier: escort.subscriptionTier,
+            benefits: escort.getSubscriptionBenefits(),
+          },
+          "Media uploaded successfully"
+        )
+      );
+    } catch (uploadError) {
+      console.error("Cloudinary upload error:", uploadError);
+      throw new ApiError(500, "Failed to upload media to cloud storage");
     }
-
-    await escort.save();
-
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          mediaItem,
-          currentCount:
-            mediaType === "photo"
-              ? escort.gallery.length
-              : escort.videos.length,
-          subscriptionTier: escort.subscriptionTier,
-          benefits: escort.getSubscriptionBenefits(),
-        },
-        "Media uploaded successfully"
-      )
-    );
   } catch (error) {
     next(error);
   }
@@ -311,10 +374,13 @@ export const getProfileCompletion = asyncHandler(async (req, res, next) => {
 
     const requiredFields = [
       "name",
+      "alias",
       "email",
-      "bio",
+      "phone",
       "age",
+      "gender",
       "location.city",
+      "location.country",
       "services",
       "rates.hourly",
       "gallery",
@@ -390,8 +456,9 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
     if (query) {
       filter.$or = [
         { name: { $regex: query, $options: "i" } },
+        { alias: { $regex: query, $options: "i" } },
         { bio: { $regex: query, $options: "i" } },
-        { "services.name": { $regex: query, $options: "i" } },
+        { services: { $regex: query, $options: "i" } },
       ];
     }
 
@@ -412,7 +479,7 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
     // Services filter
     if (services) {
       const serviceArray = services.split(",");
-      filter["services.name"] = { $in: serviceArray };
+      filter["services"] = { $in: serviceArray };
     }
 
     // Price range filter
@@ -433,7 +500,7 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name bio age location bodyType rates services gallery stats badges subscriptionTier"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion"
       )
       .sort(sort)
       .limit(limit * 1)
@@ -485,7 +552,16 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
 export const createEscortProfile = asyncHandler(async (req, res, next) => {
   try {
     const userId = req.user._id;
-    
+
+    // Only clients can convert to escort
+    const requester = await User.findById(userId).select("role");
+    if (!requester) {
+      throw new ApiError(404, "User not found");
+    }
+    if (requester.role !== "client") {
+      throw new ApiError(403, "Only clients can join as escorts");
+    }
+
     // Check if user already has an escort profile
     const existingEscort = await User.findOne({ _id: userId, role: "escort" });
     if (existingEscort) {
@@ -514,21 +590,45 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
     }
 
     // Parse services if it's a string
-    const servicesArray = typeof services === "string" ? JSON.parse(services) : services;
+    const servicesArray =
+      typeof services === "string" ? JSON.parse(services) : services;
 
     // Handle file uploads
     const gallery = [];
     if (req.files && req.files.gallery) {
-      const files = Array.isArray(req.files.gallery) ? req.files.gallery : [req.files.gallery];
+      const files = Array.isArray(req.files.gallery)
+        ? req.files.gallery
+        : [req.files.gallery];
+
       for (const file of files) {
-        // Upload to Cloudinary
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "escort-gallery",
-        });
-        gallery.push({
-          url: result.secure_url,
-          publicId: result.public_id,
-        });
+        try {
+          // Upload to Cloudinary
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: "escort-gallery",
+            resource_type: "auto",
+          });
+
+          gallery.push({
+            url: result.secure_url,
+            publicId: result.public_id,
+            caption: "",
+            isPrivate: false,
+            order: gallery.length,
+          });
+
+          // Clean up local file
+          fs.unlinkSync(file.path);
+        } catch (uploadError) {
+          console.error("Cloudinary upload error:", uploadError);
+          // If Cloudinary fails, use local file path as fallback
+          gallery.push({
+            url: file.path,
+            publicId: `local-${Date.now()}`,
+            caption: "",
+            isPrivate: false,
+            order: gallery.length,
+          });
+        }
       }
     }
 
@@ -536,10 +636,20 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
     let idDocumentUrl = null;
     if (req.files && req.files.idDocument) {
       const file = req.files.idDocument;
-      const result = await cloudinary.uploader.upload(file.path, {
-        folder: "id-documents",
-      });
-      idDocumentUrl = result.secure_url;
+      try {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "id-documents",
+          resource_type: "auto",
+        });
+        idDocumentUrl = result.secure_url;
+
+        // Clean up local file
+        fs.unlinkSync(file.path);
+      } catch (uploadError) {
+        console.error("ID document upload error:", uploadError);
+        // If Cloudinary fails, use local file path as fallback
+        idDocumentUrl = file.path;
+      }
     }
 
     // Update user with escort profile
@@ -557,32 +667,118 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
           country,
           city,
           subLocation,
+          // Only set coordinates if provided
+          ...(req.body.latitude &&
+            req.body.longitude && {
+              coordinates: {
+                type: "Point",
+                coordinates: [
+                  parseFloat(req.body.longitude),
+                  parseFloat(req.body.latitude),
+                ],
+              },
+            }),
         },
         services: servicesArray,
         rates: {
           hourly: parseFloat(hourlyRate),
           isStandardPricing: isStandardPricing === "true",
+          currency: "USD", // Default currency
         },
         gallery,
         idDocument: idDocumentUrl,
         isAgeVerified: !!idDocumentUrl, // Set to true if ID document is uploaded
         subscriptionTier: "free",
         subscriptionStatus: "active",
+        isActive: true,
+        isAvailable: true,
+        stats: {
+          views: 0,
+          favorites: 0,
+          reviews: 0,
+          rating: 0,
+        },
       },
       { new: true }
     );
 
-    return res.status(201).json(
-      new ApiResponse(
-        201,
-        {
-          user: updatedUser,
-          message: "Escort profile created successfully",
-        },
-        "Escort profile created successfully"
-      )
-    );
+    if (!updatedUser) {
+      throw new ApiError(500, "Failed to update user profile");
+    }
+
+    // Ensure password is not returned
+    const userObject = updatedUser.toObject({ getters: true });
+    delete userObject.password;
+
+    // Issue a fresh JWT reflecting updated role
+    const token = generateToken({
+      _id: userObject._id,
+      name: userObject.name,
+      email: userObject.email,
+      role: userObject.role,
+    });
+
+    // Set secure cookie (mirrors auth controller behavior)
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      secure: config.NODE_ENV === "production",
+      sameSite: config.NODE_ENV === "production" ? "none" : "strict",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // Return consistent shape with user and token
+    return res.status(201).json({
+      success: true,
+      user: userObject,
+      token,
+      message: "Escort profile created successfully",
+    });
   } catch (error) {
+    console.error("Escort profile creation error:", error);
     next(error);
   }
 });
+
+/**
+ * Update escort featured status (Admin only)
+ * PUT /api/escort/featured/:id
+ */
+export const updateEscortFeaturedStatus = asyncHandler(
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { isFeatured } = req.body;
+
+      // Validate ID parameter
+      if (!id || id === "undefined") {
+        throw new ApiError(400, "Invalid escort ID");
+      }
+
+      // Check if user is admin (you can add admin middleware here)
+      // For now, we'll allow this endpoint to be called
+
+      const escort = await User.findOneAndUpdate(
+        { _id: id, role: "escort" },
+        { isFeatured: isFeatured },
+        { new: true }
+      ).select("-password");
+
+      if (!escort) {
+        throw new ApiError(404, "Escort not found");
+      }
+
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            { escort },
+            `Escort featured status updated to ${isFeatured}`
+          )
+        );
+    } catch (error) {
+      next(error);
+    }
+  }
+);

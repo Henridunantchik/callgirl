@@ -85,10 +85,13 @@ const App = () => {
 
             {/* Public Escort Directory Routes */}
             <Route path="escorts" element={<EscortList />} />
-            <Route path="escort/:slug" element={<EscortProfile />} />
+            <Route path="escort/list" element={<EscortList />} />
             <Route path="search" element={<SearchResult />} />
             <Route path="location/:city" element={<EscortList />} />
             <Route path="category/:category" element={<EscortList />} />
+            
+            {/* Public Escort Profile Route - Must be BEFORE authenticated routes */}
+            <Route path="escort/:slug" element={<EscortProfile />} />
 
             {/* Legal Pages */}
             <Route path="legal/privacy" element={<PrivacyPolicy />} />

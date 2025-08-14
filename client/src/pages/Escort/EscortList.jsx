@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { 
-  Search, 
-  Filter, 
-  MapPin, 
-  Calendar, 
-  DollarSign, 
-  Shield, 
+import {
+  Search,
+  Filter,
+  MapPin,
+  Calendar,
+  DollarSign,
+  Shield,
   CheckCircle,
   Star,
-  Heart
+  Heart,
 } from "lucide-react";
 import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
@@ -24,7 +29,23 @@ const EscortList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  
+  const { countryCode } = useParams();
+
+  // Function to get currency symbol based on country
+  const getCurrencySymbol = (countryCode) => {
+    const currencies = {
+      ug: "UGX",
+      ke: "KES",
+      tz: "TZS",
+      rw: "RWF",
+      bi: "BIF",
+      cd: "CDF",
+    };
+    return currencies[countryCode?.toLowerCase()] || "USD";
+  };
+
+  const currencySymbol = getCurrencySymbol(countryCode);
+
   const [escorts, setEscorts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,7 +67,7 @@ const EscortList = () => {
       setLoading(true);
       setError(null);
       console.log("🔍 Fetching escorts with filters:", { searchTerm, filters });
-      
+
       const params = {
         ...(searchTerm && { q: searchTerm }),
         ...(filters.location && { location: filters.location }),
@@ -54,21 +75,28 @@ const EscortList = () => {
         ...(filters.services && { services: filters.services }),
         ...(filters.priceRange && { priceRange: filters.priceRange }),
       };
-      
+
       const response = await escortAPI.getAllEscorts(params);
       console.log("✅ Escorts fetched:", response.data);
-      
-      if (response.data && response.data.escorts) {
+
+      if (response.data && response.data.data && response.data.data.escorts) {
+        setEscorts(response.data.data.escorts);
+      } else if (response.data && response.data.escorts) {
+        // Fallback for direct response
         setEscorts(response.data.escorts);
       } else if (response.data && Array.isArray(response.data)) {
         // Handle case where the response is an array directly
         setEscorts(response.data);
       } else {
+        console.error("Invalid response structure:", response.data);
         setEscorts([]);
       }
     } catch (error) {
       console.error("❌ Failed to fetch escorts:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to load escorts";
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to load escorts";
       setError(errorMessage);
       showToast("error", errorMessage);
     } finally {
@@ -84,12 +112,12 @@ const EscortList = () => {
     if (filters.age) newParams.set("age", filters.age);
     if (filters.services) newParams.set("services", filters.services);
     if (filters.priceRange) newParams.set("priceRange", filters.priceRange);
-    
+
     setSearchParams(newParams);
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleFavorite = (escortId) => {
@@ -98,13 +126,13 @@ const EscortList = () => {
       navigate(RouteSignIn);
       return;
     }
-    
+
     // TODO: Implement favorite functionality
     showToast("success", "Added to favorites!");
   };
 
-  const handleEscortClick = (escortId) => {
-    navigate(`/escort/${escortId}`);
+  const handleEscortClick = (escort) => {
+    navigate(`/${countryCode}/escort/${escort.alias || escort.name}`);
   };
 
   if (loading) {
@@ -123,8 +151,10 @@ const EscortList = () => {
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Find Escorts</h1>
-          
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            Find Escorts
+          </h1>
+
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="mb-6">
             <div className="flex gap-4">
@@ -139,8 +169,8 @@ const EscortList = () => {
                 />
               </div>
               <Button type="submit">Search</Button>
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
               >
@@ -165,17 +195,21 @@ const EscortList = () => {
                     <Input
                       placeholder="City or area"
                       value={filters.location}
-                      onChange={(e) => handleFilterChange("location", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("location", e.target.value)
+                      }
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Age Range
                     </label>
                     <select
                       value={filters.age}
-                      onChange={(e) => handleFilterChange("age", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("age", e.target.value)
+                      }
                       className="w-full p-2 border border-gray-300 rounded-md"
                     >
                       <option value="">Any Age</option>
@@ -185,14 +219,16 @@ const EscortList = () => {
                       <option value="46+">46+</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Services
                     </label>
                     <select
                       value={filters.services}
-                      onChange={(e) => handleFilterChange("services", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("services", e.target.value)
+                      }
                       className="w-full p-2 border border-gray-300 rounded-md"
                     >
                       <option value="">Any Service</option>
@@ -202,14 +238,16 @@ const EscortList = () => {
                       <option value="gfe">GFE</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Price Range
                     </label>
                     <select
                       value={filters.priceRange}
-                      onChange={(e) => handleFilterChange("priceRange", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("priceRange", e.target.value)
+                      }
                       className="w-full p-2 border border-gray-300 rounded-md"
                     >
                       <option value="">Any Price</option>
@@ -229,7 +267,9 @@ const EscortList = () => {
         {error ? (
           <Card>
             <CardContent className="text-center p-6">
-              <h2 className="text-xl font-semibold mb-2">Error Loading Escorts</h2>
+              <h2 className="text-xl font-semibold mb-2">
+                Error Loading Escorts
+              </h2>
               <p className="text-gray-600 mb-4">{error}</p>
               <Button onClick={fetchEscorts}>Try Again</Button>
             </CardContent>
@@ -241,11 +281,13 @@ const EscortList = () => {
               <p className="text-gray-600 mb-4">
                 Try adjusting your search criteria or filters.
               </p>
-              <Button onClick={() => {
-                setSearchTerm("");
-                setFilters({});
-                setSearchParams({});
-              }}>
+              <Button
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilters({});
+                  setSearchParams({});
+                }}
+              >
                 Clear Filters
               </Button>
             </CardContent>
@@ -253,10 +295,10 @@ const EscortList = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {escorts.map((escort) => (
-              <Card 
-                key={escort._id} 
+              <Card
+                key={escort._id}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handleEscortClick(escort._id)}
+                onClick={() => handleEscortClick(escort)}
               >
                 <CardContent className="p-0">
                   {/* Image */}
@@ -272,7 +314,7 @@ const EscortList = () => {
                         No Photo
                       </div>
                     )}
-                    
+
                     {/* Favorite Button */}
                     <Button
                       variant="ghost"
@@ -285,68 +327,100 @@ const EscortList = () => {
                     >
                       <Heart className="h-4 w-4" />
                     </Button>
-                    
+
                     {/* Verification Badge */}
                     {escort.isVerified && (
                       <div className="absolute top-2 left-2">
-                        <Badge variant="secondary" className="bg-green-500 text-white">
+                        <Badge
+                          variant="secondary"
+                          className="bg-green-500 text-white"
+                        >
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Verified
                         </Badge>
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Content */}
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-lg truncate">
                         {escort.name}
                       </h3>
-                      {escort.subscriptionTier && escort.subscriptionTier !== "free" && (
-                        <Badge variant="outline" className="text-xs">
-                          <Shield className="h-3 w-3 mr-1" />
-                          {escort.subscriptionTier}
-                        </Badge>
-                      )}
+                      {escort.subscriptionTier &&
+                        escort.subscriptionTier !== "free" && (
+                          <Badge variant="outline" className="text-xs">
+                            <Shield className="h-3 w-3 mr-1" />
+                            {escort.subscriptionTier}
+                          </Badge>
+                        )}
                     </div>
-                    
+
                     <div className="space-y-1 text-sm text-gray-600">
-                      {escort.location?.city && (
+                      {escort.location && (
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          <span>{escort.location.city}</span>
+                          <span>
+                            {(() => {
+                              // Handle location whether it's an object or string
+                              if (
+                                typeof escort.location === "object" &&
+                                escort.location.city
+                              ) {
+                                return escort.location.city;
+                              } else if (typeof escort.location === "string") {
+                                return escort.location;
+                              } else {
+                                return "Location not specified";
+                              }
+                            })()}
+                          </span>
                         </div>
                       )}
-                      
+
                       {escort.age && (
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           <span>{escort.age} years old</span>
                         </div>
                       )}
-                      
-                      {escort.rates?.hourly && (
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          <span>${escort.rates.hourly}/hour</span>
-                        </div>
-                      )}
                     </div>
-                    
-                    {escort.services && escort.services.length > 0 && (
+
+                    {escort.services && (
                       <div className="mt-3">
                         <div className="flex flex-wrap gap-1">
-                          {escort.services.slice(0, 3).map((service, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {service}
-                            </Badge>
-                          ))}
-                          {escort.services.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{escort.services.length - 3} more
-                            </Badge>
-                          )}
+                          {(() => {
+                            // Handle services whether it's a string or array
+                            let servicesArray = escort.services;
+                            if (typeof servicesArray === "string") {
+                              // Split by common delimiters and clean up
+                              servicesArray = servicesArray
+                                .split(/[,\s]+/)
+                                .filter((s) => s.trim());
+                            }
+
+                            // Show first 3 services
+                            const displayServices = servicesArray.slice(0, 3);
+                            return (
+                              <>
+                                {displayServices.map((service, index) => (
+                                  <Badge
+                                    key={index}
+                                    variant="outline"
+                                    className="text-xs"
+                                  >
+                                    {service}
+                                  </Badge>
+                                ))}
+                                {servicesArray.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{servicesArray.length - 3} more
+                                  </Badge>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}

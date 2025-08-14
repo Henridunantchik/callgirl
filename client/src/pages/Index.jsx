@@ -51,10 +51,16 @@ const Index = () => {
     const fetchEscorts = async () => {
       try {
         setLoading(true);
-        console.log("Fetching escorts from API...");
-        const response = await escortAPI.getAllEscorts();
+        console.log("Fetching featured escorts from API...");
+        const response = await escortAPI.getAllEscorts({
+          featured: true,
+          _t: Date.now(), // Cache busting parameter
+        });
         console.log("API response:", response.data);
-        setEscortData(response.data);
+        console.log("Escorts count:", response.data?.data?.escorts?.length || 0);
+        console.log("Total count:", response.data?.data?.total || 0);
+        // Fix: Set the correct data structure - response.data.data contains the actual data
+        setEscortData(response.data.data);
         setError(null);
       } catch (err) {
         console.error("Error fetching escorts:", err);
@@ -292,14 +298,20 @@ const Index = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">Featured Escorts</h2>
-          <Button variant="outline">
-            <FaFilter className="mr-2" />
-            Advanced Filters
+          <Button variant="outline" asChild>
+            <Link to={`/${countryCode}/escort/list`}>
+              <FaFilter className="mr-2" />
+              View All Escorts
+            </Link>
           </Button>
         </div>
 
-        {escortData && escortData.escorts && escortData.escorts.length > 0 ? (
+        {escortData?.escorts && escortData.escorts.length > 0 ? (
           <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6">
+            {console.log(
+              "Rendering escorts, count:",
+              escortData.escorts.length
+            )}
             {escortData.escorts.map((escort) => {
               console.log("Rendering escort:", escort);
               return (
@@ -312,24 +324,27 @@ const Index = () => {
             })}
           </div>
         ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <div className="text-gray-500">
-                {loading
-                  ? "Loading escorts..."
-                  : error
-                  ? `Error loading escorts: ${error.message}`
-                  : escortData
-                  ? `No escorts found. Total: ${escortData.total || 0}`
-                  : "No escorts found. Try adjusting your search criteria."}
-              </div>
-              {error && (
-                <div className="mt-4 text-red-500 text-sm">
-                  Debug: {JSON.stringify(error)}
+          (console.log("No escorts to render. escortData:", escortData),
+          (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="text-gray-500">
+                  {loading
+                    ? "Loading escorts..."
+                    : error
+                    ? `Error loading escorts: ${error.message}`
+                    : escortData
+                    ? `No escorts found. Total: ${escortData.total || 0}`
+                    : "No escorts found. Try adjusting your search criteria."}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                {error && (
+                  <div className="mt-4 text-red-500 text-sm">
+                    Debug: {JSON.stringify(error)}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 
