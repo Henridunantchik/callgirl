@@ -180,7 +180,7 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
  */
 export const updateEscortProfile = asyncHandler(async (req, res, next) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user._id;
     const updateData = req.body;
 
     // Remove sensitive fields that shouldn't be updated via this endpoint
@@ -223,7 +223,7 @@ export const updateEscortProfile = asyncHandler(async (req, res, next) => {
  */
 export const uploadMedia = asyncHandler(async (req, res, next) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user._id;
     const { mediaType, caption } = req.body;
 
     if (!req.files || !req.files.media) {
@@ -316,12 +316,180 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
 });
 
 /**
+ * Upload gallery photos for escort
+ * POST /api/escort/gallery/:id
+ */
+export const uploadGallery = asyncHandler(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    if (id !== userId) {
+      throw new ApiError(403, "You can only upload to your own profile");
+    }
+
+    if (!req.files || req.files.length === 0) {
+      throw new ApiError(400, "Gallery files are required");
+    }
+
+    const escort = await User.findById(userId);
+    if (!escort || escort.role !== "escort") {
+      throw new ApiError(404, "Escort not found");
+    }
+
+    // Check upload limits
+    const canUpload = escort.canUploadMedia("photo", escort.gallery.length);
+    if (!canUpload) {
+      const limit = escort.subscriptionTier === "verified" ? 20 : 10;
+      throw new ApiError(
+        403,
+        `Gallery upload limit reached. You can upload up to ${limit} photos with your current subscription.`
+      );
+    }
+
+    const uploadedFiles = [];
+
+    for (const file of req.files) {
+      try {
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "escort-gallery",
+          resource_type: "auto",
+        });
+
+        // Add to gallery
+        const mediaItem = {
+          url: result.secure_url,
+          publicId: result.public_id,
+          caption: "",
+          isPrivate: false,
+          order: escort.gallery.length,
+        };
+
+        escort.gallery.push(mediaItem);
+        uploadedFiles.push(mediaItem);
+
+        // Clean up local file
+        fs.unlinkSync(file.path);
+      } catch (uploadError) {
+        console.error(
+          "Cloudinary upload error for file:",
+          file.originalname,
+          uploadError
+        );
+        // Continue with other files even if one fails
+      }
+    }
+
+    await escort.save();
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          escort: { gallery: escort.gallery },
+          uploadedFiles,
+          currentCount: escort.gallery.length,
+        },
+        "Gallery uploaded successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Upload videos for escort
+ * POST /api/escort/video/:id
+ */
+export const uploadVideo = asyncHandler(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    if (id !== userId) {
+      throw new ApiError(403, "You can only upload to your own profile");
+    }
+
+    if (!req.files || req.files.length === 0) {
+      throw new ApiError(400, "Video files are required");
+    }
+
+    const escort = await User.findById(userId);
+    if (!escort || escort.role !== "escort") {
+      throw new ApiError(404, "Escort not found");
+    }
+
+    // Check upload limits
+    const canUpload = escort.canUploadMedia("video", escort.videos.length);
+    if (!canUpload) {
+      const limit = escort.subscriptionTier === "verified" ? 10 : 5;
+      throw new ApiError(
+        403,
+        `Video upload limit reached. You can upload up to ${limit} videos with your current subscription.`
+      );
+    }
+
+    const uploadedFiles = [];
+
+    for (const file of req.files) {
+      try {
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "escort-videos",
+          resource_type: "video",
+        });
+
+        // Add to videos
+        const mediaItem = {
+          url: result.secure_url,
+          publicId: result.public_id,
+          caption: "",
+          type: "gallery",
+          isPrivate: false,
+        };
+
+        escort.videos.push(mediaItem);
+        uploadedFiles.push(mediaItem);
+
+        // Clean up local file
+        fs.unlinkSync(file.path);
+      } catch (uploadError) {
+        console.error(
+          "Cloudinary upload error for file:",
+          file.originalname,
+          uploadError
+        );
+        // Continue with other files even if one fails
+      }
+    }
+
+    await escort.save();
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          escort: { videos: escort.videos },
+          uploadedFiles,
+          currentCount: escort.videos.length,
+        },
+        "Videos uploaded successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * Get escort's subscription status and benefits
  * GET /api/escort/subscription
  */
 export const getEscortSubscription = asyncHandler(async (req, res, next) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user._id;
 
     const escort = await User.findById(userId);
     if (!escort || escort.role !== "escort") {
@@ -365,7 +533,7 @@ export const getEscortSubscription = asyncHandler(async (req, res, next) => {
  */
 export const getProfileCompletion = asyncHandler(async (req, res, next) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user._id;
 
     const escort = await User.findById(userId);
     if (!escort || escort.role !== "escort") {

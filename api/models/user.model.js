@@ -22,6 +22,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    whatsapp: {
+      type: String,
+      trim: true,
+    },
+    telegram: {
+      type: String,
+      trim: true,
+    },
     password: {
       type: String,
       required: true,
@@ -64,6 +72,47 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["female", "male", "transgender", "non-binary", "other"],
     },
+    // Personal Details
+    bodyType: {
+      type: String,
+      trim: true,
+    },
+    ethnicity: {
+      type: String,
+      trim: true,
+    },
+    height: {
+      type: Number,
+      min: 100,
+      max: 250,
+    },
+    weight: {
+      type: Number,
+      min: 30,
+      max: 200,
+    },
+    hairColor: {
+      type: String,
+      trim: true,
+    },
+    eyeColor: {
+      type: String,
+      trim: true,
+    },
+    avatar: {
+      type: String,
+      trim: true,
+    },
+    experience: {
+      type: String,
+      maxlength: 1000,
+    },
+    languages: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     location: {
       country: {
         type: String,

@@ -58,6 +58,8 @@ const escortProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  whatsapp: z.string().optional(),
+  telegram: z.string().optional(),
   alias: z.string().min(2, "Professional name must be at least 2 characters"),
   age: z
     .number()
@@ -90,6 +92,8 @@ const EscortProfileEdit = () => {
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingVideos, setUploadingVideos] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [deletingVideo, setDeletingVideo] = useState(null);
+  const [avatarKey, setAvatarKey] = useState(0); // Force avatar re-render
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     location: true,
@@ -108,6 +112,8 @@ const EscortProfileEdit = () => {
       name: "",
       email: "",
       phone: "",
+      whatsapp: "",
+      telegram: "",
       alias: "",
       age: 18,
       gender: "",
@@ -140,6 +146,8 @@ const EscortProfileEdit = () => {
         name: user.name || "",
         email: user.email || "",
         phone: user.phone || "",
+        whatsapp: user.whatsapp || "",
+        telegram: user.telegram || "",
         alias: user.alias || "",
         age: user.age || 18,
         gender: user.gender || "",
@@ -214,6 +222,8 @@ const EscortProfileEdit = () => {
         name: values.name?.trim(),
         email: values.email?.trim(),
         phone: values.phone?.trim(),
+        whatsapp: values.whatsapp?.trim(),
+        telegram: values.telegram?.trim(),
         alias: values.alias?.trim(),
         age: values.age,
         gender: values.gender,
@@ -235,6 +245,8 @@ const EscortProfileEdit = () => {
           name: response.data.user.name || currentValues.name,
           email: response.data.user.email || currentValues.email,
           phone: response.data.user.phone || currentValues.phone,
+          whatsapp: response.data.user.whatsapp || currentValues.whatsapp,
+          telegram: response.data.user.telegram || currentValues.telegram,
           alias: response.data.user.alias || currentValues.alias,
           age: response.data.user.age || currentValues.age,
           gender: response.data.user.gender || currentValues.gender,
@@ -518,15 +530,41 @@ const EscortProfileEdit = () => {
       const formData = new FormData();
       formData.append("file", file);
 
+      console.log("=== AVATAR UPLOAD DEBUG ===");
+      console.log("File to upload:", file.name);
+      console.log("File size:", file.size);
+
       const response = await userAPI.uploadAvatar(formData);
+      console.log("Avatar upload response:", response.data);
 
       if (response.data.success) {
-        dispatch(setUser({ ...user, avatar: response.data.avatar }));
-        showToast("Avatar updated successfully!", "success");
+        console.log("=== AVATAR UPLOAD SUCCESS DEBUG ===");
+        console.log("Full response:", response.data);
+        console.log("User from response:", response.data.user);
+        console.log("Avatar URL from response:", response.data.user?.avatar);
+        console.log("Current user state:", user);
+
+        // Update the user state with new avatar
+        const updatedUser = { ...user, avatar: response.data.user.avatar };
+        console.log("Updated user object:", updatedUser);
+
+        dispatch(setUser(updatedUser));
+
+        // Force avatar re-render
+        setAvatarKey((prev) => prev + 1);
+
+        console.log("✅ Avatar uploaded successfully");
+        console.log("New avatar URL:", response.data.user.avatar);
+        console.log("Updated user state:", updatedUser);
+
+        showToast("Profile picture updated successfully!", "success");
+      } else {
+        showToast("Failed to upload profile picture", "error");
+        console.log("❌ Avatar upload failed");
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      showToast("Failed to upload avatar", "error");
+      showToast("Failed to upload profile picture", "error");
     } finally {
       setUploadingAvatar(false);
     }
@@ -566,7 +604,7 @@ const EscortProfileEdit = () => {
     }
   };
 
-  // Handle video upload
+  // Handle video upload with real progress
   const handleVideoUpload = async (files) => {
     try {
       setUploadingVideos(true);
@@ -582,36 +620,24 @@ const EscortProfileEdit = () => {
       console.log("User ID:", user._id);
       console.log("Files to upload:", files.length);
 
-      // Simulate realistic progress based on file size
-      const totalFiles = files.length;
-      let completedFiles = 0;
-
-      // Calculate total file size for progress
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      let uploadedSize = 0;
-
-      const progressInterval = setInterval(() => {
-        uploadedSize += totalSize / 20; // Simulate upload progress
-        const progress = Math.min(
-          Math.round((uploadedSize / totalSize) * 100),
-          95
-        );
-        setVideoUploadProgress(progress);
-
-        if (progress >= 95) {
-          clearInterval(progressInterval);
-        }
-      }, 200);
-
-      const response = await escortAPI.uploadVideo(user._id, formData);
-      console.log("Video upload response:", response.data);
-
-      // Clear interval and set to 100%
-      clearInterval(progressInterval);
-      setVideoUploadProgress(100);
+      // Use axios with progress tracking
+      const response = await escortAPI.uploadVideo(user._id, formData, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setVideoUploadProgress(progress);
+            console.log(`Upload progress: ${progress}%`);
+          }
+        },
+      });
+      console.log("Video upload response:", response);
 
       if (response.data.success) {
-        dispatch(setUser({ ...user, videos: response.data.escort.videos }));
+        dispatch(
+          setUser({ ...user, videos: response.data.data.escort.videos })
+        );
         showToast("Videos updated successfully!", "success");
         console.log("✅ Videos uploaded successfully");
       } else {
@@ -691,7 +717,7 @@ const EscortProfileEdit = () => {
   // Delete video
   const deleteVideo = async (videoId) => {
     try {
-      setSaving(true);
+      setDeletingVideo(videoId);
       showToast("Deleting video...", "info");
 
       console.log("=== DELETE VIDEO DEBUG ===");
@@ -715,7 +741,7 @@ const EscortProfileEdit = () => {
       console.error("Error deleting video:", error);
       showToast("Failed to delete video", "error");
     } finally {
-      setSaving(false);
+      setDeletingVideo(null);
     }
   };
 
@@ -765,6 +791,61 @@ const EscortProfileEdit = () => {
           Manage your escort profile, gallery, services, and settings
         </p>
       </div>
+
+      {/* Profile Picture */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Profile Picture
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-6">
+            {/* Current Avatar */}
+            <div className="flex flex-col items-center gap-2">
+              <Avatar className="w-24 h-24" key={avatarKey}>
+                <AvatarImage
+                  src={user.avatar || "/default-avatar.png"}
+                  alt="Profile picture"
+                  className="object-cover"
+                />
+              </Avatar>
+              <p className="text-xs text-gray-500">Current Picture</p>
+            </div>
+
+            {/* Upload New Avatar */}
+            <div className="flex-1">
+              <p className="text-sm text-gray-600 mb-3">
+                Upload a new profile picture
+              </p>
+              <Dropzone
+                onDrop={handleAvatarUpload}
+                accept={{ "image/*": [] }}
+                maxFiles={1}
+              >
+                {({ getRootProps, getInputProps }) => (
+                  <div
+                    {...getRootProps()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                  >
+                    <input {...getInputProps()} />
+                    <Upload className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600">
+                      {uploadingAvatar
+                        ? "Uploading..."
+                        : "Click to upload new profile picture"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Drag & drop or click to select image
+                    </p>
+                  </div>
+                )}
+              </Dropzone>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Profile Completion */}
       <Card className="mb-6">
@@ -866,6 +947,35 @@ const EscortProfileEdit = () => {
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
                           <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="whatsapp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>WhatsApp (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="+1234567890" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="telegram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telegram Username (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="@username or username"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1668,11 +1778,12 @@ const EscortProfileEdit = () => {
                   </div>
                 )}
 
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium">
-                      {user.videos ? user.videos.length : 0}/5 videos
-                    </p>
+                {/* Video Gallery Display */}
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      Uploaded Videos ({user.videos ? user.videos.length : 0}/5)
+                    </h4>
                     <Button
                       type="button"
                       onClick={saveVideos}
@@ -1684,25 +1795,52 @@ const EscortProfileEdit = () => {
                       {saving ? "Saving..." : "Save Videos"}
                     </Button>
                   </div>
+
                   {user.videos && user.videos.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {user.videos.map((video, index) => (
                         <div key={index} className="relative group">
                           <video
                             src={video.url}
+                            className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
                             controls
-                            className="w-full rounded"
+                            preload="metadata"
                           />
-                          <Button
+                          <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                            Video {index + 1}
+                          </div>
+                          <button
                             type="button"
-                            onClick={() => deleteVideo(video._id)}
-                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            size="sm"
+                            onClick={() => deleteVideo(video._id || index)}
+                            disabled={deletingVideo === (video._id || index)}
+                            className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
+                              deletingVideo === (video._id || index)
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-red-500 cursor-pointer hover:bg-red-600"
+                            }`}
                           >
-                            <X className="w-3 h-3" />
-                          </Button>
+                            {deletingVideo === (video._id || index) ? (
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Deleting...</span>
+                              </div>
+                            ) : (
+                              "×"
+                            )}
+                          </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* No videos message */}
+                  {(!user.videos || user.videos.length === 0) && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Video className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm">No videos uploaded yet</p>
+                      <p className="text-xs">
+                        Upload videos to showcase your profile
+                      </p>
                     </div>
                   )}
                 </div>

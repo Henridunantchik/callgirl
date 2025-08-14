@@ -46,11 +46,11 @@ const SignIn = () => {
     setIsLoading(true);
     try {
       console.log("🔐 Attempting login with:", values.email);
-      
+
       const response = await authAPI.login(values);
       console.log("📦 Raw API response:", response);
       console.log("📦 Response data:", response.data);
-      
+
       const { token, user } = response.data;
 
       console.log("✅ Login successful for:", user.email);
@@ -60,7 +60,7 @@ const SignIn = () => {
       // Store user data in localStorage for AuthContext
       const tokenStored = storeToken(token);
       const userStored = storeUserData(user);
-      
+
       console.log("💾 Token stored:", tokenStored);
       console.log("💾 User stored:", userStored);
       console.log("🔍 localStorage after storage:");
@@ -69,16 +69,17 @@ const SignIn = () => {
 
       // Update Redux store
       dispatch(setUser(user));
-      
+
       // Force Redux to persist to sessionStorage
       console.log("🔄 Redux state after dispatch:", store.getState());
-      
+
       // Navigate to home page
       navigate(RouteIndex);
       showToast("success", "Login successful! Welcome back.");
     } catch (error) {
       console.error("❌ Login failed:", error);
-      const errorMessage = error.response?.data?.message || "Login failed. Please try again.";
+      const errorMessage =
+        error.response?.data?.message || "Login failed. Please try again.";
       showToast("error", errorMessage);
     } finally {
       setIsLoading(false);
@@ -90,7 +91,7 @@ const SignIn = () => {
       <Card className="w-[400px] p-5">
         <div className="flex justify-center items-center mb-2">
           <Link to={RouteIndex}>
-            <img src={logo} alt="Logo" />
+            <img src={logo} alt="Logo" className="w-32 h-auto" />
           </Link>
         </div>
         <h1 className="text-2xl font-bold text-center mb-5">

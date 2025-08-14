@@ -65,6 +65,10 @@ const EscortProfile = () => {
 
       const response = await escortAPI.getEscortProfile(decodedSlug);
       console.log("✅ Escort profile fetched:", response.data);
+      console.log(
+        "🔍 Full response structure:",
+        JSON.stringify(response.data, null, 2)
+      );
       console.log("🔍 Response structure:", {
         hasData: !!response.data,
         hasEscort: !!response.data?.escort,
@@ -74,21 +78,32 @@ const EscortProfile = () => {
           response.data?.escort || response.data?.data?.escort || response.data,
       });
 
+      // Try different response structures
+      let escortData = null;
+
       if (response.data && response.data.escort) {
-        console.log("✅ Setting escort from response.data.escort");
-        setEscort(response.data.escort);
+        console.log("✅ Found escort in response.data.escort");
+        escortData = response.data.escort;
       } else if (
         response.data &&
         response.data.data &&
         response.data.data.escort
       ) {
-        console.log("✅ Setting escort from response.data.data.escort");
-        setEscort(response.data.data.escort);
+        console.log("✅ Found escort in response.data.data.escort");
+        escortData = response.data.data.escort;
+      } else if (response.data && response.data.data) {
+        console.log("✅ Found escort in response.data.data");
+        escortData = response.data.data;
       } else if (response.data) {
-        console.log("✅ Setting escort from response.data");
-        setEscort(response.data);
+        console.log("✅ Found escort in response.data");
+        escortData = response.data;
+      }
+
+      if (escortData) {
+        console.log("✅ Setting escort data:", escortData);
+        setEscort(escortData);
       } else {
-        console.log("❌ No valid data found in response");
+        console.log("❌ No valid escort data found in response");
         throw new Error("Invalid response format");
       }
     } catch (error) {
@@ -135,6 +150,33 @@ const EscortProfile = () => {
     if (escort.phone) {
       window.open(`tel:${escort.phone}`, "_blank");
     }
+  };
+
+  const handleWhatsApp = () => {
+    if (escort.whatsapp) {
+      const phone = escort.whatsapp.replace(/\D/g, ""); // Remove non-digits
+      window.open(`https://wa.me/${phone}`, "_blank");
+    }
+  };
+
+  const handleTelegram = () => {
+    if (escort.telegram) {
+      const username = escort.telegram.replace("@", ""); // Remove @ if present
+      window.open(`https://t.me/${username}`, "_blank");
+    }
+  };
+
+  // Get currency symbol based on country
+  const getCurrencySymbol = (countryCode) => {
+    const currencyMap = {
+      ug: "UGX",
+      ke: "KES",
+      tz: "TZS",
+      rw: "RWF",
+      bi: "BIF",
+      cd: "CDF",
+    };
+    return currencyMap[countryCode?.toLowerCase()] || "USD";
   };
 
   // Debug log
@@ -188,18 +230,9 @@ const EscortProfile = () => {
   }
 
   // Simple debug - show escort data if available
-  console.log("🎯 RENDERING PROFILE - Escort data:", escort);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* DEBUG INFO - Remove this later */}
-      {escort && (
-        <div className="bg-red-100 p-4 text-red-800 text-sm">
-          <strong>DEBUG:</strong> Escort loaded: {escort.name} ({escort.alias})
-          - Age: {escort.age} - Phone: {escort.phone}
-        </div>
-      )}
-
       {/* Cover Photo */}
       <div className="relative h-80 bg-gradient-to-r from-purple-500 to-pink-500">
         {escort.gallery && escort.gallery.length > 0 ? (
@@ -252,7 +285,7 @@ const EscortProfile = () => {
                   escort.gallery?.[0]?.url ||
                   "/default-escort.jpg"
                 }
-                alt={escort.name}
+                alt={escort.alias || escort.name}
                 className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
               />
               {escort.isVerified && (
@@ -267,12 +300,7 @@ const EscortProfile = () => {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {escort.name}
-                    {escort.alias && escort.alias !== escort.name && (
-                      <span className="text-xl text-gray-600 ml-2 font-normal">
-                        ({escort.alias})
-                      </span>
-                    )}
+                    {escort.alias || escort.name}
                   </h1>
 
                   <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
@@ -304,7 +332,7 @@ const EscortProfile = () => {
                       escort.subscriptionTier !== "free" && (
                         <Badge
                           variant="secondary"
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
                         >
                           <Award className="h-3 w-3 mr-1" />
                           {escort.subscriptionTier}
@@ -314,7 +342,7 @@ const EscortProfile = () => {
                     {escort.isVerified && (
                       <Badge
                         variant="secondary"
-                        className="bg-green-500 text-white"
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md"
                       >
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Verified
@@ -324,7 +352,7 @@ const EscortProfile = () => {
                     {escort.isAgeVerified && (
                       <Badge
                         variant="secondary"
-                        className="bg-blue-500 text-white"
+                        className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
                       >
                         <Shield className="h-3 w-3 mr-1" />
                         Age Verified
@@ -334,7 +362,7 @@ const EscortProfile = () => {
                     {escort.isAvailable && (
                       <Badge
                         variant="secondary"
-                        className="bg-green-500 text-white"
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md"
                       >
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Available
@@ -344,7 +372,7 @@ const EscortProfile = () => {
                     {escort.subscriptionStatus && (
                       <Badge
                         variant="secondary"
-                        className="bg-purple-500 text-white"
+                        className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md"
                       >
                         <Award className="h-3 w-3 mr-1" />
                         {escort.subscriptionStatus}
@@ -357,14 +385,18 @@ const EscortProfile = () => {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={handleCall}
-                    className="bg-green-500 hover:bg-green-600 text-white"
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                     size="lg"
                   >
                     <Phone className="h-4 w-4 mr-2" />
                     {escort.phone || "Call"}
                   </Button>
 
-                  <Button onClick={handleContact} variant="outline" size="lg">
+                  <Button
+                    onClick={handleContact}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0"
+                    size="lg"
+                  >
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Message
                   </Button>
@@ -375,17 +407,17 @@ const EscortProfile = () => {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-lg mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
+        <div className="bg-white rounded-lg shadow-lg mb-6 overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100">
+            <nav className="flex space-x-1 px-6">
               {["photos", "about", "services", "rates"].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
+                  className={`py-4 px-6 font-medium text-sm capitalize transition-all duration-300 rounded-t-lg ${
                     activeTab === tab
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      ? "bg-white text-purple-600 shadow-lg border-b-2 border-purple-500"
+                      : "text-gray-600 hover:text-purple-600 hover:bg-white/50"
                   }`}
                 >
                   {tab}
@@ -410,7 +442,9 @@ const EscortProfile = () => {
                         >
                           <img
                             src={photo.url}
-                            alt={`${escort.name} - Photo ${index + 1}`}
+                            alt={`${escort.alias || escort.name} - Photo ${
+                              index + 1
+                            }`}
                             className="w-full h-48 object-cover rounded-lg"
                           />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
@@ -474,6 +508,16 @@ const EscortProfile = () => {
                   </div>
                 )}
 
+                {/* Experience Section - Moved to top */}
+                {escort.experience && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Experience</h3>
+                    <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg">
+                      {escort.experience}
+                    </p>
+                  </div>
+                )}
+
                 {/* Physical Characteristics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {escort.bodyType && (
@@ -526,15 +570,6 @@ const EscortProfile = () => {
                     </div>
                   )}
 
-                  {escort.experience && (
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">
-                        Experience
-                      </h4>
-                      <p className="text-gray-600">{escort.experience}</p>
-                    </div>
-                  )}
-
                   {escort.gender && (
                     <div>
                       <h4 className="font-medium text-gray-900 mb-2">Gender</h4>
@@ -570,9 +605,7 @@ const EscortProfile = () => {
                     </h4>
                     <div className="flex items-center gap-2 text-gray-600">
                       <ClockIcon className="h-4 w-4" />
-                      <span>
-                        {escort.workingHours.start} - {escort.workingHours.end}
-                      </span>
+                      <span>24h/24h</span>
                     </div>
                   </div>
                 )}
@@ -655,74 +688,6 @@ const EscortProfile = () => {
                     </div>
                   </div>
                 )}
-
-                {/* Profile Completion */}
-                {escort.profileCompletion !== undefined && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">
-                      Profile Completion
-                    </h4>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${escort.profileCompletion}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm text-gray-600">
-                        {escort.profileCompletion}%
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Subscription Benefits */}
-                {escort.benefits && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">
-                      Subscription Benefits
-                    </h4>
-                    <div className="space-y-3">
-                      {escort.benefits.photos && (
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <span className="text-gray-700">Photos Limit</span>
-                          <span className="font-semibold text-blue-600">
-                            {escort.benefits.photos}
-                          </span>
-                        </div>
-                      )}
-                      {escort.benefits.videos && (
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <span className="text-gray-700">Videos Limit</span>
-                          <span className="font-semibold text-blue-600">
-                            {escort.benefits.videos}
-                          </span>
-                        </div>
-                      )}
-                      {escort.benefits.features &&
-                        escort.benefits.features.length > 0 && (
-                          <div>
-                            <span className="text-gray-700 mb-2 block">
-                              Features:
-                            </span>
-                            <div className="flex flex-wrap gap-2">
-                              {escort.benefits.features.map(
-                                (feature, index) => (
-                                  <Badge
-                                    key={index}
-                                    variant="outline"
-                                    className="text-xs"
-                                  >
-                                    {feature}
-                                  </Badge>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -783,10 +748,11 @@ const EscortProfile = () => {
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-bold text-purple-600">
-                              ${escort.rates.hourly}
+                              {escort.rates.hourly}{" "}
+                              {getCurrencySymbol(escort.location?.country)}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {escort.rates.currency || "USD"}
+                              {getCurrencySymbol(escort.location?.country)}
                             </div>
                           </div>
                         </div>
@@ -804,10 +770,11 @@ const EscortProfile = () => {
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-bold text-blue-600">
-                              ${escort.rates.overnight}
+                              {escort.rates.overnight}{" "}
+                              {getCurrencySymbol(escort.location?.country)}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {escort.rates.currency || "USD"}
+                              {getCurrencySymbol(escort.location?.country)}
                             </div>
                           </div>
                         </div>
@@ -825,38 +792,116 @@ const EscortProfile = () => {
         </div>
 
         {/* Contact Info Card */}
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
+          <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-white">
               <MessageCircle className="h-5 w-5" />
               Contact Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6">
             {escort.phone && (
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Phone className="h-5 w-5 text-green-500" />
-                <span className="font-medium">{escort.phone}</span>
-                <Button
-                  onClick={handleCall}
-                  size="sm"
-                  className="ml-auto bg-green-500 hover:bg-green-600"
-                >
-                  Call Now
-                </Button>
+              <div className="group relative overflow-hidden bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-green-500 p-2 rounded-full shadow-md">
+                      <Phone className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Phone</p>
+                      <p className="text-gray-900 font-semibold">
+                        {escort.phone}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleCall}
+                    size="sm"
+                    className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
+                  >
+                    Call Now
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {escort.whatsapp && (
+              <div className="group relative overflow-hidden bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-green-600 p-2 rounded-full shadow-md">
+                      <Phone className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">
+                        WhatsApp
+                      </p>
+                      <p className="text-gray-900 font-semibold">
+                        {escort.whatsapp}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleWhatsApp}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
+                  >
+                    WhatsApp
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {escort.telegram && (
+              <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-500 p-2 rounded-full shadow-md">
+                      <MessageCircle className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">
+                        Telegram
+                      </p>
+                      <p className="text-gray-900 font-semibold">
+                        {escort.telegram}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleTelegram}
+                    size="sm"
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
+                  >
+                    Telegram
+                  </Button>
+                </div>
               </div>
             )}
 
             {escort.email && (
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Mail className="h-5 w-5 text-blue-500" />
-                <span className="font-medium">{escort.email}</span>
+              <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-500 p-2 rounded-full shadow-md">
+                    <Mail className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Email</p>
+                    <p className="text-gray-900 font-semibold">
+                      {escort.email}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
-            <Button onClick={handleContact} className="w-full" size="lg">
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Send Message
+            <Button
+              onClick={handleContact}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+              size="lg"
+            >
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Message {escort.alias || escort.name}
             </Button>
           </CardContent>
         </Card>

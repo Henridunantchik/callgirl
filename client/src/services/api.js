@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "/api", // Use Vite proxy instead of direct URL
+  baseURL: "http://localhost:5000/api", // Direct backend URL
   withCredentials: true,
   timeout: 60000, // Increased to 60 seconds for file uploads
 });
@@ -118,6 +118,26 @@ export const escortAPI = {
     api.post(`/escort/media/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+
+  // Upload gallery photos (using existing media route)
+  uploadGallery: (id, formData) =>
+    api.post(`/escort/media/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  // Upload videos (using video route)
+  uploadVideo: (id, formData, config = {}) =>
+    api.post(`/escort/video/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      ...config,
+    }),
+
+  // Delete gallery image
+  deleteGalleryImage: (id, imageId) =>
+    api.delete(`/escort/gallery/${id}/${imageId}`),
+
+  // Delete video
+  deleteVideo: (id, videoId) => api.delete(`/escort/video/${id}/${videoId}`),
 
   // Get escort subscription info
   getEscortSubscription: (id) => api.get(`/escort/subscription/${id}`),
@@ -265,7 +285,7 @@ export const userAPI = {
 
   // Upload avatar
   uploadAvatar: (formData) =>
-    api.post("/user/avatar", formData, {
+    api.put("/user/update", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };

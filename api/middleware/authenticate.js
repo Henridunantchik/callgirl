@@ -10,7 +10,7 @@ export const authenticate = async (req, res, next) => {
 
     // Check for token in cookies first, then Authorization header
     let token = null;
-    
+
     // Check cookies if they exist
     if (req.cookies && req.cookies.access_token) {
       token = req.cookies.access_token;
@@ -42,6 +42,17 @@ export const authenticate = async (req, res, next) => {
     try {
       const decodeToken = jwt.verify(token, config.JWT_SECRET);
       console.log("Token verified, user:", decodeToken);
+
+      // If token doesn't have role, fetch it from database
+      if (!decodeToken.role) {
+        console.log("Token missing role, fetching from database...");
+        const userFromDB = await User.findById(decodeToken._id).select("role");
+        if (userFromDB) {
+          decodeToken.role = userFromDB.role;
+          console.log("Role fetched from DB:", userFromDB.role);
+        }
+      }
+
       req.user = decodeToken;
       next();
     } catch (jwtError) {
