@@ -4,6 +4,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
 import cloudinary from "../config/cloudinary.js";
+import config from "../config/env.js";
+import { generateToken } from "../utils/security.js";
 
 /**
  * Get all escorts with filtering and pagination
@@ -485,7 +487,16 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
 export const createEscortProfile = asyncHandler(async (req, res, next) => {
   try {
     const userId = req.user._id;
-    
+
+    // Only clients can convert to escort
+    const requester = await User.findById(userId).select("role");
+    if (!requester) {
+      throw new ApiError(404, "User not found");
+    }
+    if (requester.role !== "client") {
+      throw new ApiError(403, "Only clients can join as escorts");
+    }
+
     // Check if user already has an escort profile
     const existingEscort = await User.findOne({ _id: userId, role: "escort" });
     if (existingEscort) {
@@ -514,12 +525,15 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
     }
 
     // Parse services if it's a string
-    const servicesArray = typeof services === "string" ? JSON.parse(services) : services;
+    const servicesArray =
+      typeof services === "string" ? JSON.parse(services) : services;
 
     // Handle file uploads
     const gallery = [];
     if (req.files && req.files.gallery) {
-      const files = Array.isArray(req.files.gallery) ? req.files.gallery : [req.files.gallery];
+      const files = Array.isArray(req.files.gallery)
+        ? req.files.gallery
+        : [req.files.gallery];
       for (const file of files) {
         // Upload to Cloudinary
         const result = await cloudinary.uploader.upload(file.path, {
@@ -572,16 +586,34 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
       { new: true }
     );
 
-    return res.status(201).json(
-      new ApiResponse(
-        201,
-        {
-          user: updatedUser,
-          message: "Escort profile created successfully",
-        },
-        "Escort profile created successfully"
-      )
-    );
+    // Ensure password is not returned
+    const userObject = updatedUser.toObject({ getters: true });
+    delete userObject.password;
+
+    // Issue a fresh JWT reflecting updated role
+    const token = generateToken({
+      _id: userObject._id,
+      name: userObject.name,
+      email: userObject.email,
+      role: userObject.role,
+    });
+
+    // Set secure cookie (mirrors auth controller behavior)
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      secure: config.NODE_ENV === "production",
+      sameSite: config.NODE_ENV === "production" ? "none" : "strict",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // Return consistent shape with user and token
+    return res.status(201).json({
+      success: true,
+      user: userObject,
+      token,
+      message: "Escort profile created successfully",
+    });
   } catch (error) {
     next(error);
   }

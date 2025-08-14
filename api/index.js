@@ -10,6 +10,7 @@ import {
   apiRateLimiter,
   uploadRateLimiter,
   searchRateLimiter,
+  devRateLimiter,
 } from "./middleware/rateLimiter.js";
 
 // Import performance optimizations
@@ -49,10 +50,19 @@ const app = express();
 app.use(securityHeaders);
 
 // Apply rate limiting
-app.use("/api/auth", authRateLimiter);
-app.use("/api", apiRateLimiter);
-app.use("/api/upload", uploadRateLimiter);
-app.use("/api/search", searchRateLimiter);
+if (config.NODE_ENV === "development") {
+  // Use more lenient rate limiting in development
+  app.use("/api/auth", devRateLimiter);
+  app.use("/api", devRateLimiter);
+  app.use("/api/upload", devRateLimiter);
+  app.use("/api/search", devRateLimiter);
+} else {
+  // Use strict rate limiting in production
+  app.use("/api/auth", authRateLimiter);
+  app.use("/api", apiRateLimiter);
+  app.use("/api/upload", uploadRateLimiter);
+  app.use("/api/search", searchRateLimiter);
+}
 
 // Apply input sanitization globally
 app.use(sanitizeAllInput);
@@ -63,8 +73,13 @@ app.use(performanceMiddleware);
 // Middleware
 app.use(
   cors({
-    origin: config.FRONTEND_URL,
+    origin:
+      config.NODE_ENV === "development"
+        ? ["http://localhost:5173", "http://127.0.0.1:5173"]
+        : config.FRONTEND_URL,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 app.use(express.json({ limit: "50mb" }));
@@ -90,6 +105,24 @@ app.get("/api/performance", async (req, res) => {
     message: "Performance statistics retrieved successfully",
   });
 });
+
+// Development endpoint to reset rate limits (only in development)
+if (config.NODE_ENV === "development") {
+  app.get("/api/dev/reset-rate-limit", (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "Rate limit reset endpoint available in development mode",
+      note: "This endpoint can be used to reset rate limits during testing",
+    });
+  });
+
+  // Import and setup rate limit clearing
+  import("./utils/clearRateLimit.js").then(
+    ({ setupRateLimitClearEndpoint }) => {
+      setupRateLimitClearEndpoint(app);
+    }
+  );
+}
 
 // API Routes
 app.use("/api/auth", AuthRoute);

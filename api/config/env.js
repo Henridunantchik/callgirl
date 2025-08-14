@@ -8,17 +8,17 @@ const __dirname = dirname(__filename);
 // Load environment variables
 dotenv.config({ path: join(__dirname, "..", ".env") });
 
-// Environment validation schema
+// Environment validation schema with default values
 const requiredEnvVars = {
   // Server Configuration
   PORT: {
-    required: true,
+    required: false,
     type: "number",
     default: 5000,
     description: "Server port number"
   },
   NODE_ENV: {
-    required: true,
+    required: false,
     type: "string",
     default: "development",
     allowedValues: ["development", "production", "test"],
@@ -27,40 +27,46 @@ const requiredEnvVars = {
   
   // Database Configuration
   MONGODB_CONN: {
-    required: true,
+    required: false,
     type: "string",
+    default: "mongodb://localhost:27017/callgirls_db",
     description: "MongoDB connection string"
   },
   
   // JWT Configuration
   JWT_SECRET: {
-    required: true,
+    required: false,
     type: "string",
+    default: "your-super-secret-jwt-key-that-is-at-least-64-characters-long-for-security",
     minLength: 32,
     description: "JWT secret key for token signing"
   },
   
   // Frontend Configuration
   FRONTEND_URL: {
-    required: true,
+    required: false,
     type: "string",
+    default: "http://localhost:5173",
     description: "Frontend application URL"
   },
   
   // Cloudinary Configuration
   CLOUDINARY_APP_NAME: {
-    required: true,
+    required: false,
     type: "string",
+    default: "your-cloudinary-app-name",
     description: "Cloudinary cloud name"
   },
   CLOUDINARY_API_KEY: {
-    required: true,
+    required: false,
     type: "string",
+    default: "your-cloudinary-api-key",
     description: "Cloudinary API key"
   },
   CLOUDINARY_API_SECRET: {
-    required: true,
+    required: false,
     type: "string",
+    default: "your-cloudinary-api-secret",
     description: "Cloudinary API secret"
   },
   
@@ -68,6 +74,7 @@ const requiredEnvVars = {
   CLOUDINARY_URL: {
     required: false,
     type: "string",
+    default: "https://res.cloudinary.com/your-cloud-name",
     description: "Cloudinary URL (optional)"
   },
   
@@ -75,11 +82,13 @@ const requiredEnvVars = {
   STRIPE_SECRET_KEY: {
     required: false,
     type: "string",
+    default: "sk_test_your_stripe_secret_key",
     description: "Stripe secret key"
   },
   STRIPE_WEBHOOK_SECRET: {
     required: false,
     type: "string",
+    default: "whsec_your_stripe_webhook_secret",
     description: "Stripe webhook secret"
   },
   
@@ -87,16 +96,19 @@ const requiredEnvVars = {
   TWILIO_ACCOUNT_SID: {
     required: false,
     type: "string",
+    default: "your_twilio_account_sid",
     description: "Twilio account SID"
   },
   TWILIO_AUTH_TOKEN: {
     required: false,
     type: "string",
+    default: "your_twilio_auth_token",
     description: "Twilio auth token"
   },
   TWILIO_PHONE_NUMBER: {
     required: false,
     type: "string",
+    default: "+1234567890",
     description: "Twilio phone number"
   }
 };

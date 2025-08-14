@@ -1,10 +1,23 @@
 import rateLimit from 'express-rate-limit';
 import config from '../config/env.js';
 
+// Development rate limiter (can be disabled for testing)
+export const devRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Very high limit for development
+  message: {
+    success: false,
+    message: 'Too many requests in development mode.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+});
+
 // Rate limiter for authentication endpoints
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs for auth endpoints
+  max: config.NODE_ENV === 'development' ? 50 : 5, // More lenient in development
   message: {
     success: false,
     message: 'Too many authentication attempts. Please try again later.',

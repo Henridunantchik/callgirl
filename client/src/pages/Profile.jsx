@@ -186,7 +186,7 @@ const Profile = () => {
         console.log("Fetching fresh user data...");
 
         // Get fresh user data from API
-        const response = await fetch("http://localhost:5000/api/auth/me", {
+        const response = await fetch("/api/auth/me", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -421,7 +421,7 @@ const Profile = () => {
             // Retry with direct fetch
             console.log(`Retry ${retryCount}: Using direct fetch...`);
             const fetchResponse = await fetch(
-              "http://localhost:5000/api/user/update",
+              "/api/user/update",
               {
                 method: "PUT",
                 headers: {
@@ -546,7 +546,7 @@ const Profile = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch("http://localhost:5000/api/user/update", {
+        const response = await fetch("/api/user/update", {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -594,7 +594,7 @@ const Profile = () => {
         const startTime = Date.now();
 
         const response = await fetch(
-          "http://localhost:5000/api/escort/gallery/" + user?._id,
+          "/api/escort/gallery/" + user?._id,
           {
             method: "POST",
             headers: {
@@ -651,7 +651,7 @@ const Profile = () => {
         });
 
         const response = await fetch(
-          "http://localhost:5000/api/escort/video/" + user?._id,
+          "/api/escort/video/" + user?._id,
           {
             method: "POST",
             headers: {
@@ -699,7 +699,7 @@ const Profile = () => {
       console.log("Image ID:", imageId);
       console.log("User ID:", user?._id);
 
-      const deleteUrl = `http://localhost:5000/api/escort/gallery/${user?._id}/${imageId}`;
+      const deleteUrl = `/api/escort/gallery/${user?._id}/${imageId}`;
       console.log("Delete URL:", deleteUrl);
 
       const response = await fetch(deleteUrl, {

@@ -71,9 +71,12 @@ export const Register = asyncHandler(async (req, res, next) => {
     const userResponse = user.toObject({ getters: true });
     delete userResponse.password;
 
-    return res.status(201).json(
-      new ApiResponse(201, userResponse, "Registration successful")
-    );
+    return res.status(201).json({
+      success: true,
+      user: userResponse,
+      token: token,
+      message: "Registration successful",
+    });
   } catch (error) {
     // Log registration errors
     console.error(`Registration failed: ${error.message}`, {
@@ -149,9 +152,20 @@ export const Login = asyncHandler(async (req, res, next) => {
     const userResponse = user.toObject({ getters: true });
     delete userResponse.password;
 
-    return res.status(200).json(
-      new ApiResponse(200, userResponse, "Login successful")
-    );
+    // Generate token for response
+    const tokenForResponse = generateToken({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+
+    return res.status(200).json({
+      success: true,
+      user: userResponse,
+      token: tokenForResponse,
+      message: "Login successful",
+    });
   } catch (error) {
     // Log login errors
     console.error(`Login failed: ${error.message}`, {

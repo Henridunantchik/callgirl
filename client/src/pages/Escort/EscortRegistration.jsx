@@ -571,7 +571,7 @@ const EscortRegistration = () => {
       // Test API connection first
       try {
         console.log("🧪 Testing API connection...");
-        const testResponse = await fetch("http://localhost:5000/health");
+        const testResponse = await fetch("/api/health");
         console.log("✅ API Health Check:", testResponse.status);
 
         if (!testResponse.ok) {
@@ -589,7 +589,7 @@ const EscortRegistration = () => {
       // Call the API
       console.log(
         "🌐 Making API call to:",
-        "http://localhost:5000/api/escort/create"
+        "/api/escort/create"
       );
       console.log("📋 FormData contents:");
       for (let [key, value] of apiFormData.entries()) {
