@@ -12,6 +12,7 @@ import {
   getProfileCompletion,
   searchEscorts,
   updateEscortFeaturedStatus,
+  getEscortStats,
 } from "../controllers/Escort.controller.js";
 import upload from "../config/multer.js";
 import { authenticate } from "../middleware/authenticate.js";
@@ -23,6 +24,9 @@ const EscortRoute = express.Router();
 EscortRoute.get("/all", getAllEscorts);
 EscortRoute.get("/profile/:id", getEscortById);
 EscortRoute.get("/search", searchEscorts);
+
+// Escort statistics (requires authentication)
+EscortRoute.get("/stats/:id", authenticate, getEscortStats);
 
 // Create escort profile (requires authentication)
 EscortRoute.post(

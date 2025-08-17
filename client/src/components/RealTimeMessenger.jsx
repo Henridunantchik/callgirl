@@ -78,9 +78,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     }
   }, [selectedEscort]);
 
-  // Fetch conversations on mount
+  // Fetch conversations on mount and when messenger opens
   useEffect(() => {
     if (isOpen && user && user._id) {
+      console.log("🔄 Fetching conversations...");
       fetchConversations();
     }
   }, [isOpen, user]);
@@ -96,56 +97,63 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   useEffect(() => {
     if (!socket || !user || !user._id) return;
 
-         // Listen for new messages
-     const handleNewMessage = (data) => {
-       const { message } = data;
+    // Listen for new messages
+    const handleNewMessage = (data) => {
+      const { message } = data;
 
-       // Add to messages if it's for the current chat
+             // Add to messages if it's for the current chat
        if (
          selectedChat &&
          (message.sender === selectedChat.user._id ||
-           message.recipient === selectedChat.user._id)
+           (message.sender && message.sender._id === selectedChat.user._id) ||
+           message.recipient === selectedChat.user._id ||
+           (message.recipient && message.recipient._id === selectedChat.user._id))
        ) {
-         setMessages((prev) => {
-           // Check if this is a response to our temporary message
+        setMessages((prev) => {
+                     // Check if this is a response to our temporary message
            const tempMessageIndex = prev.findIndex(
-             (msg) => 
-               msg.isTemp && 
-               msg.content === message.content && 
-               msg.sender === message.sender &&
-               msg.recipient === message.recipient
+             (msg) =>
+               msg.isTemp &&
+               msg.content === message.content &&
+               (msg.sender === message.sender || (msg.sender && message.sender && msg.sender._id === message.sender._id)) &&
+               (msg.recipient === message.recipient || (msg.recipient && message.recipient && msg.recipient._id === message.recipient._id))
            );
 
-           if (tempMessageIndex !== -1) {
-             // Replace temporary message with real message
-             const newMessages = [...prev];
-             newMessages[tempMessageIndex] = message;
-             return newMessages;
-           } else {
-             // Add new message
-             return [...prev, message];
-           }
-         });
+          if (tempMessageIndex !== -1) {
+            // Replace temporary message with real message
+            const newMessages = [...prev];
+            newMessages[tempMessageIndex] = message;
+            return newMessages;
+          } else {
+            // Add new message
+            return [...prev, message];
+          }
+        });
 
-         // Mark as read if we're the recipient
-         if (message.recipient === user._id) {
+                 // Mark as read if we're the recipient
+         if (message.recipient === user._id || (message.recipient && message.recipient._id === user._id)) {
            markMessageAsRead(message._id);
          }
-       }
+      }
 
-      // Update conversation list
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.user._id === message.sender ||
-          conv.user._id === message.recipient
-            ? {
-                ...conv,
-                lastMessage: message,
-                unreadCount: conv.unreadCount + 1,
-              }
-            : conv
-        )
-      );
+             // Update conversation list (always update, not just for current chat)
+       setConversations((prev) =>
+         prev.map((conv) =>
+           conv.user._id === message.sender ||
+           (message.sender && message.sender._id === conv.user._id) ||
+           conv.user._id === message.recipient ||
+           (message.recipient && message.recipient._id === conv.user._id)
+             ? {
+                 ...conv,
+                 lastMessage: message,
+                 unreadCount:
+                   message.recipient === user._id || (message.recipient && message.recipient._id === user._id)
+                     ? conv.unreadCount + 1
+                     : conv.unreadCount,
+               }
+             : conv
+         )
+       );
     };
 
     // Listen for message read receipts
@@ -175,15 +183,21 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
     try {
       setLoading(true);
+      console.log("📞 Calling getUserConversations API...");
       const response = await messageAPI.getUserConversations();
+      console.log("📞 API Response:", response);
 
       if (response.data && response.data.data) {
+        console.log("📞 Setting conversations:", response.data.data);
         setConversations(response.data.data);
 
         // Auto-select first conversation if none selected
         if (response.data.data.length > 0 && !selectedChat) {
           setSelectedChat(response.data.data[0]);
         }
+      } else {
+        console.log("📞 No conversations data in response");
+        setConversations([]);
       }
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
@@ -206,11 +220,11 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
 
-        // Mark messages as read
-        const unreadMessages =
-          response.data.data.messages?.filter(
-            (msg) => !msg.isRead && msg.sender === escortId
-          ) || [];
+                 // Mark messages as read
+         const unreadMessages =
+           response.data.data.messages?.filter(
+             (msg) => !msg.isRead && (msg.sender === escortId || (msg.sender && msg.sender._id === escortId))
+           ) || [];
 
         unreadMessages.forEach((msg) => {
           markMessageAsRead(msg._id);
@@ -223,10 +237,17 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !selectedChat || sending || !user || !user._id) return;
+    if (!message.trim() || !selectedChat || sending || !user || !user._id)
+      return;
 
     const messageContent = message.trim();
     const recipientId = selectedChat.user._id;
+
+    console.log("📤 Sending message:", {
+      content: messageContent,
+      recipientId,
+      senderId: user._id,
+    });
 
     // Create temporary message for instant feedback
     const tempMessage = {
@@ -255,34 +276,31 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     );
 
     try {
+      console.log("📤 Sending via socket...");
       // Send via socket in the background (non-blocking)
       sendMessage(recipientId, messageContent).catch((error) => {
         console.error("Socket send failed:", error);
         // Mark message as failed
         setMessages((prev) =>
           prev.map((msg) =>
-            msg._id === tempMessage._id
-              ? { ...msg, isFailed: true }
-              : msg
+            msg._id === tempMessage._id ? { ...msg, isFailed: true } : msg
           )
         );
         showToast("error", "Message failed to send");
       });
 
+      console.log("📤 Sending via API...");
       // Also send via API for persistence (non-blocking)
       messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
         console.error("API send failed:", error);
         // Don't show error to user if socket worked
       });
-
     } catch (error) {
       console.error("Failed to send message:", error);
       // Mark message as failed
       setMessages((prev) =>
         prev.map((msg) =>
-          msg._id === tempMessage._id
-            ? { ...msg, isFailed: true }
-            : msg
+          msg._id === tempMessage._id ? { ...msg, isFailed: true } : msg
         )
       );
       showToast("error", "Failed to send message");
@@ -341,8 +359,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   const retryMessage = async (failedMessage) => {
     try {
       // Remove the failed message
-      setMessages((prev) => prev.filter((msg) => msg._id !== failedMessage._id));
-      
+      setMessages((prev) =>
+        prev.filter((msg) => msg._id !== failedMessage._id)
+      );
+
       // Send the message again
       const messageContent = failedMessage.content;
       const recipientId = failedMessage.recipient;
@@ -377,17 +397,16 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
       messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
         console.error("Retry API send failed:", error);
       });
-
     } catch (error) {
       console.error("Retry failed:", error);
       showToast("error", "Failed to retry message");
     }
   };
 
-  const getMessageStatus = (message) => {
-    if (!user || !user._id) return null;
-    
-    if (message.sender === user._id) {
+     const getMessageStatus = (message) => {
+     if (!user || !user._id) return null;
+ 
+     if (message.sender === user._id || (message.sender && message.sender._id === user._id)) {
       if (message.isFailed) {
         return <X className="w-3 h-3 text-red-500" />;
       } else if (message.isRead) {
@@ -478,8 +497,8 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                 </div>
               </div>
             ) : !selectedChat ? (
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-3 border-b">
+              <div className="flex-1 overflow-y-auto flex flex-col">
+                <div className="p-3 border-b flex-shrink-0">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
@@ -491,7 +510,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
+                <div
+                  className="flex-1 overflow-y-auto"
+                  style={{ maxHeight: "200px" }}
+                >
                   {loading ? (
                     <div className="p-4 text-center text-gray-500">
                       Loading...
@@ -514,7 +536,7 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       .map((conversation) => (
                         <div
                           key={conversation.user._id}
-                          className="p-3 hover:bg-gray-50 cursor-pointer border-b"
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b transition-all duration-200 hover:shadow-sm"
                           onClick={() => setSelectedChat(conversation)}
                         >
                           <div className="flex items-center space-x-3">
@@ -612,47 +634,60 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                <div
+                  className="flex-1 overflow-y-auto p-3 space-y-2"
+                  style={{ maxHeight: "200px" }}
+                >
                   {messages.length === 0 ? (
                     <div className="text-center text-gray-500 text-sm py-8">
                       No messages yet. Start a conversation!
                     </div>
                   ) : (
-                                         messages.map((msg) => (
-                       <div
-                         key={msg._id}
-                         className={`flex ${
-                           user && user._id && msg.sender === user._id
-                             ? "justify-end"
-                             : "justify-start"
-                         }`}
-                       >
-                                                 <div
-                           className={`max-w-xs px-3 py-2 rounded-lg ${
-                             user && user._id && msg.sender === user._id
-                               ? msg.isFailed
-                                 ? "bg-red-500 text-white"
-                                 : "bg-blue-600 text-white"
-                               : "bg-gray-200 text-gray-900"
-                           }`}
-                         >
-                          <p className="text-sm">{msg.content}</p>
-                                                     <div className="flex items-center justify-end space-x-1 mt-1">
-                             <span className="text-xs opacity-70">
-                               {formatTime(msg.createdAt)}
-                             </span>
-                             {getMessageStatus(msg)}
-                             {msg.isFailed && (
-                               <Button
-                                 variant="ghost"
-                                 size="sm"
-                                 className="h-4 w-4 p-0 ml-1"
-                                 onClick={() => retryMessage(msg)}
-                               >
-                                 <RefreshCw className="w-3 h-3" />
-                               </Button>
-                             )}
-                           </div>
+                    messages.map((msg) => (
+                      <div
+                        key={msg._id}
+                        className={`flex ${
+                          user && user._id && (msg.sender === user._id || (msg.sender && msg.sender._id === user._id))
+                            ? "justify-end"
+                            : "justify-start"
+                        } mb-3`}
+                      >
+                        <div
+                          className={`max-w-xs ${
+                            user && user._id && (msg.sender === user._id || (msg.sender && msg.sender._id === user._id))
+                              ? "ml-auto"
+                              : "mr-auto"
+                          }`}
+                        >
+                          <div
+                            className={`px-3 py-2 rounded-2xl shadow-sm message-bubble ${
+                              user && user._id && (msg.sender === user._id || (msg.sender && msg.sender._id === user._id))
+                                ? msg.isFailed
+                                  ? "bg-gradient-to-r from-red-500 to-red-600 text-white rounded-br-md"
+                                  : "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
+                                : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
+                            }`}
+                          >
+                            <p className="text-sm leading-relaxed">
+                              {msg.content}
+                            </p>
+                            <div className="flex items-center justify-end space-x-1 mt-1">
+                              <span className="text-xs opacity-70">
+                                {formatTime(msg.createdAt)}
+                              </span>
+                              {getMessageStatus(msg)}
+                              {msg.isFailed && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 ml-1 hover:bg-red-600"
+                                  onClick={() => retryMessage(msg)}
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -661,10 +696,14 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                 </div>
 
                 {/* Message Input */}
-                <div className="p-3 border-t bg-white">
+                <div className="p-3 border-t bg-gray-50 flex-shrink-0">
                   <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Paperclip className="w-4 h-4" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-gray-200"
+                    >
+                      <Paperclip className="w-4 h-4 text-gray-600" />
                     </Button>
                     <Input
                       placeholder="Type a message..."
@@ -672,12 +711,12 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       onChange={handleTyping}
                       onKeyPress={handleKeyPress}
                       disabled={sending}
-                      className="flex-1"
+                      className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
                       onClick={handleSendMessage}
                       disabled={!message.trim() || sending}
                     >

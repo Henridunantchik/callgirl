@@ -144,6 +144,9 @@ export const escortAPI = {
 
   // Get profile completion status
   getProfileCompletion: (id) => api.get(`/escort/profile-completion/${id}`),
+
+  // Get escort statistics
+  getEscortStats: (id) => api.get(`/escort/stats/${id}`),
 };
 
 // Booking API

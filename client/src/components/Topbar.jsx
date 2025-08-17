@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import logo from "@/assets/images/logo-white.png";
 import { Button } from "./ui/button";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -41,10 +41,12 @@ import { AiOutlineMenu } from "react-icons/ai";
 import { useSidebar } from "./ui/sidebar";
 import { Badge } from "./ui/badge";
 import CountrySelector from "./CountrySelector";
+import { messageAPI } from "@/services/api";
 
 const Topbar = () => {
   const { toggleSidebar } = useSidebar();
   const [showSearch, setShowSearch] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const dispath = useDispatch();
   const navigate = useNavigate();
   const { countryCode } = useParams();
@@ -55,6 +57,33 @@ const Topbar = () => {
     console.log("🔍 Topbar - User state:", user);
     console.log("🔍 Topbar - User role:", user?.user?.role);
   }, [user]);
+
+  // Fetch unread messages count
+  const fetchUnreadMessagesCount = async () => {
+    if (!user?.user?._id) return;
+    
+    try {
+      const response = await messageAPI.getUserConversations();
+      if (response.data && response.data.data) {
+        const totalUnread = response.data.data.reduce((total, conv) => {
+          return total + (conv.unreadCount || 0);
+        }, 0);
+        setUnreadMessagesCount(totalUnread);
+      }
+    } catch (error) {
+      console.error("Failed to fetch unread messages count:", error);
+    }
+  };
+
+  // Fetch unread count when user changes
+  useEffect(() => {
+    if (user?.user?._id) {
+      fetchUnreadMessagesCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchUnreadMessagesCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.user?._id]);
 
   const handleLogout = async () => {
     try {
@@ -244,9 +273,18 @@ const Topbar = () => {
 
               {/* Common menu items */}
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to="/messages">
-                  <FaEnvelope className="mr-2" />
-                  Messages
+                <Link to={`/${countryCode}/${user?.user?.role || 'client'}/messages`}>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <FaEnvelope className="mr-2" />
+                      Messages
+                    </div>
+                    {unreadMessagesCount > 0 && (
+                      <Badge className="bg-red-500 text-white text-xs ml-2">
+                        {unreadMessagesCount}
+                      </Badge>
+                    )}
+                  </div>
                 </Link>
               </DropdownMenuItem>
 

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Message from "../models/message.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -72,7 +73,7 @@ const getUserConversations = asyncHandler(async (req, res) => {
   const conversations = await Message.aggregate([
     {
       $match: {
-        $or: [{ sender: userId }, { recipient: userId }],
+        $or: [{ sender: new mongoose.Types.ObjectId(userId) }, { recipient: new mongoose.Types.ObjectId(userId) }],
       },
     },
     {
@@ -82,7 +83,7 @@ const getUserConversations = asyncHandler(async (req, res) => {
       $group: {
         _id: {
           $cond: [
-            { $eq: ["$sender", userId] },
+            { $eq: ["$sender", new mongoose.Types.ObjectId(userId)] },
             "$recipient",
             "$sender",
           ],
@@ -91,12 +92,12 @@ const getUserConversations = asyncHandler(async (req, res) => {
         unreadCount: {
           $sum: {
             $cond: [
-              {
-                $and: [
-                  { $eq: ["$recipient", userId] },
-                  { $eq: ["$read", false] },
-                ],
-              },
+                              {
+                  $and: [
+                    { $eq: ["$recipient", new mongoose.Types.ObjectId(userId)] },
+                    { $eq: ["$isRead", false] },
+                  ],
+                },
               1,
               0,
             ],
@@ -151,7 +152,7 @@ const markAsRead = asyncHandler(async (req, res) => {
 
   const updatedMessage = await Message.findByIdAndUpdate(
     messageId,
-    { read: true },
+    { isRead: true, readAt: new Date() },
     { new: true }
   );
 

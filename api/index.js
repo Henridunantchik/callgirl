@@ -260,6 +260,8 @@ mongoose
         try {
           const { senderId, recipientId, content, messageId } = data;
           
+          console.log(`📨 Message from ${senderId} to ${recipientId}: ${content}`);
+          
           // Save message to database
           const Message = mongoose.model("Message");
           const message = await Message.create({
@@ -269,10 +271,13 @@ mongoose
             type: "text"
           });
           
-          // Emit to recipient if online
+          console.log(`💾 Message saved to database: ${message._id}`);
+          
+          // Emit to recipient if online (using user room)
           const recipientSocket = onlineUsers.get(recipientId);
           if (recipientSocket) {
-            io.to(recipientSocket.socketId).emit("new_message", {
+            console.log(`📤 Emitting to recipient ${recipientId} in room user_${recipientId}`);
+            io.to(`user_${recipientId}`).emit("new_message", {
               message: {
                 _id: message._id,
                 sender: senderId,
@@ -283,6 +288,8 @@ mongoose
                 createdAt: message.createdAt
               }
             });
+          } else {
+            console.log(`📤 Recipient ${recipientId} is offline`);
           }
           
           // Emit back to sender for confirmation
@@ -302,7 +309,7 @@ mongoose
         const { senderId, recipientId } = data;
         const recipientSocket = onlineUsers.get(recipientId);
         if (recipientSocket) {
-          io.to(recipientSocket.socketId).emit("user_typing", { senderId });
+          io.to(`user_${recipientId}`).emit("user_typing", { senderId });
         }
       });
 
@@ -310,7 +317,7 @@ mongoose
         const { senderId, recipientId } = data;
         const recipientSocket = onlineUsers.get(recipientId);
         if (recipientSocket) {
-          io.to(recipientSocket.socketId).emit("user_stopped_typing", { senderId });
+          io.to(`user_${recipientId}`).emit("user_stopped_typing", { senderId });
         }
       });
 
@@ -331,7 +338,7 @@ mongoose
           if (message && message.sender._id.toString() !== readerId) {
             const senderSocket = onlineUsers.get(message.sender._id.toString());
             if (senderSocket) {
-              io.to(senderSocket.socketId).emit("message_read", { messageId });
+              io.to(`user_${message.sender._id}`).emit("message_read", { messageId });
             }
           }
           

@@ -96,7 +96,26 @@ const Messages = () => {
         (message.sender === selectedChat.user._id ||
           message.recipient === selectedChat.user._id)
       ) {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => {
+          // Check if this is a response to our temporary message
+          const tempMessageIndex = prev.findIndex(
+            (msg) =>
+              msg.isTemp &&
+              msg.content === message.content &&
+              msg.sender === message.sender &&
+              msg.recipient === message.recipient
+          );
+
+          if (tempMessageIndex !== -1) {
+            // Replace temporary message with real message
+            const newMessages = [...prev];
+            newMessages[tempMessageIndex] = message;
+            return newMessages;
+          } else {
+            // Add new message
+            return [...prev, message];
+          }
+        });
 
         // Mark as read if we're the recipient
         if (message.recipient === user._id) {
@@ -104,7 +123,7 @@ const Messages = () => {
         }
       }
 
-      // Update conversation list
+      // Update conversation list (always update, not just for current chat)
       setConversations((prev) =>
         prev.map((conv) =>
           conv.user._id === message.sender ||
@@ -112,7 +131,10 @@ const Messages = () => {
             ? {
                 ...conv,
                 lastMessage: message,
-                unreadCount: conv.unreadCount + 1,
+                unreadCount:
+                  message.recipient === user._id
+                    ? conv.unreadCount + 1
+                    : conv.unreadCount,
               }
             : conv
         )
@@ -140,15 +162,20 @@ const Messages = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
+      console.log("📞 Fetching conversations from Messages page...");
       const response = await messageAPI.getUserConversations();
-      console.log("Conversations:", response.data);
+      console.log("📞 Conversations response:", response);
 
       if (response.data && response.data.data) {
+        console.log("📞 Setting conversations:", response.data.data);
         setConversations(response.data.data);
         // Auto-select first conversation if none selected
         if (response.data.data.length > 0 && !selectedChat) {
           setSelectedChat(response.data.data[0]);
         }
+      } else {
+        console.log("📞 No conversations data in response");
+        setConversations([]);
       }
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
@@ -165,6 +192,27 @@ const Messages = () => {
 
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
+
+        // Mark messages as read when conversation is opened
+        const unreadMessages =
+          response.data.data.messages?.filter(
+            (msg) =>
+              !msg.isRead &&
+              (msg.sender === escortId ||
+                (msg.sender && msg.sender._id === escortId))
+          ) || [];
+
+        // Mark each unread message as read
+        unreadMessages.forEach((msg) => {
+          markMessageAsRead(msg._id);
+        });
+
+        // Update conversation unread count locally
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.user._id === escortId ? { ...conv, unreadCount: 0 } : conv
+          )
+        );
       }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
@@ -173,38 +221,72 @@ const Messages = () => {
   };
 
   const sendMessage = async () => {
-    if (!message.trim() || !selectedChat || sending) return;
+    if (!message.trim() || !selectedChat || sending || !user || !user._id)
+      return;
+
+    const messageContent = message.trim();
+    const recipientId = selectedChat.user._id;
+
+    console.log("📤 Sending message from Messages page:", {
+      content: messageContent,
+      recipientId,
+      senderId: user._id,
+    });
+
+    // Create temporary message for instant feedback
+    const tempMessage = {
+      _id: `temp_${Date.now()}_${Math.random()}`,
+      sender: user._id,
+      recipient: recipientId,
+      content: messageContent,
+      type: "text",
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      isTemp: true,
+    };
+
+    // Update UI immediately for instant feedback
+    setMessages((prev) => [...prev, tempMessage]);
+    setMessage("");
+    setSending(true);
+
+    // Update conversation list immediately
+    setConversations((prev) =>
+      prev.map((conv) =>
+        conv.user._id === recipientId
+          ? { ...conv, lastMessage: tempMessage }
+          : conv
+      )
+    );
 
     try {
-      setSending(true);
+      console.log("📤 Sending via socket...");
+      // Send via socket in the background (non-blocking)
+      socketSendMessage(recipientId, messageContent).catch((error) => {
+        console.error("Socket send failed:", error);
+        // Mark message as failed
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === tempMessage._id ? { ...msg, isFailed: true } : msg
+          )
+        );
+        showToast("error", "Message failed to send");
+      });
 
-      // Send via socket for real-time delivery
-      await socketSendMessage(selectedChat.user._id, message.trim());
-
-      // Add message to local state immediately for instant feedback
-      const tempMessage = {
-        _id: Date.now().toString(),
-        sender: { _id: user._id },
-        recipient: selectedChat.user._id,
-        content: message.trim(),
-        type: "text",
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, tempMessage]);
-      setMessage("");
-
-      // Update conversation list
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.user._id === selectedChat.user._id
-            ? { ...conv, lastMessage: tempMessage }
-            : conv
-        )
-      );
+      console.log("📤 Sending via API...");
+      // Also send via API for persistence (non-blocking)
+      messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
+        console.error("API send failed:", error);
+        // Don't show error to user if socket worked
+      });
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Mark message as failed
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === tempMessage._id ? { ...msg, isFailed: true } : msg
+        )
+      );
       showToast("error", "Failed to send message");
     } finally {
       setSending(false);
@@ -304,7 +386,7 @@ const Messages = () => {
         <title>Messages - Call Girls</title>
         <meta
           name="description"
-          content="Chat with escorts and manage your conversations."
+          content={`Chat with ${user?.role === 'escort' ? 'clients' : 'escorts'} and manage your conversations.`}
         />
       </Helmet>
 
@@ -312,10 +394,11 @@ const Messages = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                <MessageCircle className="w-8 h-8 text-blue-600" />
                 Messages
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 ml-11">
                 Chat with escorts and manage your conversations
               </p>
             </div>
@@ -335,14 +418,32 @@ const Messages = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
+        <div
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          style={{ height: "calc(100vh - 200px)" }}
+        >
           {/* Chat List */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5" />
-                Conversations ({conversations.length})
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5" />
+                  Conversations ({conversations.length})
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchConversations}
+                  disabled={loading}
+                  className="h-8"
+                >
+                  {loading ? (
+                    <Clock className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Refresh"
+                  )}
+                </Button>
+              </div>
 
               {/* Search */}
               <div className="relative">
@@ -356,22 +457,29 @@ const Messages = () => {
               </div>
             </CardHeader>
 
-            <CardContent className="p-0">
-              <div className="space-y-1 max-h-[500px] overflow-y-auto">
+            <CardContent className="p-0 h-full flex flex-col">
+              <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 {filteredConversations.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">
                     {searchTerm
                       ? "No conversations found"
                       : "No conversations yet"}
+                    {!searchTerm && (
+                      <div className="mt-2 text-xs text-gray-400">
+                        <p>Debug: Loading={loading.toString()}</p>
+                        <p>Debug: Conversations={conversations.length}</p>
+                        <p>Debug: User ID={user?._id || "No user"}</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   filteredConversations.map((conversation) => (
                     <div
                       key={conversation.user._id}
-                      className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                      className={`p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 border-l-4 conversation-item ${
                         selectedChat?.user._id === conversation.user._id
-                          ? "bg-blue-50 border-r-2 border-blue-500"
-                          : ""
+                          ? "bg-blue-50 border-l-blue-500 shadow-sm"
+                          : "border-l-transparent hover:border-l-gray-300"
                       }`}
                       onClick={() => setSelectedChat(conversation)}
                     >
@@ -420,7 +528,7 @@ const Messages = () => {
           </Card>
 
           {/* Chat Messages */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 h-full">
             <Card className="h-full flex flex-col">
               {selectedChat ? (
                 <>
@@ -489,7 +597,10 @@ const Messages = () => {
 
                   <CardContent className="flex-1 flex flex-col p-0">
                     {/* Messages */}
-                    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+                    <div
+                      className="flex-1 p-4 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                      style={{ maxHeight: "calc(100vh - 400px)" }}
+                    >
                       {messages.length === 0 ? (
                         <div className="text-center text-gray-500 py-8">
                           <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -503,21 +614,29 @@ const Messages = () => {
                               msg.sender._id === user?._id
                                 ? "justify-end"
                                 : "justify-start"
-                            }`}
+                            } mb-4`}
                           >
-                            <div className="max-w-xs lg:max-w-md">
+                            <div
+                              className={`max-w-xs lg:max-w-md ${
+                                msg.sender._id === user?._id
+                                  ? "ml-auto"
+                                  : "mr-auto"
+                              }`}
+                            >
                               <div
-                                className={`px-4 py-2 rounded-lg ${
+                                className={`px-4 py-3 rounded-2xl shadow-sm message-bubble ${
                                   msg.sender._id === user?._id
-                                    ? "bg-blue-500 text-white"
-                                    : "bg-gray-100 text-gray-900"
+                                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
+                                    : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
                                 }`}
                               >
-                                <p className="text-sm">{msg.content}</p>
+                                <p className="text-sm leading-relaxed">
+                                  {msg.content}
+                                </p>
                                 <div
-                                  className={`flex items-center gap-1 mt-1 text-xs ${
+                                  className={`flex items-center gap-1 mt-2 text-xs ${
                                     msg.sender._id === user?._id
-                                      ? "text-blue-100"
+                                      ? "text-blue-100 opacity-80"
                                       : "text-gray-500"
                                   }`}
                                 >
@@ -525,9 +644,9 @@ const Messages = () => {
                                   {msg.sender._id === user?._id && (
                                     <>
                                       {msg.isRead ? (
-                                        <CheckCheck className="w-3 h-3" />
+                                        <CheckCheck className="w-3 h-3 text-blue-200" />
                                       ) : (
-                                        <Check className="w-3 h-3" />
+                                        <Check className="w-3 h-3 text-blue-200" />
                                       )}
                                     </>
                                   )}
@@ -535,23 +654,27 @@ const Messages = () => {
                               </div>
 
                               {/* Message actions */}
-                              <div className="flex items-center gap-2 mt-1">
+                              <div
+                                className={`flex items-center gap-1 mt-2 ${
+                                  msg.sender._id === user?._id
+                                    ? "justify-end"
+                                    : "justify-start"
+                                }`}
+                              >
                                 {msg.sender._id === user?._id && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs"
-                                      onClick={() => deleteMessage(msg._id)}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs hover:bg-blue-50 text-gray-500 hover:text-gray-700"
+                                    onClick={() => deleteMessage(msg._id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
                                 )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 px-2 text-xs"
+                                  className="h-6 px-2 text-xs hover:bg-gray-100 text-gray-500 hover:text-gray-700"
                                 >
                                   <Reply className="h-3 w-3" />
                                 </Button>
@@ -564,25 +687,34 @@ const Messages = () => {
                     </div>
 
                     {/* Message Input */}
-                    <div className="p-4 border-t">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Paperclip className="h-4 w-4" />
+                    <div className="p-4 border-t bg-gray-50 flex-shrink-0">
+                      <div className="flex gap-2 items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-gray-200"
+                        >
+                          <Paperclip className="h-4 w-4 text-gray-600" />
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <ImageIcon className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-gray-200"
+                        >
+                          <ImageIcon className="h-4 w-4 text-gray-600" />
                         </Button>
                         <Input
                           value={message}
                           onChange={handleTyping}
                           placeholder="Type your message..."
                           onKeyPress={handleKeyPress}
-                          className="flex-1"
+                          className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           disabled={sending}
                         />
                         <Button
                           onClick={sendMessage}
                           disabled={!message.trim() || sending}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
                         >
                           {sending ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

@@ -8,6 +8,9 @@ import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
 import fs from "fs";
 import mongoose from "mongoose";
+import Message from "../models/message.model.js";
+import Booking from "../models/booking.model.js";
+import Review from "../models/review.model.js";
 
 /**
  * Get all escorts with filtering and pagination
@@ -1024,3 +1027,99 @@ export const updateEscortFeaturedStatus = asyncHandler(
     }
   }
 );
+
+/**
+ * Get escort statistics for dashboard
+ * GET /api/escort/stats/:id
+ */
+export const getEscortStats = asyncHandler(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID parameter
+    if (!id || id === "undefined") {
+      throw new ApiError(400, "Invalid escort ID");
+    }
+
+    // Check if escort exists
+    const escort = await User.findOne({ _id: id, role: "escort" });
+    if (!escort) {
+      throw new ApiError(404, "Escort not found");
+    }
+
+    // Get current month for earnings calculation
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Calculate statistics
+    const [
+      totalMessages,
+      totalBookings,
+      totalReviews,
+      monthlyEarnings,
+      averageRating
+    ] = await Promise.all([
+      // Total messages received
+      Message.countDocuments({ recipient: id }),
+      
+      // Total bookings
+      Booking.countDocuments({ escortId: id }),
+      
+      // Total reviews
+      Review.countDocuments({ escortId: id }),
+      
+      // Monthly earnings (from completed bookings)
+      Booking.aggregate([
+        {
+          $match: {
+            escortId: new mongoose.Types.ObjectId(id),
+            status: "completed",
+            createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$amount" }
+          }
+        }
+      ]),
+      
+      // Average rating
+      Review.aggregate([
+        {
+          $match: { escortId: new mongoose.Types.ObjectId(id) }
+        },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" }
+          }
+        }
+      ])
+    ]);
+
+    // Extract values from aggregation results
+    const earnings = monthlyEarnings[0]?.total || 0;
+    const rating = averageRating[0]?.averageRating || 0;
+
+    // Get profile views from escort stats
+    const profileViews = escort.stats?.views || 0;
+
+    const stats = {
+      profileViews,
+      messages: totalMessages,
+      bookings: totalBookings,
+      rating: Math.round(rating * 10) / 10, // Round to 1 decimal place
+      earnings: Math.round(earnings * 100) / 100, // Round to 2 decimal places
+    };
+
+    return res.status(200).json(
+      new ApiResponse(200, { stats }, "Escort statistics retrieved successfully")
+    );
+  } catch (error) {
+    console.error("Error fetching escort stats:", error);
+    next(error);
+  }
+});
