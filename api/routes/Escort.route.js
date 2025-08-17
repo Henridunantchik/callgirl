@@ -28,6 +28,9 @@ EscortRoute.get("/search", searchEscorts);
 // Escort statistics (requires authentication)
 EscortRoute.get("/stats/:id", authenticate, getEscortStats);
 
+// Public escort statistics (no authentication required)
+EscortRoute.get("/public-stats/:id", getEscortStats);
+
 // Create escort profile (requires authentication)
 EscortRoute.post(
   "/create",

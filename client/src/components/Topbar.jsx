@@ -141,7 +141,7 @@ const Topbar = () => {
         <button onClick={toggleSidebar} className="md:hidden" type="button">
           <AiOutlineMenu />
         </button>
-        <Link to={RouteIndex}>
+        <Link to={`/${countryCode || 'ug'}`}>
           <img src={logo} className="w-20 h-auto" />
         </Link>
       </div>

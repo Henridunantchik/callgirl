@@ -18,6 +18,8 @@ import {
   Eye,
   TrendingUp,
   Settings,
+  Heart,
+  MessageSquare,
 } from "lucide-react";
 import { escortAPI, bookingAPI } from "../../services/api";
 import Loading from "../../components/Loading";
@@ -31,6 +33,8 @@ const EscortDashboard = () => {
     profileViews: 0,
     messages: 0,
     bookings: 0,
+    favorites: 0,
+    reviews: 0,
     rating: 0,
     earnings: 0,
   });
@@ -57,13 +61,19 @@ const EscortDashboard = () => {
         try {
           statsResponse = await escortAPI.getEscortStats(user.user._id);
           console.log("Stats response:", statsResponse.data);
-          
-          if (statsResponse.data && statsResponse.data.data && statsResponse.data.data.stats) {
+
+          if (
+            statsResponse.data &&
+            statsResponse.data.data &&
+            statsResponse.data.data.stats
+          ) {
             const apiStats = statsResponse.data.data.stats;
             setStats({
               profileViews: apiStats.profileViews || 0,
               messages: apiStats.messages || 0,
               bookings: apiStats.bookings || 0,
+              favorites: apiStats.favorites || 0,
+              reviews: apiStats.reviews || 0,
               rating: apiStats.rating || 0,
               earnings: apiStats.earnings || 0,
             });
@@ -73,6 +83,8 @@ const EscortDashboard = () => {
               profileViews: user.user?.stats?.profileViews || 0,
               messages: 0,
               bookings: 0,
+              favorites: 0,
+              reviews: 0,
               rating: user.user?.stats?.averageRating || 0,
               earnings: 0,
             });
@@ -85,6 +97,8 @@ const EscortDashboard = () => {
             profileViews: user.user?.stats?.profileViews || 0,
             messages: 0,
             bookings: 0,
+            favorites: 0,
+            reviews: 0,
             rating: user.user?.stats?.averageRating || 0,
             earnings: 0,
           });
@@ -146,7 +160,7 @@ const EscortDashboard = () => {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-8">
           <Card>
             <CardContent className="p-4 text-center">
               <Eye className="w-6 h-6 mx-auto mb-2 text-blue-500" />
@@ -168,6 +182,20 @@ const EscortDashboard = () => {
               <Calendar className="w-6 h-6 mx-auto mb-2 text-purple-500" />
               <div className="text-2xl font-bold">{stats.bookings}</div>
               <div className="text-sm text-gray-600">Bookings</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Heart className="w-6 h-6 mx-auto mb-2 text-red-500" />
+              <div className="text-2xl font-bold">{stats.favorites}</div>
+              <div className="text-sm text-gray-600">Favorites</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <MessageSquare className="w-6 h-6 mx-auto mb-2 text-blue-500" />
+              <div className="text-2xl font-bold">{stats.reviews}</div>
+              <div className="text-sm text-gray-600">Reviews</div>
             </CardContent>
           </Card>
           <Card>
@@ -221,6 +249,14 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
+                  onClick={() => navigate(`/ug/escort/reviews`)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  View Reviews
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="outline"
                   onClick={() => navigate(`/ug/escort/earnings`)}
                 >
                   <DollarSign className="w-4 h-4 mr-2" />
@@ -261,15 +297,20 @@ const EscortDashboard = () => {
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                            {booking.clientName ? booking.clientName.charAt(0).toUpperCase() : "C"}
+                            {booking.clientName
+                              ? booking.clientName.charAt(0).toUpperCase()
+                              : "C"}
                           </div>
                           <div>
                             <h3 className="font-semibold text-gray-900">
                               {booking.clientName || booking.client || "Client"}
                             </h3>
                             <p className="text-sm text-gray-600">
-                              {new Date(booking.date || booking.createdAt).toLocaleDateString()} at{" "}
-                              {booking.time || "TBD"} ({booking.duration || "1 hour"})
+                              {new Date(
+                                booking.date || booking.createdAt
+                              ).toLocaleDateString()}{" "}
+                              at {booking.time || "TBD"} (
+                              {booking.duration || "1 hour"})
                             </p>
                             <p className="text-xs text-gray-500">
                               {booking.location || "Location TBD"}
@@ -282,12 +323,14 @@ const EscortDashboard = () => {
                           </div>
                           <Badge
                             variant={
-                              booking.status === "confirmed" || booking.status === "completed"
+                              booking.status === "confirmed" ||
+                              booking.status === "completed"
                                 ? "default"
                                 : "outline"
                             }
                             className={
-                              booking.status === "confirmed" || booking.status === "completed"
+                              booking.status === "confirmed" ||
+                              booking.status === "completed"
                                 ? "bg-green-500 text-white"
                                 : booking.status === "pending"
                                 ? "bg-yellow-500 text-white"
@@ -329,22 +372,26 @@ const EscortDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Weekly Performance */}
                 <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
-                  <h3 className="font-semibold text-blue-800 mb-2">This Week</h3>
+                  <h3 className="font-semibold text-blue-800 mb-2">
+                    This Week
+                  </h3>
                   <div className="text-2xl font-bold text-blue-600">
                     {stats.bookings > 0 ? Math.floor(stats.bookings / 4) : 0}
                   </div>
                   <p className="text-sm text-blue-600">Bookings</p>
                 </div>
-                
+
                 {/* Monthly Performance */}
                 <div className="text-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
-                  <h3 className="font-semibold text-green-800 mb-2">This Month</h3>
+                  <h3 className="font-semibold text-green-800 mb-2">
+                    This Month
+                  </h3>
                   <div className="text-2xl font-bold text-green-600">
                     ${stats.earnings}
                   </div>
                   <p className="text-sm text-green-600">Earnings</p>
                 </div>
-                
+
                 {/* Average Rating */}
                 <div className="text-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg">
                   <h3 className="font-semibold text-yellow-800 mb-2">Rating</h3>
@@ -354,24 +401,44 @@ const EscortDashboard = () => {
                   <p className="text-sm text-yellow-600">Average</p>
                 </div>
               </div>
-              
+
               {/* Quick Stats */}
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-semibold text-gray-700">{stats.profileViews}</div>
+                  <div className="text-lg font-semibold text-gray-700">
+                    {stats.profileViews}
+                  </div>
                   <p className="text-xs text-gray-500">Profile Views</p>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-semibold text-gray-700">{stats.messages}</div>
+                  <div className="text-lg font-semibold text-gray-700">
+                    {stats.messages}
+                  </div>
                   <p className="text-xs text-gray-500">Messages</p>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-semibold text-gray-700">{recentBookings.length}</div>
+                  <div className="text-lg font-semibold text-gray-700">
+                    {stats.favorites}
+                  </div>
+                  <p className="text-xs text-gray-500">Favorites</p>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="text-lg font-semibold text-gray-700">
+                    {stats.reviews}
+                  </div>
+                  <p className="text-xs text-gray-500">Reviews</p>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="text-lg font-semibold text-gray-700">
+                    {recentBookings.length}
+                  </div>
                   <p className="text-xs text-gray-500">Recent Bookings</p>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="text-lg font-semibold text-gray-700">
-                    {stats.rating > 0 ? "⭐".repeat(Math.floor(stats.rating)) : "N/A"}
+                    {stats.rating > 0
+                      ? "⭐".repeat(Math.floor(stats.rating))
+                      : "N/A"}
                   </div>
                   <p className="text-xs text-gray-500">Stars</p>
                 </div>

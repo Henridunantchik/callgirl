@@ -11,6 +11,7 @@ import mongoose from "mongoose";
 import Message from "../models/message.model.js";
 import Booking from "../models/booking.model.js";
 import Review from "../models/review.model.js";
+import Favorite from "../models/favorite.model.js";
 
 /**
  * Get all escorts with filtering and pagination
@@ -24,6 +25,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       q, // Search query
       city,
       country,
+      countryCode, // New parameter for country code
       age,
       bodyType,
       service,
@@ -36,11 +38,30 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       sortOrder = "desc",
     } = req.query;
 
+    // Map country codes to country names
+    const countryMapping = {
+      ug: "Uganda",
+      ke: "Kenya",
+      tz: "Tanzania",
+      rw: "Rwanda",
+      bi: "Burundi",
+      cd: "DR Congo",
+    };
+
     // Build filter object
     const filter = {
       role: "escort",
       isActive: true,
     };
+
+    // Auto-filter by country if countryCode is provided
+    if (countryCode && countryMapping[countryCode]) {
+      const countryName = countryMapping[countryCode];
+      // Filter by both country name and country code (for backward compatibility)
+      filter["location.country"] = {
+        $in: [countryName, countryCode],
+      };
+    }
 
     // Search query - use regex search for better compatibility
     if (q) {
@@ -55,7 +76,8 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
 
     // Location filters
     if (city) filter["location.city"] = { $regex: city, $options: "i" };
-    if (country) filter["location.country"] = { $regex: country, $options: "i" };
+    if (country)
+      filter["location.country"] = { $regex: country, $options: "i" };
 
     // Age filter
     if (age) {
@@ -157,7 +179,8 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
 
       // Calculate online status (active within last 30 minutes)
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-      const isOnline = escort.lastActive && escort.lastActive >= thirtyMinutesAgo;
+      const isOnline =
+        escort.lastActive && escort.lastActive >= thirtyMinutesAgo;
 
       return {
         ...escort.toObject(),
@@ -1035,7 +1058,7 @@ export const updateEscortFeaturedStatus = asyncHandler(
 export const getEscortStats = asyncHandler(async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     // Validate ID parameter
     if (!id || id === "undefined") {
       throw new ApiError(400, "Invalid escort ID");
@@ -1057,47 +1080,51 @@ export const getEscortStats = asyncHandler(async (req, res, next) => {
       totalMessages,
       totalBookings,
       totalReviews,
+      totalFavorites,
       monthlyEarnings,
-      averageRating
+      averageRating,
     ] = await Promise.all([
       // Total messages received
       Message.countDocuments({ recipient: id }),
-      
+
       // Total bookings
       Booking.countDocuments({ escortId: id }),
-      
+
       // Total reviews
-      Review.countDocuments({ escortId: id }),
-      
+      Review.countDocuments({ escort: id }),
+
+      // Total favorites
+      Favorite.countDocuments({ escort: id }),
+
       // Monthly earnings (from completed bookings)
       Booking.aggregate([
         {
           $match: {
             escortId: new mongoose.Types.ObjectId(id),
             status: "completed",
-            createdAt: { $gte: startOfMonth, $lte: endOfMonth }
-          }
+            createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+          },
         },
         {
           $group: {
             _id: null,
-            total: { $sum: "$amount" }
-          }
-        }
+            total: { $sum: "$amount" },
+          },
+        },
       ]),
-      
+
       // Average rating
       Review.aggregate([
         {
-          $match: { escortId: new mongoose.Types.ObjectId(id) }
+          $match: { escort: new mongoose.Types.ObjectId(id) },
         },
         {
           $group: {
             _id: null,
-            averageRating: { $avg: "$rating" }
-          }
-        }
-      ])
+            averageRating: { $avg: "$rating" },
+          },
+        },
+      ]),
     ]);
 
     // Extract values from aggregation results
@@ -1111,13 +1138,21 @@ export const getEscortStats = asyncHandler(async (req, res, next) => {
       profileViews,
       messages: totalMessages,
       bookings: totalBookings,
+      favorites: totalFavorites,
+      reviews: totalReviews,
       rating: Math.round(rating * 10) / 10, // Round to 1 decimal place
       earnings: Math.round(earnings * 100) / 100, // Round to 2 decimal places
     };
 
-    return res.status(200).json(
-      new ApiResponse(200, { stats }, "Escort statistics retrieved successfully")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { stats },
+          "Escort statistics retrieved successfully"
+        )
+      );
   } catch (error) {
     console.error("Error fetching escort stats:", error);
     next(error);

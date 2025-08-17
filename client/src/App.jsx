@@ -48,6 +48,7 @@ import EscortProfile from "./pages/Escort/EscortProfile";
 import EscortProfileEdit from "./pages/Escort/EscortProfileEdit";
 import EscortRegistration from "./pages/Escort/EscortRegistration";
 import EscortDashboard from "./pages/Escort/EscortDashboard";
+import EscortReviews from "./pages/Escort/EscortReviews";
 import ClientDashboard from "./pages/Client/ClientDashboard";
 import Favorites from "./pages/Client/Favorites";
 import Bookings from "./pages/Client/Bookings";
@@ -62,6 +63,7 @@ import PrivacyPolicy from "./pages/Legal/PrivacyPolicy";
 import TermsOfService from "./pages/Legal/TermsOfService";
 import AgeDisclaimer from "./pages/Legal/AgeDisclaimer";
 import TestPage from "./pages/TestPage";
+import GeolocationTest from "./components/GeolocationTest";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailure from "./pages/PaymentFailure";
 
@@ -127,6 +129,7 @@ const App = () => {
                     element={<EscortProfileEdit />}
                   />
                   <Route path="escort/messages" element={<Messages />} />
+                  <Route path="escort/reviews" element={<EscortReviews />} />
                   <Route path="victime/add" element={<AddBlog />} />
                   <Route path="victimes" element={<BlogDetails />} />
                   <Route path="victime/edit/:blogid" element={<EditBlog />} />
@@ -142,8 +145,9 @@ const App = () => {
               <Route path="legal/terms" element={<TermsOfService />} />
               <Route path="legal/age-disclaimer" element={<AgeDisclaimer />} />
 
-              {/* Test Page */}
+              {/* Test Pages */}
               <Route path="test" element={<TestPage />} />
+              <Route path="geolocation-test" element={<GeolocationTest />} />
 
               {/* Legacy Blog Routes (to be deprecated) */}
               <Route
@@ -181,8 +185,15 @@ const App = () => {
             <Route path="payment/success" element={<PaymentSuccess />} />
             <Route path="payment/failure" element={<PaymentFailure />} />
 
-            {/* Root redirect */}
-            <Route path="/" element={<Navigate to="/ug" replace />} />
+            {/* Root redirect with geolocation */}
+            <Route
+              path="/"
+              element={
+                <CountryRedirect>
+                  <Layout />
+                </CountryRedirect>
+              }
+            />
 
             {/* Fallback for direct escort registration access */}
             <Route

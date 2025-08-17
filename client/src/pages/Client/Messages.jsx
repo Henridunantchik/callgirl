@@ -386,7 +386,9 @@ const Messages = () => {
         <title>Messages - Call Girls</title>
         <meta
           name="description"
-          content={`Chat with ${user?.role === 'escort' ? 'clients' : 'escorts'} and manage your conversations.`}
+          content={`Chat with ${
+            user?.role === "escort" ? "clients" : "escorts"
+          } and manage your conversations.`}
         />
       </Helmet>
 
@@ -399,7 +401,8 @@ const Messages = () => {
                 Messages
               </h1>
               <p className="text-gray-600 ml-11">
-                Chat with escorts and manage your conversations
+                Chat with {user?.role === "escort" ? "clients" : "escorts"} and
+                manage your conversations
               </p>
             </div>
             <div className="flex items-center gap-2">

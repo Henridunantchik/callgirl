@@ -35,6 +35,7 @@ import {
   Clock,
   MessageCircle,
   Phone,
+  Award,
 } from "lucide-react";
 import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
@@ -42,6 +43,13 @@ import { useAuth } from "../../contexts/AuthContext";
 import { RouteSignIn } from "../../helpers/RouteName";
 import { debounce } from "lodash";
 import RealTimeMessenger from "../../components/RealTimeMessenger";
+import {
+  canShowContactInfo,
+  canShowDetailedInfo,
+  getEscortAccessLevel,
+  getAccessLevelBadgeColor,
+  getAccessLevelLabel,
+} from "../../utils/escortAccess";
 
 const EscortList = () => {
   const navigate = useNavigate();
@@ -160,6 +168,7 @@ const EscortList = () => {
       const params = {
         page,
         limit: 20,
+        countryCode: countryCode || "ug", // Add country code filter
         sortBy: sort,
         ...(search && { q: search }),
         ...(filterParams.location && { city: filterParams.location }),
@@ -176,13 +185,27 @@ const EscortList = () => {
       const response = await escortAPI.getAllEscorts(params);
       console.log("✅ Escorts fetched:", response.data);
 
-      const escortData =
+      let escortData =
         response.data?.data?.escorts ||
         response.data?.escorts ||
         response.data ||
         [];
       const total =
         response.data?.data?.total || response.data?.total || escortData.length;
+
+      // Sort escorts by priority: Premium/Elite > Featured > Basic
+      if (sort === "relevance") {
+        escortData.sort((a, b) => {
+          // Get access levels
+          const aLevel = getEscortAccessLevel(a);
+          const bLevel = getEscortAccessLevel(b);
+
+          // Priority order: elite > premium > featured > basic
+          const priority = { elite: 4, premium: 3, featured: 2, basic: 1 };
+
+          return priority[bLevel] - priority[aLevel]; // Higher priority first
+        });
+      }
 
       if (page === 1) {
         setEscorts(escortData);
@@ -651,7 +674,9 @@ const EscortList = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="relevance">Relevance</SelectItem>
+                <SelectItem value="relevance">
+                  Priority (Premium → Featured → Basic)
+                </SelectItem>
                 <SelectItem value="newest">Newest</SelectItem>
                 <SelectItem value="rating">Rating</SelectItem>
                 <SelectItem value="price-low">Price: Low to High</SelectItem>
@@ -690,12 +715,12 @@ const EscortList = () => {
               {escorts.map((escort) => (
                 <Card
                   key={escort._id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white"
                   onClick={() => handleEscortClick(escort)}
                 >
                   <CardContent className="p-0">
-                    {/* Image */}
-                    <div className="relative h-48 bg-gray-200 rounded-t-lg overflow-hidden">
+                    {/* Image - Moderately taller */}
+                    <div className="relative h-64 bg-gray-200 overflow-hidden">
                       {escort.gallery && escort.gallery.length > 0 ? (
                         <img
                           src={escort.gallery[0].url}
@@ -707,19 +732,6 @@ const EscortList = () => {
                           No Photo
                         </div>
                       )}
-
-                      {/* Favorite Button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleFavorite(escort._id);
-                        }}
-                      >
-                        <Heart className="h-4 w-4" />
-                      </Button>
 
                       {/* Verification Badge */}
                       {escort.isVerified && (
@@ -744,72 +756,63 @@ const EscortList = () => {
                         </div>
                       )}
 
-                      {/* Featured Badge */}
-                      {escort.isFeatured && (
-                        <div className="absolute bottom-2 right-2">
-                          <Badge className="bg-yellow-500 text-white text-xs">
-                            <Star className="h-3 w-3 mr-1" />
-                            Featured
-                          </Badge>
-                        </div>
-                      )}
+                      {/* Access Level Badge */}
+                      <div className="absolute top-2 left-2">
+                        <Badge
+                          variant="secondary"
+                          className={`${getAccessLevelBadgeColor(
+                            getEscortAccessLevel(escort)
+                          )} text-white shadow-md text-xs`}
+                        >
+                          <Award className="h-3 w-3 mr-1" />
+                          {getAccessLevelLabel(getEscortAccessLevel(escort))}
+                        </Badge>
+                      </div>
                     </div>
 
                     {/* Content */}
-                    <div className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg truncate">
+                    <div className="p-3">
+                      {/* Name and Age - Aligned like EscortCard */}
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-base font-semibold text-gray-900 truncate">
                           {escort.name}
                         </h3>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Eye className="h-4 w-4 mr-1" />
-                          {escort.profileViews || 0}
-                        </div>
+                        <span className="text-xs text-gray-500">
+                          {escort.age} years
+                        </span>
                       </div>
 
-                      <div className="flex items-center text-sm text-gray-600 mb-2">
-                        <MapPin className="h-4 w-4 mr-1" />
+                      {/* Location */}
+                      <div className="flex items-center text-xs text-gray-600 mb-1">
+                        <MapPin className="w-3 h-3 mr-1" />
                         <span className="truncate">
                           {escort.location?.city || "Location not specified"}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                          <span className="text-sm text-gray-600">
-                            {escort.age || "Age not specified"}
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
-                          <span className="text-sm font-medium">
-                            {escort.rates?.hourly
-                              ? `${currencySymbol} ${escort.rates.hourly.toLocaleString()}`
-                              : "Price not specified"}
-                          </span>
-                        </div>
-                      </div>
-
                       {/* Services */}
-                      {escort.services && escort.services.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {escort.services.slice(0, 3).map((service, index) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {service}
-                            </Badge>
-                          ))}
-                          {escort.services.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{escort.services.length - 3} more
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+                      {canShowDetailedInfo(escort) &&
+                        escort.services &&
+                        escort.services.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {escort.services
+                              .slice(0, 3)
+                              .map((service, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {service}
+                                </Badge>
+                              ))}
+                            {escort.services.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{escort.services.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
 
                       {/* Rating */}
                       {escort.rating && (
@@ -833,7 +836,7 @@ const EscortList = () => {
                       )}
 
                       {/* Contact Buttons */}
-                      <div className="flex gap-2 mt-4">
+                      <div className="flex gap-2 mt-3">
                         <Button
                           variant="outline"
                           size="sm"
@@ -843,15 +846,26 @@ const EscortList = () => {
                           <MessageCircle className="w-4 h-4 mr-1" />
                           Message
                         </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleContact(escort, "call")}
-                        >
-                          <Phone className="w-4 h-4 mr-1" />
-                          Call
-                        </Button>
+                        {canShowContactInfo(escort) ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleContact(escort, "call")}
+                          >
+                            <Phone className="w-4 h-4 mr-1" />
+                            Call
+                          </Button>
+                        ) : // Only show premium access message to escorts (not clients)
+                        user?.user?.role === "escort" ? (
+                          <div className="flex-1 p-2 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+                            <div className="text-center">
+                              <p className="text-orange-600 text-xs font-medium">
+                                Premium Required
+                              </p>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </CardContent>

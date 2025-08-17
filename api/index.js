@@ -56,6 +56,7 @@ import AdminAgeVerificationRoute from "./routes/AdminAgeVerification.route.js";
 import SubscriptionRoute from "./routes/Subscription.route.js";
 import AdminSubscriptionRoute from "./routes/AdminSubscription.route.js";
 import TransportRoute from "./routes/Transport.route.js";
+import StatsRoute from "./routes/Stats.route.js";
 
 // Load environment variables
 dotenv.config();
@@ -193,6 +194,7 @@ app.use("/api/admin/subscription", AdminSubscriptionRoute);
 
 // Transport routes
 app.use("/api/transport", TransportRoute);
+app.use("/api/stats", StatsRoute);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

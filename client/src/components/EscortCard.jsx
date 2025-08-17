@@ -15,25 +15,37 @@ import {
   Shield,
   Crown,
   DollarSign,
+  Award,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import FavoriteButton from "./FavoriteButton";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  hasPremiumAccess,
+  canShowContactInfo,
+  canShowDetailedInfo,
+  getEscortAccessLevel,
+  getAccessLevelBadgeColor,
+  getAccessLevelLabel,
+} from "../utils/escortAccess";
 
 const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
   const { countryCode } = useParams();
+  const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // Function to get currency symbol based on country
   const getCurrencySymbol = (countryCode) => {
     const currencies = {
-      'ug': 'UGX',
-      'ke': 'KES', 
-      'tz': 'TZS',
-      'rw': 'RWF',
-      'bi': 'BIF',
-      'cd': 'CDF'
+      ug: "UGX",
+      ke: "KES",
+      tz: "TZS",
+      rw: "RWF",
+      bi: "BIF",
+      cd: "CDF",
     };
-    return currencies[countryCode?.toLowerCase()] || 'USD';
+    return currencies[countryCode?.toLowerCase()] || "USD";
   };
 
   const currencySymbol = getCurrencySymbol(countryCode);
@@ -121,26 +133,38 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           <div className="absolute top-3 left-3 flex flex-col gap-2">
             {getVerificationBadge()}
             {getPremiumBadge()}
+            {/* Access Level Badge */}
+            <Badge
+              variant="secondary"
+              className={`${getAccessLevelBadgeColor(
+                getEscortAccessLevel(escort)
+              )} text-white shadow-md`}
+            >
+              <Award className="h-3 w-3 mr-1" />
+              {getAccessLevelLabel(getEscortAccessLevel(escort))}
+            </Badge>
           </div>
 
           {/* Online status */}
           <div className="absolute top-3 right-3">{getOnlineStatus()}</div>
 
-          {/* Favorite button */}
-          <div className="absolute top-3 right-3 mt-12">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="bg-white/80 hover:bg-white text-gray-700 hover:text-red-500"
-              onClick={() => onFavorite(escort._id)}
-            >
-              <Heart
-                className={`w-4 h-4 ${
-                  isFavorite ? "fill-red-500 text-red-500" : ""
-                }`}
+          {/* Favorite button - Only for premium/featured escorts */}
+          {canShowContactInfo(escort) && (
+            <div className="absolute top-3 right-3 mt-12">
+              <FavoriteButton
+                escortId={escort._id}
+                size="sm"
+                variant="ghost"
+                className="bg-white/80 hover:bg-white text-gray-700 hover:text-red-500"
+                onFavoriteToggle={() => {
+                  // Update escort stats in the card if needed
+                  if (onFavorite) {
+                    onFavorite(escort._id);
+                  }
+                }}
               />
-            </Button>
-          </div>
+            </div>
+          )}
 
           {/* Gallery count */}
           {escort.gallery && escort.gallery.length > 1 && (
@@ -207,27 +231,29 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
             </div>
           )}
 
-          {/* Physical attributes */}
-          <div className="flex flex-wrap gap-1 mb-2">
-            {escort.height && (
-              <Badge variant="outline" className="text-xs">
-                {escort.height}cm
-              </Badge>
-            )}
-            {escort.bodyType && (
-              <Badge variant="outline" className="text-xs">
-                {escort.bodyType}
-              </Badge>
-            )}
-            {escort.ethnicity && (
-              <Badge variant="outline" className="text-xs">
-                {escort.ethnicity}
-              </Badge>
-            )}
-          </div>
+          {/* Physical attributes - Only show for premium escorts */}
+          {canShowDetailedInfo(escort) && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {escort.height && (
+                <Badge variant="outline" className="text-xs">
+                  {escort.height}cm
+                </Badge>
+              )}
+              {escort.bodyType && (
+                <Badge variant="outline" className="text-xs">
+                  {escort.bodyType}
+                </Badge>
+              )}
+              {escort.ethnicity && (
+                <Badge variant="outline" className="text-xs">
+                  {escort.ethnicity}
+                </Badge>
+              )}
+            </div>
+          )}
 
-          {/* Services */}
-          {escort.services && (
+          {/* Services - Only show for premium escorts */}
+          {canShowDetailedInfo(escort) && escort.services && (
             <div className="mb-2">
               <div className="flex flex-wrap gap-1">
                 {(() => {
@@ -267,31 +293,54 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
               </div>
             </div>
           )}
-
-
         </CardContent>
 
         <CardFooter className="p-3 pt-0">
-          <div className="flex gap-2 w-full">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => onContact(escort, "message")}
-            >
-              <MessageCircle className="w-4 h-4 mr-1" />
-              Message
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              className="flex-1"
-              onClick={() => onContact(escort, "call")}
-            >
-              <Phone className="w-4 h-4 mr-1" />
-              {escort.phone || "Call"}
-            </Button>
-          </div>
+          {canShowContactInfo(escort) ? (
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => onContact(escort, "message")}
+              >
+                <MessageCircle className="w-4 h-4 mr-1" />
+                Message
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1"
+                onClick={() => onContact(escort, "call")}
+              >
+                <Phone className="w-4 h-4 mr-1" />
+                {escort.phone || "Call"}
+              </Button>
+            </div>
+          ) : // Only show premium access message to escorts (not clients)
+          user?.user?.role === "escort" ? (
+            <div className="w-full p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+              <div className="text-center">
+                <Award className="h-5 w-5 text-orange-500 mx-auto mb-1" />
+                <p className="text-orange-600 text-xs font-medium">
+                  Premium Access Required
+                </p>
+              </div>
+            </div>
+          ) : (
+            // For clients, just show message button
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => onContact(escort, "message")}
+              >
+                <MessageCircle className="w-4 h-4 mr-1" />
+                Message
+              </Button>
+            </div>
+          )}
         </CardFooter>
       </Card>
     </motion.div>

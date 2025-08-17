@@ -14,7 +14,7 @@ const addToFavorites = asyncHandler(async (req, res) => {
 
   // Check if already favorited
   const existingFavorite = await Favorite.findOne({
-    user: userId,
+    client: userId,
     escort: escortId,
   });
 
@@ -23,11 +23,12 @@ const addToFavorites = asyncHandler(async (req, res) => {
   }
 
   const favorite = await Favorite.create({
-    user: userId,
+    client: userId,
     escort: escortId,
   });
 
   const populatedFavorite = await Favorite.findById(favorite._id)
+    .populate("client", "name alias avatar")
     .populate("escort", "name alias avatar age location rates");
 
   return res.status(201).json(
@@ -41,7 +42,7 @@ const removeFromFavorites = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   const favorite = await Favorite.findOneAndDelete({
-    user: userId,
+    client: userId,
     escort: escortId,
   });
 
@@ -61,13 +62,13 @@ const getUserFavorites = asyncHandler(async (req, res) => {
 
   const skip = (page - 1) * limit;
 
-  const favorites = await Favorite.find({ user: userId })
+  const favorites = await Favorite.find({ client: userId })
     .populate("escort", "name alias avatar age location rates isOnline isVerified")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit));
 
-  const total = await Favorite.countDocuments({ user: userId });
+  const total = await Favorite.countDocuments({ client: userId });
 
   return res.status(200).json(
     new ApiResponse(200, {
@@ -85,7 +86,7 @@ const isFavorited = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   const favorite = await Favorite.findOne({
-    user: userId,
+    client: userId,
     escort: escortId,
   });
 

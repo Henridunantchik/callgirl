@@ -2,7 +2,7 @@ import EscortCard from "@/components/EscortCard";
 import Loading from "@/components/Loading";
 import { getEvn } from "@/helpers/getEnv";
 import { useFetch } from "@/hooks/useFetch";
-import { escortAPI } from "@/services/api";
+import { escortAPI, statsAPI } from "@/services/api";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { showToast } from "@/helpers/showToast";
 import { RouteSignIn } from "@/helpers/RouteName";
+import { getEscortAccessLevel } from "@/utils/escortAccess";
 import { useParams } from "react-router-dom";
 import {
   FaSearch,
@@ -42,6 +43,7 @@ const Index = () => {
 
   // Fetch escort data from API
   const [escortData, setEscortData] = useState(null);
+  const [statsData, setStatsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -51,35 +53,70 @@ const Index = () => {
   console.log("Loading:", loading);
   console.log("Error:", error);
 
-  // Fetch escorts on component mount
+  // Fetch escorts and stats on component mount
   React.useEffect(() => {
-    const fetchEscorts = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        console.log("Fetching featured escorts from API...");
-        const response = await escortAPI.getAllEscorts({
-          featured: true,
-          _t: Date.now(), // Cache busting parameter
+        console.log("Fetching featured escorts and stats from API...");
+
+        // Fetch escorts and stats in parallel
+        const [escortsResponse, statsResponse] = await Promise.all([
+          escortAPI.getAllEscorts({
+            featured: true,
+            countryCode: countryCode || "ug", // Add country code filter
+            _t: Date.now(), // Cache busting parameter
+          }),
+          statsAPI.getGlobalStats(countryCode || "ug"),
+        ]);
+
+        console.log("Escorts API response:", escortsResponse.data);
+        console.log("Stats API response:", statsResponse.data);
+
+        // Filter and sort escort data
+        let escorts =
+          escortsResponse.data.data?.escorts || escortsResponse.data.data || [];
+
+        // Filter: Only Premium/Elite and Featured escorts
+        escorts = escorts.filter((escort) => {
+          const accessLevel = getEscortAccessLevel(escort);
+          return (
+            accessLevel === "elite" ||
+            accessLevel === "premium" ||
+            accessLevel === "featured"
+          );
         });
-        console.log("API response:", response.data);
-        console.log(
-          "Escorts count:",
-          response.data?.data?.escorts?.length || 0
-        );
-        console.log("Total count:", response.data?.data?.total || 0);
-        // Fix: Set the correct data structure - response.data.data contains the actual data
-        setEscortData(response.data.data);
+
+        // Sort: Premium/Elite first, then Featured
+        escorts.sort((a, b) => {
+          const aLevel = getEscortAccessLevel(a);
+          const bLevel = getEscortAccessLevel(b);
+
+          // Priority order: elite > premium > featured
+          const priority = { elite: 3, premium: 2, featured: 1 };
+
+          return priority[bLevel] - priority[aLevel]; // Higher priority first
+        });
+
+        // Set escort data with filtered and sorted results
+        setEscortData({ ...escortsResponse.data.data, escorts });
+
+        // Set stats data
+        if (statsResponse.data?.data?.stats) {
+          setStatsData(statsResponse.data.data.stats);
+        }
+
         setError(null);
       } catch (err) {
-        console.error("Error fetching escorts:", err);
+        console.error("Error fetching data:", err);
         setError(err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEscorts();
-  }, []);
+    fetchData();
+  }, [countryCode]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -122,9 +159,11 @@ const Index = () => {
     const isUserAuthenticated = isAuthenticated();
     console.log("Extracted userId:", userId);
     console.log("isAuthenticated():", isUserAuthenticated);
-    
+
     if (!userId && !isUserAuthenticated) {
-      console.log("No userId found and not authenticated, redirecting to login");
+      console.log(
+        "No userId found and not authenticated, redirecting to login"
+      );
       showToast("error", "Please sign in to contact escorts");
       window.location.href = RouteSignIn;
       return;
@@ -134,7 +173,10 @@ const Index = () => {
       if (escort.phone) {
         // Copy phone number to clipboard
         navigator.clipboard.writeText(escort.phone);
-        showToast("success", `Phone number copied to clipboard: ${escort.phone}`);
+        showToast(
+          "success",
+          `Phone number copied to clipboard: ${escort.phone}`
+        );
       } else {
         showToast("error", "Phone number not available for this escort.");
       }
@@ -297,11 +339,11 @@ const Index = () => {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {escortData?.total || 0}
+              {statsData?.totalEscorts || 0}
             </div>
             <div className="text-sm text-gray-600">Active Profiles</div>
           </CardContent>
@@ -309,7 +351,7 @@ const Index = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-green-600">
-              {escortData?.escorts?.filter((e) => e.isVerified).length || 0}
+              {statsData?.verifiedEscorts || 0}
             </div>
             <div className="text-sm text-gray-600">Verified Escorts</div>
           </CardContent>
@@ -317,7 +359,7 @@ const Index = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-purple-600">
-              {escortData?.escorts?.filter((e) => e.isOnline).length || 0}
+              {statsData?.onlineEscorts || 0}
             </div>
             <div className="text-sm text-gray-600">Online Now</div>
           </CardContent>
@@ -325,9 +367,25 @@ const Index = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-orange-600">
-              {escortData?.escorts?.length || 0}
+              {statsData?.citiesCovered || 0}
             </div>
             <div className="text-sm text-gray-600">Cities Covered</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-pink-600">
+              {statsData?.featuredEscorts || 0}
+            </div>
+            <div className="text-sm text-gray-600">Featured</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-600">
+              {statsData?.premiumEscorts || 0}
+            </div>
+            <div className="text-sm text-gray-600">Premium</div>
           </CardContent>
         </Card>
       </div>
@@ -335,7 +393,7 @@ const Index = () => {
       {/* Escort Listings */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Featured Escorts</h2>
+          <h2 className="text-2xl font-bold">Premium & Featured Escorts</h2>
           <Button variant="outline" asChild>
             <Link to={`/${countryCode}/escort/list`}>
               <FaFilter className="mr-2" />
@@ -401,8 +459,8 @@ const Index = () => {
       </Card>
 
       {/* Real-time Messenger */}
-      <RealTimeMessenger 
-        isOpen={isMessengerOpen} 
+      <RealTimeMessenger
+        isOpen={isMessengerOpen}
         onClose={() => setIsMessengerOpen(false)}
         selectedEscort={selectedEscort}
       />

@@ -147,6 +147,9 @@ export const escortAPI = {
 
   // Get escort statistics
   getEscortStats: (id) => api.get(`/escort/stats/${id}`),
+
+  // Get public escort statistics (no auth required)
+  getPublicEscortStats: (id) => api.get(`/escort/public-stats/${id}`),
 };
 
 // Booking API
@@ -300,6 +303,12 @@ export const userAPI = {
   updateOnlineStatus: () => api.put("/user/online-status"),
   getOnlineStatus: (userId) => api.get(`/user/online-status/${userId}`),
   markOffline: () => api.put("/user/offline"),
+};
+
+// Stats API
+export const statsAPI = {
+  // Get global platform statistics
+  getGlobalStats: (countryCode) => api.get(`/stats/global/${countryCode}`),
 };
 
 // Admin API

@@ -48,7 +48,7 @@ const AppSidebar = () => {
   const [showAllCities, setShowAllCities] = useState(false);
   const [showAllServices, setShowAllServices] = useState(false);
   const { data: categoryData } = useFetch(
-    `${getEvn("VITE_API_BASE_URL")}/category/all-category`,
+    `category/all-category`,
     {
       method: "get",
       credentials: "include",
@@ -65,7 +65,9 @@ const AppSidebar = () => {
   return (
     <Sidebar>
       <SidebarHeader className="bg-white">
-        <img src={logo} width={80} className="h-auto" />
+        <Link to={`/${countryCode || 'ug'}`}>
+          <img src={logo} width={80} className="h-auto" />
+        </Link>
       </SidebarHeader>
       <SidebarContent className="bg-white">
         <SidebarGroup>
@@ -151,7 +153,9 @@ const AppSidebar = () => {
                     <SidebarMenuItem>
                       <SidebarMenuButton>
                         <FaRegComments />
-                        <Link to={`/${countryCode}/hommages`}>Reviews</Link>
+                        <Link to={`/${countryCode}/escort/reviews`}>
+                          Reviews
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </>

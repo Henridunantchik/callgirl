@@ -14,7 +14,7 @@ const createReview = asyncHandler(async (req, res) => {
 
   // Check if user has already reviewed this escort
   const existingReview = await Review.findOne({
-    user: userId,
+    client: userId,
     escort: escortId,
   });
 
@@ -23,7 +23,7 @@ const createReview = asyncHandler(async (req, res) => {
   }
 
   const review = await Review.create({
-    user: userId,
+    client: userId,
     escort: escortId,
     rating,
     comment,
@@ -31,25 +31,30 @@ const createReview = asyncHandler(async (req, res) => {
   });
 
   const populatedReview = await Review.findById(review._id)
-    .populate("user", "name alias")
+    .populate("client", "name alias")
     .populate("escort", "name alias");
 
-  return res.status(201).json(
-    new ApiResponse(201, populatedReview, "Review created successfully")
-  );
+  return res
+    .status(201)
+    .json(new ApiResponse(201, populatedReview, "Review created successfully"));
 });
 
 // Get reviews for an escort
 const getEscortReviews = asyncHandler(async (req, res) => {
   const { escortId } = req.params;
-  const { page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = req.query;
 
   const skip = (page - 1) * limit;
   const sort = {};
   sort[sortBy] = sortOrder === "desc" ? -1 : 1;
 
   const reviews = await Review.find({ escort: escortId })
-    .populate("user", "name alias avatar")
+    .populate("client", "name alias avatar")
     .sort(sort)
     .skip(skip)
     .limit(parseInt(limit));
@@ -57,12 +62,16 @@ const getEscortReviews = asyncHandler(async (req, res) => {
   const total = await Review.countDocuments({ escort: escortId });
 
   return res.status(200).json(
-    new ApiResponse(200, {
-      reviews,
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit),
-    }, "Reviews retrieved successfully")
+    new ApiResponse(
+      200,
+      {
+        reviews,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      "Reviews retrieved successfully"
+    )
   );
 });
 
@@ -73,21 +82,25 @@ const getUserReviews = asyncHandler(async (req, res) => {
 
   const skip = (page - 1) * limit;
 
-  const reviews = await Review.find({ user: userId })
+  const reviews = await Review.find({ client: userId })
     .populate("escort", "name alias avatar")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit));
 
-  const total = await Review.countDocuments({ user: userId });
+  const total = await Review.countDocuments({ client: userId });
 
   return res.status(200).json(
-    new ApiResponse(200, {
-      reviews,
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit),
-    }, "User reviews retrieved successfully")
+    new ApiResponse(
+      200,
+      {
+        reviews,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      "User reviews retrieved successfully"
+    )
   );
 });
 
@@ -103,7 +116,7 @@ const updateReview = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Review not found");
   }
 
-  if (review.user.toString() !== userId.toString()) {
+  if (review.client.toString() !== userId.toString()) {
     throw new ApiError(403, "You can only update your own reviews");
   }
 
@@ -115,11 +128,13 @@ const updateReview = asyncHandler(async (req, res) => {
       categories,
     },
     { new: true }
-  ).populate("user", "name alias").populate("escort", "name alias");
+  )
+    .populate("client", "name alias")
+    .populate("escort", "name alias");
 
-  return res.status(200).json(
-    new ApiResponse(200, updatedReview, "Review updated successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedReview, "Review updated successfully"));
 });
 
 // Delete a review
@@ -133,15 +148,15 @@ const deleteReview = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Review not found");
   }
 
-  if (review.user.toString() !== userId.toString()) {
+  if (review.client.toString() !== userId.toString()) {
     throw new ApiError(403, "You can only delete your own reviews");
   }
 
   await Review.findByIdAndDelete(reviewId);
 
-  return res.status(200).json(
-    new ApiResponse(200, {}, "Review deleted successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Review deleted successfully"));
 });
 
 // Report a review
@@ -177,9 +192,9 @@ const reportReview = asyncHandler(async (req, res) => {
 
   await review.save();
 
-  return res.status(200).json(
-    new ApiResponse(200, {}, "Review reported successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Review reported successfully"));
 });
 
 export {
@@ -189,4 +204,4 @@ export {
   updateReview,
   deleteReview,
   reportReview,
-}; 
+};
