@@ -353,11 +353,6 @@ const EscortProfile = () => {
                 alt={escort.alias || escort.name}
                 className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
               />
-              {escort.isVerified && (
-                <div className="absolute -bottom-2 -right-2 bg-blue-500 rounded-full p-1">
-                  <CheckCircle className="h-6 w-6 text-white" />
-                </div>
-              )}
             </div>
 
             {/* Basic Info */}
@@ -391,9 +386,9 @@ const EscortProfile = () => {
                     )}
                   </div>
 
-                  {/* Badges */}
+                  {/* 3 Badges Only */}
                   <div className="flex flex-wrap gap-2">
-                    {/* 1. Available Badge - Always first */}
+                    {/* 1. Available Badge */}
                     {escort.isAvailable && (
                       <Badge
                         variant="secondary"
@@ -404,52 +399,34 @@ const EscortProfile = () => {
                       </Badge>
                     )}
 
-                    {/* 2. Verified Badge - Document verification for becoming escort */}
-                    {escort.isVerified && (
+                    {/* 2. Age Verified Badge */}
+                    {escort.isAgeVerified && (
                       <Badge
                         variant="secondary"
                         className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
                       >
                         <Shield className="h-3 w-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
-
-                    {/* 3. Age Verified Badge - Age verification */}
-                    {escort.isAgeVerified && (
-                      <Badge
-                        variant="secondary"
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
-                      >
-                        <Calendar className="h-3 w-3 mr-1" />
                         Age Verified
                       </Badge>
                     )}
 
-                    {/* 4. Subscription Tier Badge */}
+                    {/* 3. Tier Badge (Featured/Premium) */}
                     {escort.subscriptionTier &&
-                      escort.subscriptionTier !== "free" && (
+                      escort.subscriptionTier !== "basic" && (
                         <Badge
                           variant="secondary"
-                          className="bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md"
+                          className={`${
+                            escort.subscriptionTier === "premium"
+                              ? "bg-gradient-to-r from-purple-500 to-pink-500"
+                              : "bg-gradient-to-r from-yellow-500 to-orange-500"
+                          } text-white shadow-md`}
                         >
-                          <Award className="h-3 w-3 mr-1" />
-                          {escort.subscriptionTier}
+                          <Star className="h-3 w-3 mr-1" />
+                          {escort.subscriptionTier === "premium"
+                            ? "Premium"
+                            : "Featured"}
                         </Badge>
                       )}
-
-                    {/* 5. Access Level Badge */}
-                    {escort && (
-                      <Badge
-                        variant="secondary"
-                        className={`${getAccessLevelBadgeColor(
-                          getEscortAccessLevel(escort)
-                        )} text-white shadow-md`}
-                      >
-                        <Award className="h-3 w-3 mr-1" />
-                        {getAccessLevelLabel(getEscortAccessLevel(escort))}
-                      </Badge>
-                    )}
                   </div>
                 </div>
 

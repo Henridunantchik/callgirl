@@ -1,13 +1,10 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
+import config from "../config/env.js";
 
 // Connect to MongoDB
 const connectDB = async () => {
   try {
-    await mongoose.connect("mongodb://localhost:27017/callgirls");
+    await mongoose.connect(config.MONGODB_CONN);
     console.log("✅ MongoDB connected successfully");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
@@ -20,7 +17,8 @@ const updateEscortBadges = async () => {
   try {
     console.log("🔄 Starting escort badges update...");
 
-    const User = mongoose.model("User");
+    // Import the User model
+    const User = (await import("../models/user.model.js")).default;
 
     // Update Lola Lala (Elite escort)
     await User.findOneAndUpdate(

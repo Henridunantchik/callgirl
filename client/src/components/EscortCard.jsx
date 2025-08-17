@@ -114,7 +114,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
     >
-      <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
+      <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white h-[500px] flex flex-col">
         {/* Image Section */}
         <div className="relative h-96 overflow-hidden">
           <img
@@ -129,20 +129,20 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
             onError={handleImageError}
           />
 
-          {/* Overlay with badges */}
+          {/* Overlay with badges - Only the changing badge */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
-            {getVerificationBadge()}
-            {getPremiumBadge()}
-            {/* Access Level Badge */}
-            <Badge
-              variant="secondary"
-              className={`${getAccessLevelBadgeColor(
-                getEscortAccessLevel(escort)
-              )} text-white shadow-md`}
-            >
-              <Award className="h-3 w-3 mr-1" />
-              {getAccessLevelLabel(getEscortAccessLevel(escort))}
-            </Badge>
+            {/* Only show tier badge (Featured/Premium) - not basic */}
+            {escort.subscriptionTier && escort.subscriptionTier !== "basic" && (
+              <Badge
+                variant="secondary"
+                className={`${getAccessLevelBadgeColor(
+                  getEscortAccessLevel(escort)
+                )} text-white shadow-md`}
+              >
+                <Award className="h-3 w-3 mr-1" />
+                {getAccessLevelLabel(getEscortAccessLevel(escort))}
+              </Badge>
+            )}
           </div>
 
           {/* Online status */}
@@ -177,7 +177,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           )}
         </div>
 
-        <CardContent className="p-3">
+        <CardContent className="p-3 flex flex-col">
           {/* Name and Age */}
           <div className="flex items-center justify-between mb-1">
             <Link
@@ -254,7 +254,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
 
           {/* Services - Only show for premium escorts */}
           {canShowDetailedInfo(escort) && escort.services && (
-            <div className="mb-2">
+            <div className="mb-1">
               <div className="flex flex-wrap gap-1">
                 {(() => {
                   // Handle services whether it's a string or array

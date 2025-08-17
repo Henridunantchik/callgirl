@@ -47,6 +47,12 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalEscorts, setTotalEscorts] = useState(0);
+  const escortsPerPage = 24; // Show 24 escorts per page (4 rows of 6)
+
   // Debug logging
   console.log("=== HOME PAGE DEBUG ===");
   console.log("Escort data:", escortData);
@@ -100,6 +106,8 @@ const Index = () => {
 
         // Set escort data with filtered and sorted results
         setEscortData({ ...escortsResponse.data.data, escorts });
+        setTotalEscorts(escorts.length);
+        setTotalPages(Math.ceil(escorts.length / escortsPerPage));
 
         // Set stats data
         if (statsResponse.data?.data?.stats) {
@@ -141,6 +149,19 @@ const Index = () => {
       ...prev,
       [key]: value,
     }));
+  };
+
+  // Pagination functions
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getCurrentPageEscorts = () => {
+    if (!escortData?.escorts) return [];
+    const startIndex = (currentPage - 1) * escortsPerPage;
+    const endIndex = startIndex + escortsPerPage;
+    return escortData.escorts.slice(startIndex, endIndex);
   };
 
   const handleContact = (escort, method) => {
@@ -403,22 +424,132 @@ const Index = () => {
         </div>
 
         {escortData?.escorts && escortData.escorts.length > 0 ? (
-          <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6">
-            {console.log(
-              "Rendering escorts, count:",
-              escortData.escorts.length
+          <>
+            <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6">
+              {console.log(
+                "Rendering escorts, count:",
+                getCurrentPageEscorts().length
+              )}
+              {getCurrentPageEscorts().map((escort) => {
+                console.log("Rendering escort:", escort);
+                return (
+                  <EscortCard
+                    key={escort._id}
+                    escort={escort}
+                    onContact={handleContact}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Enhanced Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-12">
+                {/* Results summary */}
+                <div className="text-center text-gray-600 mb-6">
+                  <span className="font-medium text-gray-800">
+                    Showing {(currentPage - 1) * escortsPerPage + 1} to{" "}
+                    {Math.min(currentPage * escortsPerPage, totalEscorts)} of{" "}
+                    {totalEscorts} escorts
+                  </span>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex justify-center items-center space-x-3">
+                  {/* Previous Button */}
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                    Previous
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex space-x-2">
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 4) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 3) {
+                        pageNum = totalPages - 6 + i;
+                      } else {
+                        if (i === 0) pageNum = 1;
+                        else if (i === 1) pageNum = currentPage - 1;
+                        else if (i === 2) pageNum = currentPage;
+                        else if (i === 3) pageNum = currentPage + 1;
+                        else if (i === 4) pageNum = totalPages;
+                      }
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={
+                            currentPage === pageNum ? "default" : "outline"
+                          }
+                          size="lg"
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-12 h-12 font-semibold ${
+                            currentPage === pageNum
+                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg"
+                              : "hover:bg-gray-50 border-2"
+                          }`}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <svg
+                      className="w-4 h-4 ml-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </Button>
+                </div>
+
+                {/* Page Info */}
+                <div className="text-center text-sm text-gray-500 mt-4">
+                  Page {currentPage} of {totalPages}
+                </div>
+              </div>
             )}
-            {escortData.escorts.map((escort) => {
-              console.log("Rendering escort:", escort);
-              return (
-                <EscortCard
-                  key={escort._id}
-                  escort={escort}
-                  onContact={handleContact}
-                />
-              );
-            })}
-          </div>
+          </>
         ) : (
           (console.log("No escorts to render. escortData:", escortData),
           (

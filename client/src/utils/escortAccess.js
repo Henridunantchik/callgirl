@@ -6,17 +6,10 @@
 export const hasPremiumAccess = (escort) => {
   if (!escort) return false;
 
-  // Check subscription tier
-  const hasPremiumTier =
-    escort.subscriptionTier === "premium" ||
-    escort.subscriptionTier === "elite";
+  // Check subscription tier - only featured and premium have premium access
+  const hasPremiumTier = escort.subscriptionTier === "featured" || escort.subscriptionTier === "premium";
 
-  // Check if featured
-  const isFeatured = escort.isFeatured === true;
-
-  // Only premium/elite tiers or featured escorts have premium access
-  // subscriptionStatus "active" alone is not enough (all escorts have this by default)
-  return hasPremiumTier || isFeatured;
+  return hasPremiumTier;
 };
 
 // Check if escort can show contact information
@@ -58,10 +51,8 @@ export const canShowStats = (escort) => {
 export const getEscortAccessLevel = (escort) => {
   if (!escort) return "basic";
 
-  if (escort.subscriptionTier === "elite") return "elite";
   if (escort.subscriptionTier === "premium") return "premium";
-  if (escort.isFeatured) return "featured";
-  if (escort.subscriptionTier === "verified") return "verified";
+  if (escort.subscriptionTier === "featured") return "featured";
 
   return "basic";
 };
@@ -69,10 +60,8 @@ export const getEscortAccessLevel = (escort) => {
 // Get access level badge color
 export const getAccessLevelBadgeColor = (level) => {
   const colors = {
-    elite: "bg-gradient-to-r from-yellow-500 to-orange-500",
     premium: "bg-gradient-to-r from-purple-500 to-pink-500",
     featured: "bg-gradient-to-r from-blue-500 to-cyan-500",
-    verified: "bg-gradient-to-r from-green-500 to-emerald-500",
     basic: "bg-gradient-to-r from-gray-500 to-gray-600",
   };
 
@@ -82,10 +71,8 @@ export const getAccessLevelBadgeColor = (level) => {
 // Get access level label
 export const getAccessLevelLabel = (level) => {
   const labels = {
-    elite: "Elite",
     premium: "Premium",
     featured: "Featured",
-    verified: "Verified",
     basic: "Basic",
   };
 

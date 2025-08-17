@@ -54,8 +54,8 @@ const userSchema = new mongoose.Schema(
     },
     subscriptionTier: {
       type: String,
-      enum: ["free", "verified", "premium", "elite"],
-      default: "free",
+      enum: ["basic", "featured", "premium"],
+      default: "basic",
     },
     subscriptionStatus: {
       type: String,

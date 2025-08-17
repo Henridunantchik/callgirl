@@ -90,7 +90,8 @@ const EscortList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
+  const [escortsPerPage] = useState(36); // Show 36 escorts per page (6 rows of 6)
   const [sortBy, setSortBy] = useState("relevance");
   const [isMessengerOpen, setIsMessengerOpen] = useState(false);
   const [selectedEscort, setSelectedEscort] = useState(null);
@@ -167,7 +168,7 @@ const EscortList = () => {
 
       const params = {
         page,
-        limit: 20,
+        limit: escortsPerPage,
         countryCode: countryCode || "ug", // Add country code filter
         sortBy: sort,
         ...(search && { q: search }),
@@ -207,15 +208,10 @@ const EscortList = () => {
         });
       }
 
-      if (page === 1) {
-        setEscorts(escortData);
-      } else {
-        setEscorts((prev) => [...prev, ...escortData]);
-      }
-
+      setEscorts(escortData);
       setTotalResults(total);
       setCurrentPage(page);
-      setHasMore(escortData.length === 20); // Assuming 20 is the limit
+      setTotalPages(Math.ceil(total / escortsPerPage));
     } catch (error) {
       console.error("❌ Failed to fetch escorts:", error);
       const errorMessage =
@@ -248,6 +244,13 @@ const EscortList = () => {
     setSortBy(value);
     setCurrentPage(1);
     fetchEscorts(searchTerm, filters, 1, value);
+  };
+
+  // Pagination functions
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchEscorts(searchTerm, filters, page, sortBy);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleContact = (escort, action) => {
@@ -291,12 +294,6 @@ const EscortList = () => {
     // If we have route parameters, navigate back to the main escort list
     if (city || category) {
       navigate(`/${countryCode}/escort/list`);
-    }
-  };
-
-  const loadMore = () => {
-    if (!loading && hasMore) {
-      fetchEscorts(searchTerm, filters, currentPage + 1, sortBy);
     }
   };
 
@@ -733,19 +730,6 @@ const EscortList = () => {
                         </div>
                       )}
 
-                      {/* Verification Badge */}
-                      {escort.isVerified && (
-                        <div className="absolute top-2 left-2">
-                          <Badge
-                            variant="secondary"
-                            className="bg-green-500 text-white"
-                          >
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Verified
-                          </Badge>
-                        </div>
-                      )}
-
                       {/* Online Status */}
                       {escort.isOnline && (
                         <div className="absolute bottom-2 left-2">
@@ -756,18 +740,23 @@ const EscortList = () => {
                         </div>
                       )}
 
-                      {/* Access Level Badge */}
-                      <div className="absolute top-2 left-2">
-                        <Badge
-                          variant="secondary"
-                          className={`${getAccessLevelBadgeColor(
-                            getEscortAccessLevel(escort)
-                          )} text-white shadow-md text-xs`}
-                        >
-                          <Award className="h-3 w-3 mr-1" />
-                          {getAccessLevelLabel(getEscortAccessLevel(escort))}
-                        </Badge>
-                      </div>
+                      {/* Only show tier badge (Featured/Premium) - not basic */}
+                      {escort.subscriptionTier &&
+                        escort.subscriptionTier !== "basic" && (
+                          <div className="absolute top-2 left-2">
+                            <Badge
+                              variant="secondary"
+                              className={`${getAccessLevelBadgeColor(
+                                getEscortAccessLevel(escort)
+                              )} text-white shadow-md text-xs`}
+                            >
+                              <Award className="h-3 w-3 mr-1" />
+                              {getAccessLevelLabel(
+                                getEscortAccessLevel(escort)
+                              )}
+                            </Badge>
+                          </div>
+                        )}
                     </div>
 
                     {/* Content */}
@@ -873,20 +862,112 @@ const EscortList = () => {
               ))}
             </div>
 
-            {/* Load More Button */}
-            {hasMore && (
-              <div className="mt-8 text-center">
-                <Button
-                  onClick={loadMore}
-                  disabled={loading}
-                  variant="outline"
-                  className="px-8"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                  ) : null}
-                  Load More Escorts
-                </Button>
+            {/* Enhanced Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-12">
+                {/* Results summary */}
+                <div className="text-center text-gray-600 mb-6">
+                  <span className="font-medium text-gray-800">
+                    Showing {(currentPage - 1) * escortsPerPage + 1} to{" "}
+                    {Math.min(currentPage * escortsPerPage, totalResults)} of{" "}
+                    {totalResults} escorts
+                  </span>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex justify-center items-center space-x-3">
+                  {/* Previous Button */}
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                    Previous
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex space-x-2">
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 4) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 3) {
+                        pageNum = totalPages - 6 + i;
+                      } else {
+                        if (i === 0) pageNum = 1;
+                        else if (i === 1) pageNum = currentPage - 1;
+                        else if (i === 2) pageNum = currentPage;
+                        else if (i === 3) pageNum = currentPage + 1;
+                        else if (i === 4) pageNum = totalPages;
+                      }
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={
+                            currentPage === pageNum ? "default" : "outline"
+                          }
+                          size="lg"
+                          onClick={() => handlePageChange(pageNum)}
+                          disabled={loading}
+                          className={`w-12 h-12 font-semibold ${
+                            currentPage === pageNum
+                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg"
+                              : "hover:bg-gray-50 border-2"
+                          }`}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading}
+                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <svg
+                      className="w-4 h-4 ml-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </Button>
+                </div>
+
+                {/* Page Info */}
+                <div className="text-center text-sm text-gray-500 mt-4">
+                  Page {currentPage} of {totalPages}
+                </div>
               </div>
             )}
           </>
