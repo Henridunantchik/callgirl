@@ -28,6 +28,7 @@ import {
   FaChevronDown,
   FaChevronUp,
 } from "react-icons/fa";
+import { TrendingUp } from "lucide-react";
 import {
   RouteBlog,
   RouteBlogByCategory,
@@ -193,6 +194,22 @@ const AppSidebar = () => {
                         <FaCreditCard />
                         <Link to={`/${countryCode}/admin/payments`}>
                           Payment Management
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton>
+                        <TrendingUp />
+                        <Link to={`/${countryCode}/admin/upgrade-requests`}>
+                          Demandes d'Upgrade
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton>
+                        <FaRegComments />
+                        <Link to={`/${countryCode}/admin/messages`}>
+                          Messages Admin
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

@@ -57,6 +57,8 @@ import SubscriptionRoute from "./routes/Subscription.route.js";
 import AdminSubscriptionRoute from "./routes/AdminSubscription.route.js";
 import TransportRoute from "./routes/Transport.route.js";
 import StatsRoute from "./routes/Stats.route.js";
+import UpgradeRequestRoute from "./routes/UpgradeRequest.route.js";
+import AdminRoute from "./routes/admin.route.js";
 
 // Load environment variables
 dotenv.config();
@@ -69,8 +71,8 @@ const io = new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 
 // Store online users
@@ -195,6 +197,10 @@ app.use("/api/admin/subscription", AdminSubscriptionRoute);
 // Transport routes
 app.use("/api/transport", TransportRoute);
 app.use("/api/stats", StatsRoute);
+app.use("/api/upgrade-request", UpgradeRequestRoute);
+
+// Admin routes
+app.use("/api/admin", AdminRoute);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -228,28 +234,28 @@ mongoose
       socket.on("authenticate", async (data) => {
         try {
           const { token, userId } = data;
-          
+
           if (token && userId) {
             // Store user connection
             onlineUsers.set(userId, {
               socketId: socket.id,
               connectedAt: new Date(),
-              isOnline: true
+              isOnline: true,
             });
-            
+
             // Join user to their personal room
             socket.join(`user_${userId}`);
-            
+
             // Update user's online status in database
             const User = mongoose.model("User");
             await User.findByIdAndUpdate(userId, {
               isOnline: true,
-              lastActive: new Date()
+              lastActive: new Date(),
             });
-            
+
             // Broadcast to all clients that this user is online
             socket.broadcast.emit("user_online", { userId });
-            
+
             console.log(`🟢 User ${userId} is now online`);
           }
         } catch (error) {
@@ -261,24 +267,28 @@ mongoose
       socket.on("send_message", async (data) => {
         try {
           const { senderId, recipientId, content, messageId } = data;
-          
-          console.log(`📨 Message from ${senderId} to ${recipientId}: ${content}`);
-          
+
+          console.log(
+            `📨 Message from ${senderId} to ${recipientId}: ${content}`
+          );
+
           // Save message to database
           const Message = mongoose.model("Message");
           const message = await Message.create({
             sender: senderId,
             recipient: recipientId,
             content,
-            type: "text"
+            type: "text",
           });
-          
+
           console.log(`💾 Message saved to database: ${message._id}`);
-          
+
           // Emit to recipient if online (using user room)
           const recipientSocket = onlineUsers.get(recipientId);
           if (recipientSocket) {
-            console.log(`📤 Emitting to recipient ${recipientId} in room user_${recipientId}`);
+            console.log(
+              `📤 Emitting to recipient ${recipientId} in room user_${recipientId}`
+            );
             io.to(`user_${recipientId}`).emit("new_message", {
               message: {
                 _id: message._id,
@@ -287,19 +297,18 @@ mongoose
                 content,
                 type: "text",
                 isRead: false,
-                createdAt: message.createdAt
-              }
+                createdAt: message.createdAt,
+              },
             });
           } else {
             console.log(`📤 Recipient ${recipientId} is offline`);
           }
-          
+
           // Emit back to sender for confirmation
           socket.emit("message_sent", {
             messageId: message._id,
-            success: true
+            success: true,
           });
-          
         } catch (error) {
           console.error("Send message error:", error);
           socket.emit("message_error", { error: "Failed to send message" });
@@ -319,7 +328,9 @@ mongoose
         const { senderId, recipientId } = data;
         const recipientSocket = onlineUsers.get(recipientId);
         if (recipientSocket) {
-          io.to(`user_${recipientId}`).emit("user_stopped_typing", { senderId });
+          io.to(`user_${recipientId}`).emit("user_stopped_typing", {
+            senderId,
+          });
         }
       });
 
@@ -327,23 +338,24 @@ mongoose
       socket.on("mark_read", async (data) => {
         try {
           const { messageId, readerId } = data;
-          
+
           // Update message in database
           const Message = mongoose.model("Message");
           await Message.findByIdAndUpdate(messageId, {
             isRead: true,
-            readAt: new Date()
+            readAt: new Date(),
           });
-          
+
           // Notify sender that message was read
           const message = await Message.findById(messageId).populate("sender");
           if (message && message.sender._id.toString() !== readerId) {
             const senderSocket = onlineUsers.get(message.sender._id.toString());
             if (senderSocket) {
-              io.to(`user_${message.sender._id}`).emit("message_read", { messageId });
+              io.to(`user_${message.sender._id}`).emit("message_read", {
+                messageId,
+              });
             }
           }
-          
         } catch (error) {
           console.error("Mark read error:", error);
         }
@@ -352,7 +364,7 @@ mongoose
       // Handle disconnect
       socket.on("disconnect", async () => {
         console.log("🔌 User disconnected:", socket.id);
-        
+
         // Find and remove user from online users
         let disconnectedUserId = null;
         for (const [userId, userData] of onlineUsers.entries()) {
@@ -361,20 +373,20 @@ mongoose
             break;
           }
         }
-        
+
         if (disconnectedUserId) {
           onlineUsers.delete(disconnectedUserId);
-          
+
           // Update user's online status in database
           const User = mongoose.model("User");
           await User.findByIdAndUpdate(disconnectedUserId, {
             isOnline: false,
-            lastActive: new Date()
+            lastActive: new Date(),
           });
-          
+
           // Broadcast to all clients that this user is offline
           socket.broadcast.emit("user_offline", { userId: disconnectedUserId });
-          
+
           console.log(`🔴 User ${disconnectedUserId} is now offline`);
         }
       });

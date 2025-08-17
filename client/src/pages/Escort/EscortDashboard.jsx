@@ -24,6 +24,10 @@ import {
 import { escortAPI, bookingAPI } from "../../services/api";
 import Loading from "../../components/Loading";
 import { showToast } from "../../helpers/showToast";
+import UpgradeCard from "../../components/UpgradeCard";
+import UpgradeNotification from "../../components/UpgradeNotification";
+import useUpgradeNotifications from "../../hooks/useUpgradeNotifications";
+import PremiumStats from "../../components/PremiumStats";
 
 const EscortDashboard = () => {
   const navigate = useNavigate();
@@ -40,6 +44,21 @@ const EscortDashboard = () => {
   });
   const [recentBookings, setRecentBookings] = useState([]);
   const [escortData, setEscortData] = useState(null);
+
+  // Vérifier le plan de l'utilisateur
+  const currentPlan = user?.user?.subscriptionTier || "basic";
+  const isPremium = currentPlan === "premium";
+  const isFeatured = currentPlan === "featured";
+
+  // Hook pour les notifications d'upgrade
+  const {
+    isNotificationOpen,
+    currentNotificationType,
+    closeNotification,
+    handleLater,
+    handleUpgrade: handleNotificationUpgrade,
+    shouldShowNotifications,
+  } = useUpgradeNotifications();
 
   // Fetch escort data and stats
   useEffect(() => {
@@ -213,6 +232,54 @@ const EscortDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Contenu conditionnel selon le plan */}
+        {isPremium ? (
+          // Contenu pour les utilisateurs Premium
+          <div className="mb-8">
+            <PremiumStats stats={stats} />
+          </div>
+        ) : (
+          // Contenu pour les utilisateurs Basic/Featured
+          <div className="mb-8">
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  Upgrade Your Profile
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <UpgradeCard
+                    plan="basic"
+                    currentPlan={user.user?.subscriptionTier || "basic"}
+                    onUpgrade={() => navigate("/ug/escort/upgrade")}
+                    isCurrent={
+                      (user.user?.subscriptionTier || "basic") === "basic"
+                    }
+                  />
+                  <UpgradeCard
+                    plan="featured"
+                    currentPlan={user.user?.subscriptionTier || "basic"}
+                    onUpgrade={() => navigate("/ug/escort/upgrade")}
+                    isCurrent={
+                      (user.user?.subscriptionTier || "basic") === "featured"
+                    }
+                  />
+                  <UpgradeCard
+                    plan="premium"
+                    currentPlan={user.user?.subscriptionTier || "basic"}
+                    onUpgrade={() => navigate("/ug/escort/upgrade")}
+                    isCurrent={
+                      (user.user?.subscriptionTier || "basic") === "premium"
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Quick Actions */}
@@ -447,6 +514,16 @@ const EscortDashboard = () => {
           </Card>
         </div>
       </div>
+
+      {/* Upgrade Notification */}
+      <UpgradeNotification
+        isOpen={isNotificationOpen}
+        onClose={closeNotification}
+        onUpgrade={handleNotificationUpgrade}
+        onLater={handleLater}
+        type={currentNotificationType}
+        escortName={user.user?.name || "Escort"}
+      />
     </>
   );
 };

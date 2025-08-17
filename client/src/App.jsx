@@ -49,6 +49,9 @@ import EscortProfileEdit from "./pages/Escort/EscortProfileEdit";
 import EscortRegistration from "./pages/Escort/EscortRegistration";
 import EscortDashboard from "./pages/Escort/EscortDashboard";
 import EscortReviews from "./pages/Escort/EscortReviews";
+import UpgradeProfile from "./pages/Escort/UpgradeProfile";
+import UpgradeRequests from "./pages/Admin/UpgradeRequests";
+import AdminMessages from "./pages/Admin/AdminMessages";
 import ClientDashboard from "./pages/Client/ClientDashboard";
 import Favorites from "./pages/Client/Favorites";
 import Bookings from "./pages/Client/Bookings";
@@ -130,6 +133,7 @@ const App = () => {
                   />
                   <Route path="escort/messages" element={<Messages />} />
                   <Route path="escort/reviews" element={<EscortReviews />} />
+                  <Route path="escort/upgrade" element={<UpgradeProfile />} />
                   <Route path="victime/add" element={<AddBlog />} />
                   <Route path="victimes" element={<BlogDetails />} />
                   <Route path="victime/edit/:blogid" element={<EditBlog />} />
@@ -166,6 +170,8 @@ const App = () => {
                 />
                 <Route path="admin/payments" element={<PaymentManagement />} />
                 <Route path="admin/analytics" element={<Analytics />} />
+                <Route path="admin/upgrade-requests" element={<UpgradeRequests />} />
+                <Route path="admin/messages" element={<AdminMessages />} />
                 <Route path="sexe/add" element={<AddCategory />} />
                 <Route path="sexe" element={<CategoryDetails />} />
                 <Route

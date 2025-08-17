@@ -222,7 +222,7 @@ export const messageAPI = {
   sendMessage: (messageData) => api.post("/message/send", messageData),
 
   // Get conversation between users
-  getConversation: (escortId, params = {}) => 
+  getConversation: (escortId, params = {}) =>
     api.get(`/message/conversation/${escortId}`, { params }),
 
   // Get user's conversations
@@ -257,7 +257,8 @@ export const paymentAPI = {
   getPayoutHistory: () => api.get("/payment/payouts"),
 
   // PesaPal specific endpoints
-  checkPesaPalStatus: (orderId) => api.get(`/payment/pesapal/status/${orderId}`),
+  checkPesaPalStatus: (orderId) =>
+    api.get(`/payment/pesapal/status/${orderId}`),
 };
 
 // Report API
@@ -309,6 +310,30 @@ export const userAPI = {
 export const statsAPI = {
   // Get global platform statistics
   getGlobalStats: (countryCode) => api.get(`/stats/global/${countryCode}`),
+};
+
+// Upgrade Request API
+export const upgradeAPI = {
+  // Create upgrade request
+  createRequest: (requestData) =>
+    api.post("/upgrade-request/create", requestData),
+
+  // Get escort's upgrade requests
+  getMyRequests: () => api.get("/upgrade-request/my-requests"),
+
+  // Get all upgrade requests (admin)
+  getAllRequests: (params = {}) => api.get("/upgrade-request/all", { params }),
+
+  // Approve upgrade request (admin)
+  approveRequest: (requestId, adminNotes) =>
+    api.put(`/upgrade-request/approve/${requestId}`, { adminNotes }),
+
+  // Reject upgrade request (admin)
+  rejectRequest: (requestId, adminNotes) =>
+    api.put(`/upgrade-request/reject/${requestId}`, { adminNotes }),
+
+  // Get upgrade statistics (admin)
+  getStats: () => api.get("/upgrade-request/stats"),
 };
 
 // Admin API
