@@ -181,8 +181,18 @@ export const AuthProvider = ({ children }) => {
 
   // Helper function to get user ID consistently
   const getUserId = (userObj) => {
+    console.log("=== getUserId DEBUG ===");
+    console.log("Input userObj:", userObj);
+    console.log("userObj._id:", userObj?._id);
+    console.log("userObj.id:", userObj?.id);
+    console.log("userObj.user:", userObj?.user);
+    console.log("userObj.user._id:", userObj?.user?._id);
+    console.log("userObj.user.id:", userObj?.user?.id);
+    
     if (!userObj) return null;
-    return userObj._id || userObj.id || (userObj.user && (userObj.user._id || userObj.user.id));
+    const userId = userObj._id || userObj.id || (userObj.user && (userObj.user._id || userObj.user.id));
+    console.log("Final userId:", userId);
+    return userId;
   };
 
   const verifyAge = async () => {

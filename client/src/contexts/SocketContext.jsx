@@ -91,34 +91,18 @@ export const SocketProvider = ({ children }) => {
       throw new Error('Socket not connected');
     }
     
-    return new Promise((resolve, reject) => {
-      const messageId = Date.now().toString();
-      
-      socket.emit('send_message', {
-        senderId: user._id,
-        recipientId,
-        content,
-        messageId
-      });
-
-      // Listen for confirmation
-      const handleMessageSent = (data) => {
-        if (data.messageId === messageId) {
-          socket.off('message_sent', handleMessageSent);
-          socket.off('message_error', handleMessageError);
-          resolve(data);
-        }
-      };
-
-      const handleMessageError = (data) => {
-        socket.off('message_sent', handleMessageSent);
-        socket.off('message_error', handleMessageError);
-        reject(new Error(data.error));
-      };
-
-      socket.on('message_sent', handleMessageSent);
-      socket.on('message_error', handleMessageError);
+    const messageId = Date.now().toString();
+    
+    // Send immediately without waiting for confirmation
+    socket.emit('send_message', {
+      senderId: user._id,
+      recipientId,
+      content,
+      messageId
     });
+
+    // Return a promise that resolves immediately for non-blocking behavior
+    return Promise.resolve({ messageId, success: true });
   };
 
   const startTyping = (recipientId) => {

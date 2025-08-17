@@ -26,7 +26,7 @@ import { Link } from "react-router-dom";
 import RealTimeMessenger from "@/components/RealTimeMessenger";
 
 const Index = () => {
-  const { user, getUserId } = useAuth();
+  const { user, getUserId, isAuthenticated } = useAuth();
   const { countryCode } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -113,11 +113,18 @@ const Index = () => {
     console.log("Phone:", escort.phone);
     console.log("Alias:", escort.alias);
     console.log("Name:", escort.name);
+    console.log("User object:", user);
+    console.log("User type:", typeof user);
+    console.log("User keys:", user ? Object.keys(user) : "No user");
 
     // Check authentication first
     const userId = getUserId(user);
+    const isUserAuthenticated = isAuthenticated();
+    console.log("Extracted userId:", userId);
+    console.log("isAuthenticated():", isUserAuthenticated);
     
-    if (!userId) {
+    if (!userId && !isUserAuthenticated) {
+      console.log("No userId found and not authenticated, redirecting to login");
       showToast("error", "Please sign in to contact escorts");
       window.location.href = RouteSignIn;
       return;

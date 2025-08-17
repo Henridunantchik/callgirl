@@ -28,6 +28,7 @@ import {
   Clock,
   User,
   Users,
+  RefreshCw,
 } from "lucide-react";
 import { showToast } from "../helpers/showToast";
 import { messageAPI } from "../services/api";
@@ -95,23 +96,42 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   useEffect(() => {
     if (!socket || !user || !user._id) return;
 
-    // Listen for new messages
-    const handleNewMessage = (data) => {
-      const { message } = data;
+         // Listen for new messages
+     const handleNewMessage = (data) => {
+       const { message } = data;
 
-      // Add to messages if it's for the current chat
-      if (
-        selectedChat &&
-        (message.sender === selectedChat.user._id ||
-          message.recipient === selectedChat.user._id)
-      ) {
-        setMessages((prev) => [...prev, message]);
+       // Add to messages if it's for the current chat
+       if (
+         selectedChat &&
+         (message.sender === selectedChat.user._id ||
+           message.recipient === selectedChat.user._id)
+       ) {
+         setMessages((prev) => {
+           // Check if this is a response to our temporary message
+           const tempMessageIndex = prev.findIndex(
+             (msg) => 
+               msg.isTemp && 
+               msg.content === message.content && 
+               msg.sender === message.sender &&
+               msg.recipient === message.recipient
+           );
 
-        // Mark as read if we're the recipient
-        if (message.recipient === user._id) {
-          markMessageAsRead(message._id);
-        }
-      }
+           if (tempMessageIndex !== -1) {
+             // Replace temporary message with real message
+             const newMessages = [...prev];
+             newMessages[tempMessageIndex] = message;
+             return newMessages;
+           } else {
+             // Add new message
+             return [...prev, message];
+           }
+         });
+
+         // Mark as read if we're the recipient
+         if (message.recipient === user._id) {
+           markMessageAsRead(message._id);
+         }
+       }
 
       // Update conversation list
       setConversations((prev) =>
@@ -205,36 +225,66 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedChat || sending || !user || !user._id) return;
 
+    const messageContent = message.trim();
+    const recipientId = selectedChat.user._id;
+
+    // Create temporary message for instant feedback
+    const tempMessage = {
+      _id: `temp_${Date.now()}_${Math.random()}`,
+      sender: user._id,
+      recipient: recipientId,
+      content: messageContent,
+      type: "text",
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      isTemp: true, // Mark as temporary
+    };
+
+    // Update UI immediately for instant feedback
+    setMessages((prev) => [...prev, tempMessage]);
+    setMessage("");
+    setSending(true);
+
+    // Update conversation list immediately
+    setConversations((prev) =>
+      prev.map((conv) =>
+        conv.user._id === recipientId
+          ? { ...conv, lastMessage: tempMessage }
+          : conv
+      )
+    );
+
     try {
-      setSending(true);
+      // Send via socket in the background (non-blocking)
+      sendMessage(recipientId, messageContent).catch((error) => {
+        console.error("Socket send failed:", error);
+        // Mark message as failed
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === tempMessage._id
+              ? { ...msg, isFailed: true }
+              : msg
+          )
+        );
+        showToast("error", "Message failed to send");
+      });
 
-      // Send via socket for real-time delivery
-      await sendMessage(selectedChat.user._id, message.trim());
+      // Also send via API for persistence (non-blocking)
+      messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
+        console.error("API send failed:", error);
+        // Don't show error to user if socket worked
+      });
 
-      // Add message to local state immediately for instant feedback
-      const tempMessage = {
-        _id: Date.now().toString(),
-        sender: user._id,
-        recipient: selectedChat.user._id,
-        content: message.trim(),
-        type: "text",
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, tempMessage]);
-      setMessage("");
-
-      // Update conversation list
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.user._id === selectedChat.user._id
-            ? { ...conv, lastMessage: tempMessage }
-            : conv
-        )
-      );
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Mark message as failed
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === tempMessage._id
+            ? { ...msg, isFailed: true }
+            : msg
+        )
+      );
       showToast("error", "Failed to send message");
     } finally {
       setSending(false);
@@ -288,9 +338,59 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     }
   };
 
+  const retryMessage = async (failedMessage) => {
+    try {
+      // Remove the failed message
+      setMessages((prev) => prev.filter((msg) => msg._id !== failedMessage._id));
+      
+      // Send the message again
+      const messageContent = failedMessage.content;
+      const recipientId = failedMessage.recipient;
+
+      // Create new temporary message
+      const tempMessage = {
+        _id: `temp_${Date.now()}_${Math.random()}`,
+        sender: user._id,
+        recipient: recipientId,
+        content: messageContent,
+        type: "text",
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        isTemp: true,
+      };
+
+      // Add to messages
+      setMessages((prev) => [...prev, tempMessage]);
+
+      // Send via socket
+      sendMessage(recipientId, messageContent).catch((error) => {
+        console.error("Retry socket send failed:", error);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === tempMessage._id ? { ...msg, isFailed: true } : msg
+          )
+        );
+        showToast("error", "Message failed to send");
+      });
+
+      // Send via API
+      messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
+        console.error("Retry API send failed:", error);
+      });
+
+    } catch (error) {
+      console.error("Retry failed:", error);
+      showToast("error", "Failed to retry message");
+    }
+  };
+
   const getMessageStatus = (message) => {
+    if (!user || !user._id) return null;
+    
     if (message.sender === user._id) {
-      if (message.isRead) {
+      if (message.isFailed) {
+        return <X className="w-3 h-3 text-red-500" />;
+      } else if (message.isRead) {
         return <CheckCheck className="w-3 h-3 text-blue-500" />;
       } else {
         return <Check className="w-3 h-3 text-gray-400" />;
@@ -518,29 +618,41 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       No messages yet. Start a conversation!
                     </div>
                   ) : (
-                    messages.map((msg) => (
-                      <div
-                        key={msg._id}
-                        className={`flex ${
-                          msg.sender === user._id
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
-                        <div
-                          className={`max-w-xs px-3 py-2 rounded-lg ${
-                            msg.sender === user._id
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-200 text-gray-900"
-                          }`}
-                        >
+                                         messages.map((msg) => (
+                       <div
+                         key={msg._id}
+                         className={`flex ${
+                           user && user._id && msg.sender === user._id
+                             ? "justify-end"
+                             : "justify-start"
+                         }`}
+                       >
+                                                 <div
+                           className={`max-w-xs px-3 py-2 rounded-lg ${
+                             user && user._id && msg.sender === user._id
+                               ? msg.isFailed
+                                 ? "bg-red-500 text-white"
+                                 : "bg-blue-600 text-white"
+                               : "bg-gray-200 text-gray-900"
+                           }`}
+                         >
                           <p className="text-sm">{msg.content}</p>
-                          <div className="flex items-center justify-end space-x-1 mt-1">
-                            <span className="text-xs opacity-70">
-                              {formatTime(msg.createdAt)}
-                            </span>
-                            {getMessageStatus(msg)}
-                          </div>
+                                                     <div className="flex items-center justify-end space-x-1 mt-1">
+                             <span className="text-xs opacity-70">
+                               {formatTime(msg.createdAt)}
+                             </span>
+                             {getMessageStatus(msg)}
+                             {msg.isFailed && (
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 className="h-4 w-4 p-0 ml-1"
+                                 onClick={() => retryMessage(msg)}
+                               >
+                                 <RefreshCw className="w-3 h-3" />
+                               </Button>
+                             )}
+                           </div>
                         </div>
                       </div>
                     ))

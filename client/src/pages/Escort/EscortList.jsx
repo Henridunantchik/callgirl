@@ -230,7 +230,7 @@ const EscortList = () => {
   const handleContact = (escort, action) => {
     // Use the helper function to check authentication
     const userId = getUserId(user);
-    
+
     if (!userId) {
       showToast("error", "Please sign in to contact escorts");
       navigate(RouteSignIn);
@@ -242,7 +242,7 @@ const EscortList = () => {
       setIsMessengerOpen(true);
     } else if (action === "call") {
       if (escort.phone) {
-        window.open(`tel:${escort.phone}`, '_blank');
+        window.open(`tel:${escort.phone}`, "_blank");
       } else {
         showToast("error", "Phone number not available");
       }
