@@ -32,17 +32,20 @@ import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
 import { useAuth } from "../../contexts/AuthContext";
 import { RouteSignIn } from "../../helpers/RouteName";
+import RealTimeMessenger from "../../components/RealTimeMessenger";
 
 const EscortProfile = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
 
   const [escort, setEscort] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState("photos");
+  const [isMessengerOpen, setIsMessengerOpen] = useState(false);
+  const [selectedEscort, setSelectedEscort] = useState(null);
 
   useEffect(() => {
     fetchEscortProfile();
@@ -129,13 +132,18 @@ const EscortProfile = () => {
   };
 
   const handleContact = () => {
-    if (!user) {
+    // Use the helper function to check authentication
+    const userId = getUserId(user);
+    
+    if (!userId) {
       showToast("error", "Please log in to contact this escort");
       navigate(RouteSignIn);
       return;
     }
 
-    showToast("success", "Contact feature coming soon!");
+    // Pass the escort data to the messenger
+    setSelectedEscort(escort);
+    setIsMessengerOpen(true);
   };
 
   const handleFavorite = () => {
@@ -906,6 +914,13 @@ const EscortProfile = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Real-time Messenger */}
+      <RealTimeMessenger
+        isOpen={isMessengerOpen}
+        onClose={() => setIsMessengerOpen(false)}
+        selectedEscort={escort}
+      />
     </div>
   );
 };

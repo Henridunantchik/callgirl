@@ -80,8 +80,24 @@ const escortSchema = new mongoose.Schema(
     },
     availability: {
       type: [String],
-      enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
-      default: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+      enum: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
+      default: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
     },
     workingHours: {
       start: {
@@ -242,6 +258,17 @@ escortSchema.index({
 // Create compound indexes for common queries
 escortSchema.index({ isActive: 1, isAvailable: 1 });
 escortSchema.index({ "subscription.isActive": 1, isActive: 1 });
+// Text search index for searching across multiple fields
+escortSchema.index({
+  name: "text",
+  description: "text",
+  services: "text",
+  "location.city": "text",
+  alias: "text",
+  bio: "text"
+});
+
+// Other indexes
 escortSchema.index({ "location.city": 1, "location.country": 1 });
 escortSchema.index({ gender: 1, isActive: 1 });
 escortSchema.index({ age: 1, isActive: 1 });

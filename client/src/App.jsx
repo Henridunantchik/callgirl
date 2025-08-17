@@ -3,8 +3,10 @@
 import React from "react";
 import { Button } from "./components/ui/button";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import SearchRedirect from "./components/SearchRedirect";
 import Layout from "./Layout/Layout";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SocketProvider } from "./contexts/SocketContext";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { isValidCountryCode } from "./helpers/countries";
 import {
@@ -60,111 +62,136 @@ import PrivacyPolicy from "./pages/Legal/PrivacyPolicy";
 import TermsOfService from "./pages/Legal/TermsOfService";
 import AgeDisclaimer from "./pages/Legal/AgeDisclaimer";
 import TestPage from "./pages/TestPage";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailure from "./pages/PaymentFailure";
 
 import AuthRouteProtechtion from "./components/AuthRouteProtechtion";
 import OnlyAdminAllowed from "./components/OnlyAdminAllowed";
 import OnlyEscortAllowed from "./components/OnlyEscortAllowed";
 import OnlyClientAllowed from "./components/OnlyClientAllowed";
 import CountryRedirect from "./components/CountryRedirect";
+import OnlineStatus from "./components/OnlineStatus";
 
 const App = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Country-specific routes */}
-          <Route
-            path="/:countryCode"
-            element={
-              <CountryRedirect>
-                <Layout />
-              </CountryRedirect>
-            }
-          >
-            <Route index element={<Index />} />
-
-            {/* Public Escort Directory Routes */}
-            <Route path="escorts" element={<EscortList />} />
-            <Route path="escort/list" element={<EscortList />} />
-            <Route path="search" element={<SearchResult />} />
-            <Route path="location/:city" element={<EscortList />} />
-            <Route path="category/:category" element={<EscortList />} />
-            
-            {/* Public Escort Profile Route - Must be BEFORE authenticated routes */}
-            <Route path="escort/:slug" element={<EscortProfile />} />
-
-            {/* Legal Pages */}
-            <Route path="legal/privacy" element={<PrivacyPolicy />} />
-            <Route path="legal/terms" element={<TermsOfService />} />
-            <Route path="legal/age-disclaimer" element={<AgeDisclaimer />} />
-
-            {/* Test Page */}
-            <Route path="test" element={<TestPage />} />
-
-            {/* Legacy Blog Routes (to be deprecated) */}
+      <SocketProvider>
+        <OnlineStatus />
+        <BrowserRouter>
+          <Routes>
+            {/* Country-specific routes */}
             <Route
-              path="victimes/:sexe/:blog"
-              element={<SingleBlogDetails />}
-            />
-            <Route path="victimes/:category" element={<BlogByCategory />} />
-            <Route path="search" element={<SearchResult />} />
+              path="/:countryCode"
+              element={
+                <CountryRedirect>
+                  <Layout />
+                </CountryRedirect>
+              }
+            >
+              <Route index element={<Index />} />
 
-            {/* Authenticated Routes */}
-            <Route element={<AuthRouteProtechtion />}>
-              <Route path="profile" element={<Profile />} />
+              {/* Public Escort Directory Routes */}
+              <Route path="escorts" element={<EscortList />} />
+              <Route path="escort/list" element={<EscortList />} />
+              <Route path="search" element={<SearchRedirect />} />
+              <Route path="location/:city" element={<EscortList />} />
+              <Route path="category/:category" element={<EscortList />} />
 
-              {/* Client Routes */}
-              <Route element={<OnlyClientAllowed />}>
-                <Route path="client/dashboard" element={<ClientDashboard />} />
-                <Route path="client/favorites" element={<Favorites />} />
-                <Route path="client/bookings" element={<Bookings />} />
-                <Route path="client/messages" element={<Messages />} />
+              {/* Authenticated Routes */}
+              <Route element={<AuthRouteProtechtion />}>
+                <Route path="profile" element={<Profile />} />
+
+                {/* Client Routes */}
+                <Route element={<OnlyClientAllowed />}>
+                  <Route
+                    path="client/dashboard"
+                    element={<ClientDashboard />}
+                  />
+                  <Route path="client/favorites" element={<Favorites />} />
+                  <Route path="client/bookings" element={<Bookings />} />
+                  <Route path="client/messages" element={<Messages />} />
+                  <Route
+                    path="escort/registration"
+                    element={<EscortRegistration />}
+                  />
+                </Route>
+
+                {/* Escort Routes */}
+                <Route element={<OnlyEscortAllowed />}>
+                  <Route
+                    path="escort/dashboard"
+                    element={<EscortDashboard />}
+                  />
+                  <Route
+                    path="escort/profile"
+                    element={<EscortProfileEdit />}
+                  />
+                  <Route path="escort/messages" element={<Messages />} />
+                  <Route path="victime/add" element={<AddBlog />} />
+                  <Route path="victimes" element={<BlogDetails />} />
+                  <Route path="victime/edit/:blogid" element={<EditBlog />} />
+                  <Route path="hommages" element={<Comments />} />
+                </Route>
+              </Route>
+
+              {/* Public Escort Profile Route - Must be AFTER authenticated routes */}
+              <Route path="escort/:slug" element={<EscortProfile />} />
+
+              {/* Legal Pages */}
+              <Route path="legal/privacy" element={<PrivacyPolicy />} />
+              <Route path="legal/terms" element={<TermsOfService />} />
+              <Route path="legal/age-disclaimer" element={<AgeDisclaimer />} />
+
+              {/* Test Page */}
+              <Route path="test" element={<TestPage />} />
+
+              {/* Legacy Blog Routes (to be deprecated) */}
+              <Route
+                path="victimes/:sexe/:blog"
+                element={<SingleBlogDetails />}
+              />
+              <Route path="victimes/:category" element={<BlogByCategory />} />
+
+              {/* Admin Routes */}
+              <Route element={<OnlyAdminAllowed />}>
+                <Route path="admin/dashboard" element={<AdminDashboard />} />
+                <Route path="admin/users" element={<UserManagement />} />
                 <Route
-                  path="escort/registration"
-                  element={<EscortRegistration />}
+                  path="admin/moderation"
+                  element={<ContentModeration />}
                 />
-              </Route>
-
-              {/* Escort Routes */}
-              <Route element={<OnlyEscortAllowed />}>
-                <Route path="escort/dashboard" element={<EscortDashboard />} />
-                <Route path="escort/profile" element={<EscortProfileEdit />} />
-                <Route path="victime/add" element={<AddBlog />} />
-                <Route path="victimes" element={<BlogDetails />} />
-                <Route path="victime/edit/:blogid" element={<EditBlog />} />
-                <Route path="hommages" element={<Comments />} />
+                <Route path="admin/payments" element={<PaymentManagement />} />
+                <Route path="admin/analytics" element={<Analytics />} />
+                <Route path="sexe/add" element={<AddCategory />} />
+                <Route path="sexe" element={<CategoryDetails />} />
+                <Route
+                  path="sexe/edit/:category_id"
+                  element={<EditCategory />}
+                />
+                <Route path="users" element={<User />} />
               </Route>
             </Route>
 
-            {/* Admin Routes */}
-            <Route element={<OnlyAdminAllowed />}>
-              <Route path="admin/dashboard" element={<AdminDashboard />} />
-              <Route path="admin/users" element={<UserManagement />} />
-              <Route path="admin/moderation" element={<ContentModeration />} />
-              <Route path="admin/payments" element={<PaymentManagement />} />
-              <Route path="admin/analytics" element={<Analytics />} />
-              <Route path="sexe/add" element={<AddCategory />} />
-              <Route path="sexe" element={<CategoryDetails />} />
-              <Route path="sexe/edit/:category_id" element={<EditCategory />} />
-              <Route path="users" element={<User />} />
-            </Route>
-          </Route>
+            {/* Auth Routes */}
+            <Route path={RouteSignIn} element={<SignIn />} />
+            <Route path={RouteSignUp} element={<SignUp />} />
+            <Route path="age-verification" element={<AgeVerification />} />
 
-          {/* Auth Routes */}
-          <Route path={RouteSignIn} element={<SignIn />} />
-          <Route path={RouteSignUp} element={<SignUp />} />
-          <Route path="age-verification" element={<AgeVerification />} />
+            {/* Payment Routes */}
+            <Route path="payment/success" element={<PaymentSuccess />} />
+            <Route path="payment/failure" element={<PaymentFailure />} />
 
-          {/* Root redirect */}
-          <Route path="/" element={<Navigate to="/ug" replace />} />
+            {/* Root redirect */}
+            <Route path="/" element={<Navigate to="/ug" replace />} />
 
-          {/* Fallback for direct escort registration access */}
-          <Route
-            path="/escort/registration"
-            element={<Navigate to="/ug/escort/registration" replace />}
-          />
-        </Routes>
-      </BrowserRouter>
+            {/* Fallback for direct escort registration access */}
+            <Route
+              path="/escort/registration"
+              element={<Navigate to="/ug/escort/registration" replace />}
+            />
+          </Routes>
+        </BrowserRouter>
+      </SocketProvider>
     </AuthProvider>
   );
 };

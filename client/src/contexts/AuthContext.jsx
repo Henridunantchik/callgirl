@@ -102,10 +102,16 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem("user");
             setUser(null);
           }
+        } else if (token && reduxUser) {
+          // Use Redux user data if available
+          console.log("✅ Using Redux user data");
+          setUser(reduxUser);
+          localStorage.setItem("user", JSON.stringify(reduxUser));
         } else {
           console.log("❌ No token or stored user found");
           console.log("Token exists:", !!token);
           console.log("Stored user exists:", !!storedUser);
+          console.log("Redux user exists:", !!reduxUser);
           setUser(null);
         }
       } catch (error) {
@@ -171,6 +177,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("user");
       setUser(null);
     }
+  };
+
+  // Helper function to get user ID consistently
+  const getUserId = (userObj) => {
+    if (!userObj) return null;
+    return userObj._id || userObj.id || (userObj.user && (userObj.user._id || userObj.user.id));
   };
 
   const verifyAge = async () => {
@@ -247,6 +259,7 @@ export const AuthProvider = ({ children }) => {
     isEscort,
     isClient,
     isAdmin,
+    getUserId,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

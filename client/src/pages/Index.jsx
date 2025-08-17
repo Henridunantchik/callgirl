@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { showToast } from "@/helpers/showToast";
+import { RouteSignIn } from "@/helpers/RouteName";
 import { useParams } from "react-router-dom";
 import {
   FaSearch,
@@ -21,9 +23,10 @@ import {
   FaShieldAlt,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import RealTimeMessenger from "@/components/RealTimeMessenger";
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
   const { countryCode } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -34,6 +37,8 @@ const Index = () => {
     verified: false,
     online: false,
   });
+  const [isMessengerOpen, setIsMessengerOpen] = useState(false);
+  const [selectedEscort, setSelectedEscort] = useState(null);
 
   // Fetch escort data from API
   const [escortData, setEscortData] = useState(null);
@@ -57,7 +62,10 @@ const Index = () => {
           _t: Date.now(), // Cache busting parameter
         });
         console.log("API response:", response.data);
-        console.log("Escorts count:", response.data?.data?.escorts?.length || 0);
+        console.log(
+          "Escorts count:",
+          response.data?.data?.escorts?.length || 0
+        );
         console.log("Total count:", response.data?.data?.total || 0);
         // Fix: Set the correct data structure - response.data.data contains the actual data
         setEscortData(response.data.data);
@@ -75,7 +83,20 @@ const Index = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    // Implement search functionality
+
+    // Build search parameters
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    if (filters.city) params.set("city", filters.city);
+    if (filters.ageMin) params.set("ageMin", filters.ageMin);
+    if (filters.ageMax) params.set("ageMax", filters.ageMax);
+    if (filters.gender) params.set("gender", filters.gender);
+    if (filters.verified) params.set("verified", "true");
+    if (filters.online) params.set("online", "true");
+
+    // Navigate to escort list with search parameters
+    const searchUrl = `/${countryCode}/escort/list?${params.toString()}`;
+    window.location.href = searchUrl;
   };
 
   const handleFilterChange = (key, value) => {
@@ -93,18 +114,28 @@ const Index = () => {
     console.log("Alias:", escort.alias);
     console.log("Name:", escort.name);
 
+    // Check authentication first
+    const userId = getUserId(user);
+    
+    if (!userId) {
+      showToast("error", "Please sign in to contact escorts");
+      window.location.href = RouteSignIn;
+      return;
+    }
+
     if (method === "call") {
       if (escort.phone) {
         // Copy phone number to clipboard
         navigator.clipboard.writeText(escort.phone);
-        alert(`Phone number copied to clipboard: ${escort.phone}`);
+        showToast("success", `Phone number copied to clipboard: ${escort.phone}`);
       } else {
-        alert("Phone number not available for this escort.");
+        showToast("error", "Phone number not available for this escort.");
       }
     } else if (method === "message") {
-      // Navigate to message page or open chat
-      console.log("Opening message for:", escort.alias);
-      // You can implement navigation to message page here
+      // Open the floating messenger directly
+      console.log("Opening messenger for:", escort.alias);
+      setSelectedEscort(escort);
+      setIsMessengerOpen(true);
     }
     console.log("Contacting escort:", escort.alias, "via", method);
   };
@@ -361,6 +392,13 @@ const Index = () => {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Real-time Messenger */}
+      <RealTimeMessenger 
+        isOpen={isMessengerOpen} 
+        onClose={() => setIsMessengerOpen(false)}
+        selectedEscort={selectedEscort}
+      />
     </div>
   );
 };

@@ -17,14 +17,17 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 20,
+      q, // Search query
       city,
       country,
       age,
       bodyType,
       service,
-      minPrice,
-      maxPrice,
+      ethnicity,
+      priceRange,
+      verified,
+      online,
       featured,
       sortBy = "createdAt",
       sortOrder = "desc",
@@ -36,39 +39,105 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       isActive: true,
     };
 
-    if (city) filter["location.city"] = { $regex: city, $options: "i" };
-    if (country)
-      filter["location.country"] = { $regex: country, $options: "i" };
-    if (age) filter.age = { $gte: parseInt(age) - 5, $lte: parseInt(age) + 5 };
-    if (bodyType) filter.bodyType = bodyType;
-    if (service) filter["services"] = { $regex: service, $options: "i" };
-    if (minPrice || maxPrice) {
-      filter["rates.hourly"] = {};
-      if (minPrice) filter["rates.hourly"].$gte = parseInt(minPrice);
-      if (maxPrice) filter["rates.hourly"].$lte = parseInt(maxPrice);
+    // Search query - use regex search for better compatibility
+    if (q) {
+      filter.$or = [
+        { name: { $regex: q, $options: "i" } },
+        { alias: { $regex: q, $options: "i" } },
+        { bio: { $regex: q, $options: "i" } },
+        { "location.city": { $regex: q, $options: "i" } },
+        { services: { $regex: q, $options: "i" } },
+      ];
     }
 
-    // Filter by featured status
+    // Location filters
+    if (city) filter["location.city"] = { $regex: city, $options: "i" };
+    if (country) filter["location.country"] = { $regex: country, $options: "i" };
+
+    // Age filter
+    if (age) {
+      if (age.includes("-")) {
+        const [minAge, maxAge] = age.split("-").map(Number);
+        filter.age = { $gte: minAge, $lte: maxAge };
+      } else if (age.includes("+")) {
+        const minAge = parseInt(age.replace("+", ""));
+        filter.age = { $gte: minAge };
+      } else {
+        const targetAge = parseInt(age);
+        filter.age = { $gte: targetAge - 5, $lte: targetAge + 5 };
+      }
+    }
+
+    // Body type filter
+    if (bodyType) filter.bodyType = { $regex: bodyType, $options: "i" };
+
+    // Service filter
+    if (service) filter["services"] = { $regex: service, $options: "i" };
+
+    // Ethnicity filter
+    if (ethnicity) filter.ethnicity = { $regex: ethnicity, $options: "i" };
+
+    // Price range filter
+    if (priceRange) {
+      if (priceRange.includes("-")) {
+        const [minPrice, maxPrice] = priceRange.split("-").map(Number);
+        filter["rates.hourly"] = { $gte: minPrice, $lte: maxPrice };
+      } else if (priceRange.includes("+")) {
+        const minPrice = parseInt(priceRange.replace("+", ""));
+        filter["rates.hourly"] = { $gte: minPrice };
+      }
+    }
+
+    // Verification filter
+    if (verified === "true") {
+      filter.isVerified = true;
+    }
+
+    // Online status filter (placeholder - will be implemented later)
+    if (online === "true") {
+      // For now, we'll filter by last active time (within last 30 minutes)
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      filter.lastActive = { $gte: thirtyMinutesAgo };
+    }
+
+    // Featured filter
     if (featured === "true") {
       filter.isFeatured = true;
     }
 
     // Build sort object
     const sort = {};
-    sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+    if (sortBy === "relevance" && q) {
+      // For regex search, sort by name similarity or keep default order
+      sort.name = 1;
+    } else if (sortBy === "rating") {
+      sort.rating = sortOrder === "desc" ? -1 : 1;
+    } else if (sortBy === "price-low") {
+      sort["rates.hourly"] = 1;
+    } else if (sortBy === "price-high") {
+      sort["rates.hourly"] = -1;
+    } else if (sortBy === "newest") {
+      sort.createdAt = sortOrder === "desc" ? -1 : 1;
+    } else if (sortBy === "name") {
+      sort.name = sortOrder === "desc" ? -1 : 1;
+    } else if (sortBy === "age") {
+      sort.age = sortOrder === "desc" ? -1 : 1;
+    } else {
+      sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+    }
 
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone bio ethnicity bodyType lastActive profileViews rating reviewCount"
       )
       .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
 
     const total = await User.countDocuments(filter);
 
-    // Add subscription benefits to each escort
+    // Add subscription benefits and online status to each escort
     const escortsWithBenefits = escorts.map((escort) => {
       const benefits = escort.getSubscriptionBenefits();
 
@@ -83,11 +152,16 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
         }
       }
 
+      // Calculate online status (active within last 30 minutes)
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const isOnline = escort.lastActive && escort.lastActive >= thirtyMinutesAgo;
+
       return {
         ...escort.toObject(),
         services,
         benefits,
         subscriptionTier: escort.subscriptionTier || "free",
+        isOnline,
       };
     });
 
