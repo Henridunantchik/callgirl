@@ -2,6 +2,9 @@ import cloudinary from "../config/cloudinary.js";
 import { handleError } from "../helpers/handleError.js";
 import User from "../models/user.model.js";
 import bcryptjs from "bcryptjs";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
 
 export const getUser = async (req, res, next) => {
   try {
@@ -181,3 +184,49 @@ export const deleteUser = async (req, res, next) => {
     next(handleError(500, error.message));
   }
 };
+
+// Update user's online status
+export const updateOnlineStatus = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  // Update last active time
+  await User.findByIdAndUpdate(userId, {
+    lastActive: new Date(),
+    isOnline: true
+  });
+
+  return res.status(200).json(
+    new ApiResponse(200, { isOnline: true }, "Online status updated")
+  );
+});
+
+// Get user's online status
+export const getOnlineStatus = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await User.findById(userId).select("lastActive isOnline");
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Calculate if user is online (active within last 30 minutes)
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  const isOnline = user.lastActive && user.lastActive >= thirtyMinutesAgo;
+
+  return res.status(200).json(
+    new ApiResponse(200, { isOnline }, "Online status retrieved")
+  );
+});
+
+// Mark user as offline
+export const markOffline = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  await User.findByIdAndUpdate(userId, {
+    isOnline: false
+  });
+
+  return res.status(200).json(
+    new ApiResponse(200, { isOnline: false }, "Marked as offline")
+  );
+});

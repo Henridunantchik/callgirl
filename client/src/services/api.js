@@ -144,6 +144,12 @@ export const escortAPI = {
 
   // Get profile completion status
   getProfileCompletion: (id) => api.get(`/escort/profile-completion/${id}`),
+
+  // Get escort statistics
+  getEscortStats: (id) => api.get(`/escort/stats/${id}`),
+
+  // Get public escort statistics (no auth required)
+  getPublicEscortStats: (id) => api.get(`/escort/public-stats/${id}`),
 };
 
 // Booking API
@@ -212,13 +218,14 @@ export const favoriteAPI = {
 
 // Message API
 export const messageAPI = {
-  // Send message
+  // Send a message
   sendMessage: (messageData) => api.post("/message/send", messageData),
 
-  // Get conversation
-  getConversation: (escortId) => api.get(`/message/conversation/${escortId}`),
+  // Get conversation between users
+  getConversation: (escortId, params = {}) => 
+    api.get(`/message/conversation/${escortId}`, { params }),
 
-  // Get user conversations
+  // Get user's conversations
   getUserConversations: () => api.get("/message/conversations"),
 
   // Mark message as read
@@ -248,6 +255,9 @@ export const paymentAPI = {
 
   // Get payout history
   getPayoutHistory: () => api.get("/payment/payouts"),
+
+  // PesaPal specific endpoints
+  checkPesaPalStatus: (orderId) => api.get(`/payment/pesapal/status/${orderId}`),
 };
 
 // Report API
@@ -288,6 +298,17 @@ export const userAPI = {
     api.put("/user/update", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+
+  // Online status
+  updateOnlineStatus: () => api.put("/user/online-status"),
+  getOnlineStatus: (userId) => api.get(`/user/online-status/${userId}`),
+  markOffline: () => api.put("/user/offline"),
+};
+
+// Stats API
+export const statsAPI = {
+  // Get global platform statistics
+  getGlobalStats: (countryCode) => api.get(`/stats/global/${countryCode}`),
 };
 
 // Admin API

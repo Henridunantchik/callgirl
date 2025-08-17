@@ -27,7 +27,7 @@ import { RouteBlog } from '@/helpers/RouteName'
 const AddBlog = () => {
     const navigate = useNavigate()
     const user = useSelector((state) => state.user)
-    const { data: categoryData, loading, error } = useFetch(`${getEvn('VITE_API_BASE_URL')}/category/all-category`, {
+    const { data: categoryData, loading, error } = useFetch(`category/all-category`, {
         method: 'get',
         credentials: 'include'
     })

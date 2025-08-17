@@ -38,6 +38,7 @@ const paymentSchema = new mongoose.Schema(
       enum: [
         "stripe",
         "paypal",
+        "pesapal",
         "crypto",
         "mobile_money",
         "bank_transfer",

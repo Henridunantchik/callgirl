@@ -102,10 +102,16 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem("user");
             setUser(null);
           }
+        } else if (token && reduxUser) {
+          // Use Redux user data if available
+          console.log("✅ Using Redux user data");
+          setUser(reduxUser);
+          localStorage.setItem("user", JSON.stringify(reduxUser));
         } else {
           console.log("❌ No token or stored user found");
           console.log("Token exists:", !!token);
           console.log("Stored user exists:", !!storedUser);
+          console.log("Redux user exists:", !!reduxUser);
           setUser(null);
         }
       } catch (error) {
@@ -171,6 +177,22 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("user");
       setUser(null);
     }
+  };
+
+  // Helper function to get user ID consistently
+  const getUserId = (userObj) => {
+    console.log("=== getUserId DEBUG ===");
+    console.log("Input userObj:", userObj);
+    console.log("userObj._id:", userObj?._id);
+    console.log("userObj.id:", userObj?.id);
+    console.log("userObj.user:", userObj?.user);
+    console.log("userObj.user._id:", userObj?.user?._id);
+    console.log("userObj.user.id:", userObj?.user?.id);
+    
+    if (!userObj) return null;
+    const userId = userObj._id || userObj.id || (userObj.user && (userObj.user._id || userObj.user.id));
+    console.log("Final userId:", userId);
+    return userId;
   };
 
   const verifyAge = async () => {
@@ -247,6 +269,7 @@ export const AuthProvider = ({ children }) => {
     isEscort,
     isClient,
     isAdmin,
+    getUserId,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

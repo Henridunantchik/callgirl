@@ -32,17 +32,35 @@ import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
 import { useAuth } from "../../contexts/AuthContext";
 import { RouteSignIn } from "../../helpers/RouteName";
+import RealTimeMessenger from "../../components/RealTimeMessenger";
+import ReviewSystem from "../../components/ReviewSystem";
+import FavoriteButton from "../../components/FavoriteButton";
+import {
+  hasPremiumAccess,
+  canShowContactInfo,
+  canShowDetailedInfo,
+  canShowReviews,
+  canShowRates,
+  canShowServices,
+  canShowAbout,
+  canShowStats,
+  getEscortAccessLevel,
+  getAccessLevelBadgeColor,
+  getAccessLevelLabel,
+} from "../../utils/escortAccess";
 
 const EscortProfile = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
 
   const [escort, setEscort] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState("photos");
+  const [isMessengerOpen, setIsMessengerOpen] = useState(false);
+  const [selectedEscort, setSelectedEscort] = useState(null);
 
   useEffect(() => {
     fetchEscortProfile();
@@ -102,6 +120,12 @@ const EscortProfile = () => {
       if (escortData) {
         console.log("✅ Setting escort data:", escortData);
         setEscort(escortData);
+
+        // Update stats dynamically after setting initial data
+        // Call updateEscortStats directly with the escort data
+        if (escortData._id) {
+          updateEscortStatsWithId(escortData._id);
+        }
       } else {
         console.log("❌ No valid escort data found in response");
         throw new Error("Invalid response format");
@@ -129,13 +153,59 @@ const EscortProfile = () => {
   };
 
   const handleContact = () => {
-    if (!user) {
+    // Use the helper function to check authentication
+    const userId = getUserId(user);
+
+    if (!userId) {
       showToast("error", "Please log in to contact this escort");
       navigate(RouteSignIn);
       return;
     }
 
-    showToast("success", "Contact feature coming soon!");
+    // Pass the escort data to the messenger
+    setSelectedEscort(escort);
+    setIsMessengerOpen(true);
+  };
+
+  // Function to update escort stats in real-time
+  const updateEscortStats = async () => {
+    if (!escort?._id) return;
+    await updateEscortStatsWithId(escort._id);
+  };
+
+  // Function to update escort stats with specific ID
+  const updateEscortStatsWithId = async (escortId) => {
+    if (!escortId) return;
+
+    try {
+      console.log("🔄 Updating escort stats for ID:", escortId);
+      // Fetch updated escort stats (public API - no auth required)
+      const response = await escortAPI.getPublicEscortStats(escortId);
+      if (response.data && response.data.data && response.data.data.stats) {
+        const apiStats = response.data.data.stats;
+
+        // Map API stats to frontend format
+        const updatedStats = {
+          views: apiStats.profileViews || 0,
+          favorites: apiStats.favorites || 0,
+          reviews: apiStats.reviews || 0,
+          rating: apiStats.rating || 0,
+        };
+
+        // Update escort stats locally
+        setEscort((prevEscort) => ({
+          ...prevEscort,
+          stats: {
+            ...prevEscort.stats,
+            ...updatedStats,
+          },
+        }));
+
+        console.log("✅ Escort stats updated:", updatedStats);
+      }
+    } catch (error) {
+      console.error("❌ Failed to update escort stats:", error);
+    }
   };
 
   const handleFavorite = () => {
@@ -258,18 +328,13 @@ const EscortProfile = () => {
         </Button>
 
         {/* Favorite Button */}
-        <Button
-          variant="ghost"
+        <FavoriteButton
+          escortId={escort._id}
           size="sm"
-          onClick={handleFavorite}
+          variant="ghost"
           className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm"
-        >
-          <Heart
-            className={`h-5 w-5 ${
-              isFavorite ? "fill-red-500 text-red-500" : ""
-            }`}
-          />
-        </Button>
+          onFavoriteToggle={updateEscortStats}
+        />
       </div>
 
       {/* Profile Info Section */}
@@ -288,11 +353,6 @@ const EscortProfile = () => {
                 alt={escort.alias || escort.name}
                 className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
               />
-              {escort.isVerified && (
-                <div className="absolute -bottom-2 -right-2 bg-blue-500 rounded-full p-1">
-                  <CheckCircle className="h-6 w-6 text-white" />
-                </div>
-              )}
             </div>
 
             {/* Basic Info */}
@@ -326,39 +386,9 @@ const EscortProfile = () => {
                     )}
                   </div>
 
-                  {/* Badges */}
+                  {/* 3 Badges Only */}
                   <div className="flex flex-wrap gap-2">
-                    {escort.subscriptionTier &&
-                      escort.subscriptionTier !== "free" && (
-                        <Badge
-                          variant="secondary"
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
-                        >
-                          <Award className="h-3 w-3 mr-1" />
-                          {escort.subscriptionTier}
-                        </Badge>
-                      )}
-
-                    {escort.isVerified && (
-                      <Badge
-                        variant="secondary"
-                        className="bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md"
-                      >
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
-
-                    {escort.isAgeVerified && (
-                      <Badge
-                        variant="secondary"
-                        className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
-                      >
-                        <Shield className="h-3 w-3 mr-1" />
-                        Age Verified
-                      </Badge>
-                    )}
-
+                    {/* 1. Available Badge */}
                     {escort.isAvailable && (
                       <Badge
                         variant="secondary"
@@ -369,37 +399,84 @@ const EscortProfile = () => {
                       </Badge>
                     )}
 
-                    {escort.subscriptionStatus && (
+                    {/* 2. Age Verified Badge */}
+                    {escort.isAgeVerified && (
                       <Badge
                         variant="secondary"
-                        className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md"
+                        className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
                       >
-                        <Award className="h-3 w-3 mr-1" />
-                        {escort.subscriptionStatus}
+                        <Shield className="h-3 w-3 mr-1" />
+                        Age Verified
                       </Badge>
                     )}
+
+                    {/* 3. Tier Badge (Featured/Premium) */}
+                    {escort.subscriptionTier &&
+                      escort.subscriptionTier !== "basic" && (
+                        <Badge
+                          variant="secondary"
+                          className={`${
+                            escort.subscriptionTier === "premium"
+                              ? "bg-gradient-to-r from-purple-500 to-pink-500"
+                              : "bg-gradient-to-r from-yellow-500 to-orange-500"
+                          } text-white shadow-md`}
+                        >
+                          <Star className="h-3 w-3 mr-1" />
+                          {escort.subscriptionTier === "premium"
+                            ? "Premium"
+                            : "Featured"}
+                        </Badge>
+                      )}
                   </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    onClick={handleCall}
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                    size="lg"
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    {escort.phone || "Call"}
-                  </Button>
+                  {canShowContactInfo(escort) ? (
+                    <>
+                      <Button
+                        onClick={handleCall}
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                        size="lg"
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        {escort.phone || "Call"}
+                      </Button>
 
-                  <Button
-                    onClick={handleContact}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0"
-                    size="lg"
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Message
-                  </Button>
+                      <Button
+                        onClick={handleContact}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0"
+                        size="lg"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Message
+                      </Button>
+                    </>
+                  ) : // Only show premium access message to escorts (not clients)
+                  user?.user?.role === "escort" ? (
+                    <div className="w-full p-4 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+                      <div className="text-center">
+                        <Award className="h-8 w-8 text-orange-500 mx-auto mb-2" />
+                        <h3 className="font-semibold text-orange-800 mb-1">
+                          Premium Access Required
+                        </h3>
+                        <p className="text-orange-600 text-sm">
+                          Upgrade to Premium to view contact information and
+                          send messages
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    // For clients, just show message button
+                    <Button
+                      onClick={handleContact}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0 w-full"
+                      size="lg"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Message
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -410,7 +487,12 @@ const EscortProfile = () => {
         <div className="bg-white rounded-lg shadow-lg mb-6 overflow-hidden">
           <div className="bg-gradient-to-r from-gray-50 to-gray-100">
             <nav className="flex space-x-1 px-6">
-              {["photos", "about", "services", "rates"].map((tab) => (
+              {[
+                "photos",
+                ...(canShowAbout(escort) ? ["about"] : []),
+                ...(canShowServices(escort) ? ["services"] : []),
+                ...(canShowRates(escort) ? ["rates"] : []),
+              ].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -498,12 +580,35 @@ const EscortProfile = () => {
             {/* About Tab */}
             {activeTab === "about" && (
               <div className="space-y-6">
-                {/* Bio Section */}
-                {escort.bio && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">About</h3>
-                    <p className="text-gray-700 leading-relaxed">
-                      {escort.bio}
+                {canShowAbout(escort) ? (
+                  <>
+                    {/* Bio Section */}
+                    {escort.bio && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3">About</h3>
+                        <p className="text-gray-700 leading-relaxed">
+                          {escort.bio}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : // Only show premium access message to escorts (not clients)
+                user?.user?.role === "escort" ? (
+                  <div className="text-center py-12">
+                    <Award className="h-16 w-16 text-orange-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                      Premium Access Required
+                    </h3>
+                    <p className="text-orange-600">
+                      Upgrade to Premium to view detailed information about this
+                      escort
+                    </p>
+                  </div>
+                ) : (
+                  // For clients, show a simple message
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">
+                      Detailed information is not available for this escort.
                     </p>
                   </div>
                 )}
@@ -631,7 +736,7 @@ const EscortProfile = () => {
                 )}
 
                 {/* Stats */}
-                {escort.stats && (
+                {canShowStats(escort) && escort.stats && (
                   <div>
                     <h4 className="font-medium text-gray-900 mb-2">
                       Profile Stats
@@ -694,39 +799,59 @@ const EscortProfile = () => {
             {/* Services Tab */}
             {activeTab === "services" && (
               <div>
-                {escort.services && escort.services.length > 0 ? (
-                  <div>
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold mb-2">
-                        Available Services
-                      </h3>
-                      <p className="text-gray-600">
-                        Total: {escort.services.length} services
-                      </p>
-                    </div>
+                {canShowServices(escort) ? (
+                  escort.services && escort.services.length > 0 ? (
+                    <div>
+                      <div className="mb-4">
+                        <h3 className="text-lg font-semibold mb-2">
+                          Available Services
+                        </h3>
+                        <p className="text-gray-600">
+                          Total: {escort.services.length} services
+                        </p>
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {escort.services.map((service, index) => (
-                        <div
-                          key={index}
-                          className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="bg-purple-500 rounded-full p-2">
-                              <Zap className="h-4 w-4 text-white" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {escort.services.map((service, index) => (
+                          <div
+                            key={index}
+                            className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="bg-purple-500 rounded-full p-2">
+                                <Zap className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="font-medium text-gray-800">
+                                {service}
+                              </span>
                             </div>
-                            <span className="font-medium text-gray-800">
-                              {service}
-                            </span>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Zap className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">No services listed</p>
+                    </div>
+                  )
+                ) : // Only show premium access message to escorts (not clients)
+                user?.user?.role === "escort" ? (
+                  <div className="text-center py-12">
+                    <Award className="h-16 w-16 text-orange-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                      Premium Access Required
+                    </h3>
+                    <p className="text-orange-600">
+                      Upgrade to Premium to view available services
+                    </p>
                   </div>
                 ) : (
+                  // For clients, show a simple message
                   <div className="text-center py-12">
-                    <Zap className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No services listed</p>
+                    <p className="text-gray-500">
+                      Services information is not available for this escort.
+                    </p>
                   </div>
                 )}
               </div>
@@ -735,55 +860,75 @@ const EscortProfile = () => {
             {/* Rates Tab */}
             {activeTab === "rates" && (
               <div>
-                {escort.rates ? (
-                  <div className="space-y-4">
-                    {escort.rates.hourly && (
-                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold text-gray-900">
-                              Hourly Rate
-                            </h4>
-                            <p className="text-gray-600">Per hour</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-purple-600">
-                              {escort.rates.hourly}{" "}
-                              {getCurrencySymbol(escort.location?.country)}
+                {canShowRates(escort) ? (
+                  escort.rates ? (
+                    <div className="space-y-4">
+                      {escort.rates.hourly && (
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                Hourly Rate
+                              </h4>
+                              <p className="text-gray-600">Per hour</p>
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {getCurrencySymbol(escort.location?.country)}
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-purple-600">
+                                {escort.rates.hourly}{" "}
+                                {getCurrencySymbol(escort.location?.country)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {getCurrencySymbol(escort.location?.country)}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {escort.rates.overnight && (
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold text-gray-900">
-                              Overnight
-                            </h4>
-                            <p className="text-gray-600">Full night</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {escort.rates.overnight}{" "}
-                              {getCurrencySymbol(escort.location?.country)}
+                      {escort.rates.overnight && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                Overnight
+                              </h4>
+                              <p className="text-gray-600">Full night</p>
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {getCurrencySymbol(escort.location?.country)}
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-blue-600">
+                                {escort.rates.overnight}{" "}
+                                {getCurrencySymbol(escort.location?.country)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {getCurrencySymbol(escort.location?.country)}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">Rates not specified</p>
+                    </div>
+                  )
+                ) : // Only show premium access message to escorts (not clients)
+                user?.user?.role === "escort" ? (
+                  <div className="text-center py-12">
+                    <Award className="h-16 w-16 text-orange-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                      Premium Access Required
+                    </h3>
+                    <p className="text-orange-600">
+                      Upgrade to Premium to view rates
+                    </p>
                   </div>
                 ) : (
+                  // For clients, show a simple message
                   <div className="text-center py-12">
-                    <p className="text-gray-500">Rates not specified</p>
+                    <p className="text-gray-500">
+                      Rate information is not available for this escort.
+                    </p>
                   </div>
                 )}
               </div>
@@ -791,121 +936,199 @@ const EscortProfile = () => {
           </div>
         </div>
 
+        {/* Reviews Section */}
+        {canShowReviews(escort) && (
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
+            <CardHeader className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Star className="h-5 w-5" />
+                Reviews & Ratings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <ReviewSystem
+                escortId={escort._id}
+                onReviewUpdate={() => {
+                  // Update escort stats after review update
+                  updateEscortStats();
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Contact Info Card */}
-        <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
-          <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-white">
-              <MessageCircle className="h-5 w-5" />
-              Contact Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 p-6">
-            {escort.phone && (
-              <div className="group relative overflow-hidden bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-500 p-2 rounded-full shadow-md">
-                      <Phone className="h-4 w-4 text-white" />
+        {canShowContactInfo(escort) ? (
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
+            <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <MessageCircle className="h-5 w-5" />
+                Contact Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-6">
+              {escort.phone && (
+                <div className="group relative overflow-hidden bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-500 p-2 rounded-full shadow-md">
+                        <Phone className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 font-medium">
+                          Phone
+                        </p>
+                        <p className="text-gray-900 font-semibold">
+                          {escort.phone}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">Phone</p>
-                      <p className="text-gray-900 font-semibold">
-                        {escort.phone}
-                      </p>
-                    </div>
+                    <Button
+                      onClick={handleCall}
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
+                    >
+                      Call Now
+                    </Button>
                   </div>
-                  <Button
-                    onClick={handleCall}
-                    size="sm"
-                    className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
-                  >
-                    Call Now
-                  </Button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {escort.whatsapp && (
-              <div className="group relative overflow-hidden bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-600 p-2 rounded-full shadow-md">
-                      <Phone className="h-4 w-4 text-white" />
+              {escort.whatsapp && (
+                <div className="group relative overflow-hidden bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-600 p-2 rounded-full shadow-md">
+                        <Phone className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 font-medium">
+                          WhatsApp
+                        </p>
+                        <p className="text-gray-900 font-semibold">
+                          {escort.whatsapp}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">
-                        WhatsApp
-                      </p>
-                      <p className="text-gray-900 font-semibold">
-                        {escort.whatsapp}
-                      </p>
-                    </div>
+                    <Button
+                      onClick={handleWhatsApp}
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
+                    >
+                      WhatsApp
+                    </Button>
                   </div>
-                  <Button
-                    onClick={handleWhatsApp}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
-                  >
-                    WhatsApp
-                  </Button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {escort.telegram && (
-              <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <div className="flex items-center justify-between">
+              {escort.telegram && (
+                <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-blue-500 p-2 rounded-full shadow-md">
+                        <MessageCircle className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 font-medium">
+                          Telegram
+                        </p>
+                        <p className="text-gray-900 font-semibold">
+                          {escort.telegram}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleTelegram}
+                      size="sm"
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
+                    >
+                      Telegram
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {escort.email && (
+                <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
                   <div className="flex items-center gap-3">
                     <div className="bg-blue-500 p-2 rounded-full shadow-md">
-                      <MessageCircle className="h-4 w-4 text-white" />
+                      <Mail className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 font-medium">
-                        Telegram
-                      </p>
+                      <p className="text-sm text-gray-600 font-medium">Email</p>
                       <p className="text-gray-900 font-semibold">
-                        {escort.telegram}
+                        {escort.email}
                       </p>
                     </div>
                   </div>
-                  <Button
-                    onClick={handleTelegram}
-                    size="sm"
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md"
-                  >
-                    Telegram
-                  </Button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {escort.email && (
-              <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-500 p-2 rounded-full shadow-md">
-                    <Mail className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 font-medium">Email</p>
-                    <p className="text-gray-900 font-semibold">
-                      {escort.email}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Button
-              onClick={handleContact}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
-              size="lg"
-            >
-              <MessageCircle className="h-5 w-5 mr-2" />
-              Message {escort.alias || escort.name}
-            </Button>
-          </CardContent>
-        </Card>
+              <Button
+                onClick={handleContact}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+                size="lg"
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Message {escort.alias || escort.name}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : // Only show premium access message to escorts (not clients)
+        user?.user?.role === "escort" ? (
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-orange-50 to-red-50">
+            <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Award className="h-5 w-5" />
+                Premium Access Required
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 text-center">
+              <Award className="h-16 w-16 text-orange-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                Contact Information Hidden
+              </h3>
+              <p className="text-orange-600 mb-4">
+                This escort's contact information is only available to Premium
+                members.
+              </p>
+              <Button
+                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                size="lg"
+              >
+                Upgrade to Premium
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          // For clients, show a simple contact card with just message button
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
+            <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <MessageCircle className="h-5 w-5" />
+                Contact
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 text-center">
+              <Button
+                onClick={handleContact}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+                size="lg"
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Message {escort.alias || escort.name}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Real-time Messenger */}
+      <RealTimeMessenger
+        isOpen={isMessengerOpen}
+        onClose={() => setIsMessengerOpen(false)}
+        selectedEscort={escort}
+      />
     </div>
   );
 };

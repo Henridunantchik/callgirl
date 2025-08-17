@@ -8,6 +8,10 @@ import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
 import fs from "fs";
 import mongoose from "mongoose";
+import Message from "../models/message.model.js";
+import Booking from "../models/booking.model.js";
+import Review from "../models/review.model.js";
+import Favorite from "../models/favorite.model.js";
 
 /**
  * Get all escorts with filtering and pagination
@@ -17,18 +21,32 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 20,
+      q, // Search query
       city,
       country,
+      countryCode, // New parameter for country code
       age,
       bodyType,
       service,
-      minPrice,
-      maxPrice,
+      ethnicity,
+      priceRange,
+      verified,
+      online,
       featured,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
+
+    // Map country codes to country names
+    const countryMapping = {
+      ug: "Uganda",
+      ke: "Kenya",
+      tz: "Tanzania",
+      rw: "Rwanda",
+      bi: "Burundi",
+      cd: "DR Congo",
+    };
 
     // Build filter object
     const filter = {
@@ -36,39 +54,115 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       isActive: true,
     };
 
+    // Auto-filter by country if countryCode is provided
+    if (countryCode && countryMapping[countryCode]) {
+      const countryName = countryMapping[countryCode];
+      // Filter by both country name and country code (for backward compatibility)
+      filter["location.country"] = {
+        $in: [countryName, countryCode],
+      };
+    }
+
+    // Search query - use regex search for better compatibility
+    if (q) {
+      filter.$or = [
+        { name: { $regex: q, $options: "i" } },
+        { alias: { $regex: q, $options: "i" } },
+        { bio: { $regex: q, $options: "i" } },
+        { "location.city": { $regex: q, $options: "i" } },
+        { services: { $regex: q, $options: "i" } },
+      ];
+    }
+
+    // Location filters
     if (city) filter["location.city"] = { $regex: city, $options: "i" };
     if (country)
       filter["location.country"] = { $regex: country, $options: "i" };
-    if (age) filter.age = { $gte: parseInt(age) - 5, $lte: parseInt(age) + 5 };
-    if (bodyType) filter.bodyType = bodyType;
-    if (service) filter["services"] = { $regex: service, $options: "i" };
-    if (minPrice || maxPrice) {
-      filter["rates.hourly"] = {};
-      if (minPrice) filter["rates.hourly"].$gte = parseInt(minPrice);
-      if (maxPrice) filter["rates.hourly"].$lte = parseInt(maxPrice);
+
+    // Age filter
+    if (age) {
+      if (age.includes("-")) {
+        const [minAge, maxAge] = age.split("-").map(Number);
+        filter.age = { $gte: minAge, $lte: maxAge };
+      } else if (age.includes("+")) {
+        const minAge = parseInt(age.replace("+", ""));
+        filter.age = { $gte: minAge };
+      } else {
+        const targetAge = parseInt(age);
+        filter.age = { $gte: targetAge - 5, $lte: targetAge + 5 };
+      }
     }
 
-    // Filter by featured status
+    // Body type filter
+    if (bodyType) filter.bodyType = { $regex: bodyType, $options: "i" };
+
+    // Service filter
+    if (service) filter["services"] = { $regex: service, $options: "i" };
+
+    // Ethnicity filter
+    if (ethnicity) filter.ethnicity = { $regex: ethnicity, $options: "i" };
+
+    // Price range filter
+    if (priceRange) {
+      if (priceRange.includes("-")) {
+        const [minPrice, maxPrice] = priceRange.split("-").map(Number);
+        filter["rates.hourly"] = { $gte: minPrice, $lte: maxPrice };
+      } else if (priceRange.includes("+")) {
+        const minPrice = parseInt(priceRange.replace("+", ""));
+        filter["rates.hourly"] = { $gte: minPrice };
+      }
+    }
+
+    // Verification filter
+    if (verified === "true") {
+      filter.isVerified = true;
+    }
+
+    // Online status filter (placeholder - will be implemented later)
+    if (online === "true") {
+      // For now, we'll filter by last active time (within last 30 minutes)
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      filter.lastActive = { $gte: thirtyMinutesAgo };
+    }
+
+    // Featured filter
     if (featured === "true") {
       filter.isFeatured = true;
     }
 
     // Build sort object
     const sort = {};
-    sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+    if (sortBy === "relevance" && q) {
+      // For regex search, sort by name similarity or keep default order
+      sort.name = 1;
+    } else if (sortBy === "rating") {
+      sort.rating = sortOrder === "desc" ? -1 : 1;
+    } else if (sortBy === "price-low") {
+      sort["rates.hourly"] = 1;
+    } else if (sortBy === "price-high") {
+      sort["rates.hourly"] = -1;
+    } else if (sortBy === "newest") {
+      sort.createdAt = sortOrder === "desc" ? -1 : 1;
+    } else if (sortBy === "name") {
+      sort.name = sortOrder === "desc" ? -1 : 1;
+    } else if (sortBy === "age") {
+      sort.age = sortOrder === "desc" ? -1 : 1;
+    } else {
+      sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+    }
 
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone bio ethnicity bodyType lastActive profileViews rating reviewCount"
       )
       .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
 
     const total = await User.countDocuments(filter);
 
-    // Add subscription benefits to each escort
+    // Add subscription benefits and online status to each escort
     const escortsWithBenefits = escorts.map((escort) => {
       const benefits = escort.getSubscriptionBenefits();
 
@@ -83,11 +177,17 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
         }
       }
 
+      // Calculate online status (active within last 30 minutes)
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const isOnline =
+        escort.lastActive && escort.lastActive >= thirtyMinutesAgo;
+
       return {
         ...escort.toObject(),
         services,
         benefits,
         subscriptionTier: escort.subscriptionTier || "free",
+        isOnline,
       };
     });
 
@@ -950,3 +1050,111 @@ export const updateEscortFeaturedStatus = asyncHandler(
     }
   }
 );
+
+/**
+ * Get escort statistics for dashboard
+ * GET /api/escort/stats/:id
+ */
+export const getEscortStats = asyncHandler(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ID parameter
+    if (!id || id === "undefined") {
+      throw new ApiError(400, "Invalid escort ID");
+    }
+
+    // Check if escort exists
+    const escort = await User.findOne({ _id: id, role: "escort" });
+    if (!escort) {
+      throw new ApiError(404, "Escort not found");
+    }
+
+    // Get current month for earnings calculation
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Calculate statistics
+    const [
+      totalMessages,
+      totalBookings,
+      totalReviews,
+      totalFavorites,
+      monthlyEarnings,
+      averageRating,
+    ] = await Promise.all([
+      // Total messages received
+      Message.countDocuments({ recipient: id }),
+
+      // Total bookings
+      Booking.countDocuments({ escortId: id }),
+
+      // Total reviews
+      Review.countDocuments({ escort: id }),
+
+      // Total favorites
+      Favorite.countDocuments({ escort: id }),
+
+      // Monthly earnings (from completed bookings)
+      Booking.aggregate([
+        {
+          $match: {
+            escortId: new mongoose.Types.ObjectId(id),
+            status: "completed",
+            createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$amount" },
+          },
+        },
+      ]),
+
+      // Average rating
+      Review.aggregate([
+        {
+          $match: { escort: new mongoose.Types.ObjectId(id) },
+        },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+          },
+        },
+      ]),
+    ]);
+
+    // Extract values from aggregation results
+    const earnings = monthlyEarnings[0]?.total || 0;
+    const rating = averageRating[0]?.averageRating || 0;
+
+    // Get profile views from escort stats
+    const profileViews = escort.stats?.views || 0;
+
+    const stats = {
+      profileViews,
+      messages: totalMessages,
+      bookings: totalBookings,
+      favorites: totalFavorites,
+      reviews: totalReviews,
+      rating: Math.round(rating * 10) / 10, // Round to 1 decimal place
+      earnings: Math.round(earnings * 100) / 100, // Round to 2 decimal places
+    };
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { stats },
+          "Escort statistics retrieved successfully"
+        )
+      );
+  } catch (error) {
+    console.error("Error fetching escort stats:", error);
+    next(error);
+  }
+});

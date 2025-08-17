@@ -22,7 +22,7 @@ import { showToast } from '@/helpers/showToast'
 
 const CategoryDetails = () => {
     const [refreshData, setRefreshData] = useState(false)
-    const { data: categoryData, loading, error } = useFetch(`${getEvn('VITE_API_BASE_URL')}/category/all-category`, {
+    const { data: categoryData, loading, error } = useFetch(`category/all-category`, {
         method: 'get',
         credentials: 'include'
     }, [refreshData])

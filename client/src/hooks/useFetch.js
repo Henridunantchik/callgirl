@@ -12,7 +12,7 @@ export const useFetch = (url, options = {}, dependencies = []) => {
         // Convert relative URLs to absolute API URLs
         const fullUrl = url.startsWith("http")
           ? url
-          : `http://localhost:5000/api${url}`;
+          : `http://localhost:5000/api/${url.replace(/^\//, "")}`;
 
         const response = await fetch(fullUrl, options);
         const responseData = await response.json();

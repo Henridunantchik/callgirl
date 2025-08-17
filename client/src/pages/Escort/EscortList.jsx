@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -10,6 +10,15 @@ import {
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Slider } from "../../components/ui/slider";
+import {
   Search,
   Filter,
   MapPin,
@@ -19,17 +28,34 @@ import {
   CheckCircle,
   Star,
   Heart,
+  X,
+  RefreshCw,
+  Users,
+  Eye,
+  Clock,
+  MessageCircle,
+  Phone,
+  Award,
 } from "lucide-react";
 import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
 import { useAuth } from "../../contexts/AuthContext";
 import { RouteSignIn } from "../../helpers/RouteName";
+import { debounce } from "lodash";
+import RealTimeMessenger from "../../components/RealTimeMessenger";
+import {
+  canShowContactInfo,
+  canShowDetailedInfo,
+  getEscortAccessLevel,
+  getAccessLevelBadgeColor,
+  getAccessLevelLabel,
+} from "../../utils/escortAccess";
 
 const EscortList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
-  const { countryCode } = useParams();
+  const { user, getUserId } = useAuth();
+  const { countryCode, city, category } = useParams();
 
   // Function to get currency symbol based on country
   const getCurrencySymbol = (countryCode) => {
@@ -55,42 +81,137 @@ const EscortList = () => {
     age: searchParams.get("age") || "",
     services: searchParams.get("services") || "",
     priceRange: searchParams.get("priceRange") || "",
+    bodyType: searchParams.get("bodyType") || "",
+    ethnicity: searchParams.get("ethnicity") || "",
+    verified: searchParams.get("verified") === "true",
+    online: searchParams.get("online") === "true",
+    featured: searchParams.get("featured") === "true",
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [escortsPerPage] = useState(36); // Show 36 escorts per page (6 rows of 6)
+  const [sortBy, setSortBy] = useState("relevance");
+  const [isMessengerOpen, setIsMessengerOpen] = useState(false);
+  const [selectedEscort, setSelectedEscort] = useState(null);
 
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((searchTerm, filters) => {
+      fetchEscorts(searchTerm, filters, 1, sortBy);
+    }, 500),
+    [sortBy]
+  );
+
+  // Initialize from URL params and route params
   useEffect(() => {
-    fetchEscorts();
-  }, [searchTerm, filters]);
+    const urlSearchTerm = searchParams.get("q") || "";
 
-  const fetchEscorts = async () => {
+    // Handle route parameters (city and category from sidebar links)
+    const routeLocation = city || searchParams.get("location") || "";
+    const routeService = category || searchParams.get("services") || "";
+
+    const urlFilters = {
+      location: routeLocation,
+      age: searchParams.get("age") || "",
+      services: routeService,
+      priceRange: searchParams.get("priceRange") || "",
+      bodyType: searchParams.get("bodyType") || "",
+      ethnicity: searchParams.get("ethnicity") || "",
+      verified: searchParams.get("verified") === "true",
+      online: searchParams.get("online") === "true",
+      featured: searchParams.get("featured") === "true",
+    };
+
+    setSearchTerm(urlSearchTerm);
+    setFilters(urlFilters);
+    fetchEscorts(urlSearchTerm, urlFilters, 1, sortBy);
+  }, [city, category]); // Re-run when route params change
+
+  // Update URL when search or filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("q", searchTerm);
+    if (filters.location && !city) params.set("location", filters.location);
+    if (filters.age) params.set("age", filters.age);
+    if (filters.services && !category) params.set("services", filters.services);
+    if (filters.priceRange) params.set("priceRange", filters.priceRange);
+    if (filters.bodyType) params.set("bodyType", filters.bodyType);
+    if (filters.ethnicity) params.set("ethnicity", filters.ethnicity);
+    if (filters.verified) params.set("verified", "true");
+    if (filters.online) params.set("online", "true");
+    if (filters.featured) params.set("featured", "true");
+
+    setSearchParams(params);
+  }, [searchTerm, filters, setSearchParams, city, category]);
+
+  // Debounced search effect
+  useEffect(() => {
+    debouncedSearch(searchTerm, filters);
+  }, [searchTerm, filters, debouncedSearch]);
+
+  const fetchEscorts = async (
+    search = searchTerm,
+    filterParams = filters,
+    page = 1,
+    sort = sortBy
+  ) => {
     try {
       setLoading(true);
       setError(null);
-      console.log("🔍 Fetching escorts with filters:", { searchTerm, filters });
+      console.log("🔍 Fetching escorts with filters:", {
+        search,
+        filterParams,
+        page,
+      });
 
       const params = {
-        ...(searchTerm && { q: searchTerm }),
-        ...(filters.location && { location: filters.location }),
-        ...(filters.age && { age: filters.age }),
-        ...(filters.services && { services: filters.services }),
-        ...(filters.priceRange && { priceRange: filters.priceRange }),
+        page,
+        limit: escortsPerPage,
+        countryCode: countryCode || "ug", // Add country code filter
+        sortBy: sort,
+        ...(search && { q: search }),
+        ...(filterParams.location && { city: filterParams.location }),
+        ...(filterParams.age && { age: filterParams.age }),
+        ...(filterParams.services && { service: filterParams.services }),
+        ...(filterParams.priceRange && { priceRange: filterParams.priceRange }),
+        ...(filterParams.bodyType && { bodyType: filterParams.bodyType }),
+        ...(filterParams.ethnicity && { ethnicity: filterParams.ethnicity }),
+        ...(filterParams.verified && { verified: true }),
+        ...(filterParams.online && { online: true }),
+        ...(filterParams.featured && { featured: true }),
       };
 
       const response = await escortAPI.getAllEscorts(params);
       console.log("✅ Escorts fetched:", response.data);
 
-      if (response.data && response.data.data && response.data.data.escorts) {
-        setEscorts(response.data.data.escorts);
-      } else if (response.data && response.data.escorts) {
-        // Fallback for direct response
-        setEscorts(response.data.escorts);
-      } else if (response.data && Array.isArray(response.data)) {
-        // Handle case where the response is an array directly
-        setEscorts(response.data);
-      } else {
-        console.error("Invalid response structure:", response.data);
-        setEscorts([]);
+      let escortData =
+        response.data?.data?.escorts ||
+        response.data?.escorts ||
+        response.data ||
+        [];
+      const total =
+        response.data?.data?.total || response.data?.total || escortData.length;
+
+      // Sort escorts by priority: Premium/Elite > Featured > Basic
+      if (sort === "relevance") {
+        escortData.sort((a, b) => {
+          // Get access levels
+          const aLevel = getEscortAccessLevel(a);
+          const bLevel = getEscortAccessLevel(b);
+
+          // Priority order: elite > premium > featured > basic
+          const priority = { elite: 4, premium: 3, featured: 2, basic: 1 };
+
+          return priority[bLevel] - priority[aLevel]; // Higher priority first
+        });
       }
+
+      setEscorts(escortData);
+      setTotalResults(total);
+      setCurrentPage(page);
+      setTotalPages(Math.ceil(total / escortsPerPage));
     } catch (error) {
       console.error("❌ Failed to fetch escorts:", error);
       const errorMessage =
@@ -106,18 +227,74 @@ const EscortList = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const newParams = new URLSearchParams();
-    if (searchTerm) newParams.set("q", searchTerm);
-    if (filters.location) newParams.set("location", filters.location);
-    if (filters.age) newParams.set("age", filters.age);
-    if (filters.services) newParams.set("services", filters.services);
-    if (filters.priceRange) newParams.set("priceRange", filters.priceRange);
-
-    setSearchParams(newParams);
+    fetchEscorts(searchTerm, filters, 1, sortBy);
   };
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    setCurrentPage(1);
+  };
+
+  const handleFilterToggle = (key) => {
+    setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (value) => {
+    setSortBy(value);
+    setCurrentPage(1);
+    fetchEscorts(searchTerm, filters, 1, value);
+  };
+
+  // Pagination functions
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchEscorts(searchTerm, filters, page, sortBy);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleContact = (escort, action) => {
+    // Use the helper function to check authentication
+    const userId = getUserId(user);
+
+    if (!userId) {
+      showToast("error", "Please sign in to contact escorts");
+      navigate(RouteSignIn);
+      return;
+    }
+
+    if (action === "message") {
+      setSelectedEscort(escort);
+      setIsMessengerOpen(true);
+    } else if (action === "call") {
+      if (escort.phone) {
+        window.open(`tel:${escort.phone}`, "_blank");
+      } else {
+        showToast("error", "Phone number not available");
+      }
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilters({
+      location: "",
+      age: "",
+      services: "",
+      priceRange: "",
+      bodyType: "",
+      ethnicity: "",
+      verified: false,
+      online: false,
+      featured: false,
+    });
+    setSortBy("relevance");
+    setCurrentPage(1);
+
+    // If we have route parameters, navigate back to the main escort list
+    if (city || category) {
+      navigate(`/${countryCode}/escort/list`);
+    }
   };
 
   const handleFavorite = (escortId) => {
@@ -135,7 +312,20 @@ const EscortList = () => {
     navigate(`/${countryCode}/escort/${escort.alias || escort.name}`);
   };
 
-  if (loading) {
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    Object.values(filters).forEach((value) => {
+      if (
+        value &&
+        (typeof value === "string" ? value !== "" : value === true)
+      ) {
+        count++;
+      }
+    });
+    return count;
+  };
+
+  if (loading && escorts.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -152,8 +342,23 @@ const EscortList = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Find Escorts
+            {category
+              ? `${
+                  category.charAt(0).toUpperCase() + category.slice(1)
+                } Escorts`
+              : city
+              ? `Escorts in ${city.charAt(0).toUpperCase() + city.slice(1)}`
+              : "Find Escorts"}
           </h1>
+          {(category || city) && (
+            <p className="text-gray-600 mb-4">
+              {category && city
+                ? `Showing ${category} escorts in ${city}`
+                : category
+                ? `Showing escorts offering ${category} services`
+                : `Showing escorts in ${city}`}
+            </p>
+          )}
 
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="mb-6">
@@ -168,28 +373,88 @@ const EscortList = () => {
                   className="pl-10"
                 />
               </div>
-              <Button type="submit">Search</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  "Search"
+                )}
+              </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
+                className="relative"
               >
                 <Filter className="h-4 w-4 mr-2" />
                 Filters
+                {getActiveFiltersCount() > 0 && (
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs">
+                    {getActiveFiltersCount()}
+                  </Badge>
+                )}
               </Button>
             </div>
           </form>
 
-          {/* Filters */}
+          {/* Active Filters Display */}
+          {getActiveFiltersCount() > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {Object.entries(filters).map(([key, value]) => {
+                if (
+                  value &&
+                  (typeof value === "string" ? value !== "" : value === true)
+                ) {
+                  return (
+                    <Badge
+                      key={key}
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
+                      {key}: {typeof value === "boolean" ? "Yes" : value}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() =>
+                          handleFilterChange(
+                            key,
+                            typeof value === "boolean" ? false : ""
+                          )
+                        }
+                      />
+                    </Badge>
+                  );
+                }
+                return null;
+              })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Clear All
+              </Button>
+            </div>
+          )}
+
+          {/* Enhanced Filters */}
           {showFilters && (
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Filters</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Advanced Filters</span>
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear All
+                  </Button>
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* Location */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <MapPin className="h-4 w-4 inline mr-1" />
                       Location
                     </label>
                     <Input
@@ -201,66 +466,221 @@ const EscortList = () => {
                     />
                   </div>
 
+                  {/* Age Range */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Calendar className="h-4 w-4 inline mr-1" />
                       Age Range
                     </label>
-                    <select
+                    <Select
                       value={filters.age}
-                      onChange={(e) =>
-                        handleFilterChange("age", e.target.value)
+                      onValueChange={(value) =>
+                        handleFilterChange("age", value)
                       }
-                      className="w-full p-2 border border-gray-300 rounded-md"
                     >
-                      <option value="">Any Age</option>
-                      <option value="18-25">18-25</option>
-                      <option value="26-35">26-35</option>
-                      <option value="36-45">36-45</option>
-                      <option value="46+">46+</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any Age" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Any Age</SelectItem>
+                        <SelectItem value="18-25">18-25</SelectItem>
+                        <SelectItem value="26-35">26-35</SelectItem>
+                        <SelectItem value="36-45">36-45</SelectItem>
+                        <SelectItem value="46+">46+</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
+                  {/* Services */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Users className="h-4 w-4 inline mr-1" />
                       Services
                     </label>
-                    <select
+                    <Select
                       value={filters.services}
-                      onChange={(e) =>
-                        handleFilterChange("services", e.target.value)
+                      onValueChange={(value) =>
+                        handleFilterChange("services", value)
                       }
-                      className="w-full p-2 border border-gray-300 rounded-md"
                     >
-                      <option value="">Any Service</option>
-                      <option value="in-call">In-call</option>
-                      <option value="out-call">Out-call</option>
-                      <option value="massage">Massage</option>
-                      <option value="gfe">GFE</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any Service" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Any Service</SelectItem>
+                        <SelectItem value="in-call">In-call</SelectItem>
+                        <SelectItem value="out-call">Out-call</SelectItem>
+                        <SelectItem value="massage">Massage</SelectItem>
+                        <SelectItem value="gfe">GFE</SelectItem>
+                        <SelectItem value="pse">PSE</SelectItem>
+                        <SelectItem value="duo">Duo</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
+                  {/* Price Range */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <DollarSign className="h-4 w-4 inline mr-1" />
                       Price Range
                     </label>
-                    <select
+                    <Select
                       value={filters.priceRange}
-                      onChange={(e) =>
-                        handleFilterChange("priceRange", e.target.value)
+                      onValueChange={(value) =>
+                        handleFilterChange("priceRange", value)
                       }
-                      className="w-full p-2 border border-gray-300 rounded-md"
                     >
-                      <option value="">Any Price</option>
-                      <option value="0-100">$0-$100</option>
-                      <option value="100-200">$100-$200</option>
-                      <option value="200-300">$200-$300</option>
-                      <option value="300+">$300+</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any Price" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Any Price</SelectItem>
+                        <SelectItem value="0-50000">
+                          {currencySymbol} 0-50,000
+                        </SelectItem>
+                        <SelectItem value="50000-100000">
+                          {currencySymbol} 50,000-100,000
+                        </SelectItem>
+                        <SelectItem value="100000-200000">
+                          {currencySymbol} 100,000-200,000
+                        </SelectItem>
+                        <SelectItem value="200000+">
+                          {currencySymbol} 200,000+
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Body Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Body Type
+                    </label>
+                    <Select
+                      value={filters.bodyType}
+                      onValueChange={(value) =>
+                        handleFilterChange("bodyType", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any Body Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Any Body Type</SelectItem>
+                        <SelectItem value="slim">Slim</SelectItem>
+                        <SelectItem value="athletic">Athletic</SelectItem>
+                        <SelectItem value="average">Average</SelectItem>
+                        <SelectItem value="curvy">Curvy</SelectItem>
+                        <SelectItem value="plus-size">Plus Size</SelectItem>
+                        <SelectItem value="bbw">BBW</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Ethnicity */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ethnicity
+                    </label>
+                    <Select
+                      value={filters.ethnicity}
+                      onValueChange={(value) =>
+                        handleFilterChange("ethnicity", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any Ethnicity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Any Ethnicity</SelectItem>
+                        <SelectItem value="african">African</SelectItem>
+                        <SelectItem value="asian">Asian</SelectItem>
+                        <SelectItem value="caucasian">Caucasian</SelectItem>
+                        <SelectItem value="hispanic">Hispanic</SelectItem>
+                        <SelectItem value="indian">Indian</SelectItem>
+                        <SelectItem value="middle-eastern">
+                          Middle Eastern
+                        </SelectItem>
+                        <SelectItem value="mixed">Mixed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Checkboxes */}
+                  <div className="md:col-span-2 lg:col-span-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="verified"
+                          checked={filters.verified}
+                          onCheckedChange={() => handleFilterToggle("verified")}
+                        />
+                        <label
+                          htmlFor="verified"
+                          className="text-sm font-medium text-gray-700 flex items-center"
+                        >
+                          <Shield className="h-4 w-4 mr-1" />
+                          Verified Only
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="online"
+                          checked={filters.online}
+                          onCheckedChange={() => handleFilterToggle("online")}
+                        />
+                        <label
+                          htmlFor="online"
+                          className="text-sm font-medium text-gray-700 flex items-center"
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          Online Now
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="featured"
+                          checked={filters.featured}
+                          onCheckedChange={() => handleFilterToggle("featured")}
+                        />
+                        <label
+                          htmlFor="featured"
+                          className="text-sm font-medium text-gray-700 flex items-center"
+                        >
+                          <Star className="h-4 w-4 mr-1" />
+                          Featured Only
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Results Summary */}
+        <div className="mb-6 flex items-center justify-between">
+          <p className="text-gray-600">
+            {loading ? "Loading..." : `${totalResults} escorts found`}
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Sort by:</span>
+            <Select value={sortBy} onValueChange={handleSortChange}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="relevance">
+                  Priority (Premium → Featured → Basic)
+                </SelectItem>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="rating">Rating</SelectItem>
+                <SelectItem value="price-low">Price: Low to High</SelectItem>
+                <SelectItem value="price-high">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Results */}
@@ -271,166 +691,295 @@ const EscortList = () => {
                 Error Loading Escorts
               </h2>
               <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={fetchEscorts}>Try Again</Button>
+              <Button onClick={() => fetchEscorts(searchTerm, filters, 1)}>
+                Try Again
+              </Button>
             </CardContent>
           </Card>
-        ) : escorts.length === 0 ? (
+        ) : escorts.length === 0 && !loading ? (
           <Card>
             <CardContent className="text-center p-6">
               <h2 className="text-xl font-semibold mb-2">No Escorts Found</h2>
               <p className="text-gray-600 mb-4">
                 Try adjusting your search criteria or filters.
               </p>
-              <Button
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilters({});
-                  setSearchParams({});
-                }}
-              >
-                Clear Filters
-              </Button>
+              <Button onClick={clearFilters}>Clear Filters</Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {escorts.map((escort) => (
-              <Card
-                key={escort._id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handleEscortClick(escort)}
-              >
-                <CardContent className="p-0">
-                  {/* Image */}
-                  <div className="relative h-48 bg-gray-200 rounded-t-lg overflow-hidden">
-                    {escort.gallery && escort.gallery.length > 0 ? (
-                      <img
-                        src={escort.gallery[0].url}
-                        alt={escort.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-500">
-                        No Photo
-                      </div>
-                    )}
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {escorts.map((escort) => (
+                <Card
+                  key={escort._id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white"
+                  onClick={() => handleEscortClick(escort)}
+                >
+                  <CardContent className="p-0">
+                    {/* Image - Moderately taller */}
+                    <div className="relative h-64 bg-gray-200 overflow-hidden">
+                      {escort.gallery && escort.gallery.length > 0 ? (
+                        <img
+                          src={escort.gallery[0].url}
+                          alt={escort.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                          No Photo
+                        </div>
+                      )}
 
-                    {/* Favorite Button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFavorite(escort._id);
-                      }}
-                    >
-                      <Heart className="h-4 w-4" />
-                    </Button>
-
-                    {/* Verification Badge */}
-                    {escort.isVerified && (
-                      <div className="absolute top-2 left-2">
-                        <Badge
-                          variant="secondary"
-                          className="bg-green-500 text-white"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Verified
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-lg truncate">
-                        {escort.name}
-                      </h3>
-                      {escort.subscriptionTier &&
-                        escort.subscriptionTier !== "free" && (
-                          <Badge variant="outline" className="text-xs">
-                            <Shield className="h-3 w-3 mr-1" />
-                            {escort.subscriptionTier}
+                      {/* Online Status */}
+                      {escort.isOnline && (
+                        <div className="absolute bottom-2 left-2">
+                          <Badge className="bg-green-500 text-white text-xs">
+                            <div className="w-2 h-2 bg-white rounded-full mr-1 animate-pulse"></div>
+                            Online
                           </Badge>
+                        </div>
+                      )}
+
+                      {/* Only show tier badge (Featured/Premium) - not basic */}
+                      {escort.subscriptionTier &&
+                        escort.subscriptionTier !== "basic" && (
+                          <div className="absolute top-2 left-2">
+                            <Badge
+                              variant="secondary"
+                              className={`${getAccessLevelBadgeColor(
+                                getEscortAccessLevel(escort)
+                              )} text-white shadow-md text-xs`}
+                            >
+                              <Award className="h-3 w-3 mr-1" />
+                              {getAccessLevelLabel(
+                                getEscortAccessLevel(escort)
+                              )}
+                            </Badge>
+                          </div>
                         )}
                     </div>
 
-                    <div className="space-y-1 text-sm text-gray-600">
-                      {escort.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>
-                            {(() => {
-                              // Handle location whether it's an object or string
-                              if (
-                                typeof escort.location === "object" &&
-                                escort.location.city
-                              ) {
-                                return escort.location.city;
-                              } else if (typeof escort.location === "string") {
-                                return escort.location;
-                              } else {
-                                return "Location not specified";
-                              }
-                            })()}
+                    {/* Content */}
+                    <div className="p-3">
+                      {/* Name and Age - Aligned like EscortCard */}
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-base font-semibold text-gray-900 truncate">
+                          {escort.name}
+                        </h3>
+                        <span className="text-xs text-gray-500">
+                          {escort.age} years
+                        </span>
+                      </div>
+
+                      {/* Location */}
+                      <div className="flex items-center text-xs text-gray-600 mb-1">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        <span className="truncate">
+                          {escort.location?.city || "Location not specified"}
+                        </span>
+                      </div>
+
+                      {/* Services */}
+                      {canShowDetailedInfo(escort) &&
+                        escort.services &&
+                        escort.services.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {escort.services
+                              .slice(0, 3)
+                              .map((service, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {service}
+                                </Badge>
+                              ))}
+                            {escort.services.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{escort.services.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+
+                      {/* Rating */}
+                      {escort.rating && (
+                        <div className="flex items-center mb-3">
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i < Math.floor(escort.rating)
+                                    ? "text-yellow-400 fill-current"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-sm text-gray-600 ml-2">
+                            ({escort.reviewCount || 0} reviews)
                           </span>
                         </div>
                       )}
 
-                      {escort.age && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{escort.age} years old</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {escort.services && (
-                      <div className="mt-3">
-                        <div className="flex flex-wrap gap-1">
-                          {(() => {
-                            // Handle services whether it's a string or array
-                            let servicesArray = escort.services;
-                            if (typeof servicesArray === "string") {
-                              // Split by common delimiters and clean up
-                              servicesArray = servicesArray
-                                .split(/[,\s]+/)
-                                .filter((s) => s.trim());
-                            }
-
-                            // Show first 3 services
-                            const displayServices = servicesArray.slice(0, 3);
-                            return (
-                              <>
-                                {displayServices.map((service, index) => (
-                                  <Badge
-                                    key={index}
-                                    variant="outline"
-                                    className="text-xs"
-                                  >
-                                    {service}
-                                  </Badge>
-                                ))}
-                                {servicesArray.length > 3 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{servicesArray.length - 3} more
-                                  </Badge>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
+                      {/* Contact Buttons */}
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleContact(escort, "message")}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-1" />
+                          Message
+                        </Button>
+                        {canShowContactInfo(escort) ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleContact(escort, "call")}
+                          >
+                            <Phone className="w-4 h-4 mr-1" />
+                            Call
+                          </Button>
+                        ) : // Only show premium access message to escorts (not clients)
+                        user?.user?.role === "escort" ? (
+                          <div className="flex-1 p-2 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+                            <div className="text-center">
+                              <p className="text-orange-600 text-xs font-medium">
+                                Premium Required
+                              </p>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
-                    )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Enhanced Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-12">
+                {/* Results summary */}
+                <div className="text-center text-gray-600 mb-6">
+                  <span className="font-medium text-gray-800">
+                    Showing {(currentPage - 1) * escortsPerPage + 1} to{" "}
+                    {Math.min(currentPage * escortsPerPage, totalResults)} of{" "}
+                    {totalResults} escorts
+                  </span>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex justify-center items-center space-x-3">
+                  {/* Previous Button */}
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                    Previous
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex space-x-2">
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 4) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 3) {
+                        pageNum = totalPages - 6 + i;
+                      } else {
+                        if (i === 0) pageNum = 1;
+                        else if (i === 1) pageNum = currentPage - 1;
+                        else if (i === 2) pageNum = currentPage;
+                        else if (i === 3) pageNum = currentPage + 1;
+                        else if (i === 4) pageNum = totalPages;
+                      }
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={
+                            currentPage === pageNum ? "default" : "outline"
+                          }
+                          size="lg"
+                          onClick={() => handlePageChange(pageNum)}
+                          disabled={loading}
+                          className={`w-12 h-12 font-semibold ${
+                            currentPage === pageNum
+                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg"
+                              : "hover:bg-gray-50 border-2"
+                          }`}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+                  {/* Next Button */}
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading}
+                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <svg
+                      className="w-4 h-4 ml-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </Button>
+                </div>
+
+                {/* Page Info */}
+                <div className="text-center text-sm text-gray-500 mt-4">
+                  Page {currentPage} of {totalPages}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Real-time Messenger */}
+      <RealTimeMessenger
+        isOpen={isMessengerOpen}
+        onClose={() => setIsMessengerOpen(false)}
+        selectedEscort={selectedEscort}
+      />
     </div>
   );
 };
