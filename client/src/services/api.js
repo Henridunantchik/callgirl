@@ -313,7 +313,7 @@ export const userAPI = {
 // Stats API
 export const statsAPI = {
   // Get global platform statistics
-  getGlobalStats: (countryCode) => api.get(`/stats/global/${countryCode}`),
+  getGlobalStats: (countryCode) => api.get(`/stats/global`),
 };
 
 // Upgrade Request API
