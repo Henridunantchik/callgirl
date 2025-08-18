@@ -7,7 +7,30 @@ import mongoose from "mongoose";
 // Get global platform statistics
 const getGlobalStats = asyncHandler(async (req, res) => {
   try {
-    const { countryCode } = req.params;
+    const { countryCode } = req.params || req.query;
+    
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      // Return demo data if database is not connected
+      return res.status(200).json(
+        new ApiResponse(
+          200,
+          { 
+            stats: {
+              totalEscorts: 0,
+              verifiedEscorts: 0,
+              onlineEscorts: 0,
+              featuredEscorts: 0,
+              premiumEscorts: 0,
+              citiesCovered: 0,
+              topCities: [],
+              countryCode: countryCode || "ug"
+            }
+          },
+          "Demo statistics (database not connected)"
+        )
+      );
+    }
 
     // Map country codes to country names
     const countryMapping = {

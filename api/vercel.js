@@ -140,11 +140,23 @@ app.use("*", (req, res) => {
   });
 });
 
-// Connect to MongoDB
-mongoose
-  .connect(config.MONGODB_CONN)
-  .then(() => {
+// Connect to MongoDB (with fallback for missing env vars)
+const connectToMongoDB = async () => {
+  try {
+    if (!config.MONGODB_CONN) {
+      console.log("⚠️ MongoDB connection string not found, running in demo mode");
+      return;
+    }
+    
+    await mongoose.connect(config.MONGODB_CONN);
     console.log("✅ Connected to MongoDB");
+  } catch (error) {
+    console.error("❌ MongoDB connection failed:", error);
+    console.log("⚠️ Running in demo mode without database");
+  }
+};
+
+connectToMongoDB().then(() => {
 
     // Setup Socket.io connection handling after database is connected
     io.on("connection", (socket) => {

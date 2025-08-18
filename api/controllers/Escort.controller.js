@@ -19,6 +19,24 @@ import Favorite from "../models/favorite.model.js";
  */
 export const getAllEscorts = asyncHandler(async (req, res, next) => {
   try {
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      // Return demo data if database is not connected
+      return res.status(200).json(
+        new ApiResponse(
+          200,
+          {
+            escorts: [],
+            totalEscorts: 0,
+            totalPages: 0,
+            currentPage: 1,
+            limit: 20,
+          },
+          "Demo data (database not connected)"
+        )
+      );
+    }
+
     const {
       page = 1,
       limit = 20,
