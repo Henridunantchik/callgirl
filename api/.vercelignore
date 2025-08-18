@@ -5,7 +5,6 @@ test-*.html
 
 # Scripts
 scripts/
-*.script.js
 
 # Uploads
 uploads/
@@ -23,16 +22,14 @@ quick-test.js
 check-escorts-status.js
 update-escort-countries.js
 
-# Old route files (if any remain)
+# Old route files
 *.route.js
 
-# Exclude everything except the main entry point and essential files
+# Exclude everything except essential files
 *
-!index.js
 !api/index.js
 !package.json
 !package-lock.json
-!routes/consolidated.js
 !controllers/
 !models/
 !middleware/
