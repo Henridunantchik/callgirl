@@ -84,7 +84,7 @@ router.delete(
 router.post(
   "/message/upload-image",
   authenticate,
-  MessageController.uploadImage
+  MessageController.uploadMessageImage
 );
 
 // ===== UPGRADE REQUEST ROUTES =====
