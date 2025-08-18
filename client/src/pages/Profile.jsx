@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import PremiumAvatar from "@/components/PremiumAvatar";
 import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -947,36 +948,39 @@ const Profile = () => {
                       <div {...getRootProps()}>
                         <input {...getInputProps()} />
                         <div className="relative group cursor-pointer">
-                          <Avatar className="w-24 h-24 mx-auto border-2 border-gray-200">
-                            <AvatarImage
-                              src={
-                                filePreview
-                                  ? filePreview
-                                  : userData?.user?.avatar
-                              }
-                            />
-                            <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                              <svg
-                                className="w-6 h-6 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                              </svg>
-                            </div>
-                          </Avatar>
+                          <PremiumAvatar
+                            src={
+                              filePreview
+                                ? filePreview
+                                : userData?.user?.avatar
+                            }
+                            alt={userData?.user?.name || "Profile"}
+                            size="w-24 h-24"
+                            showBadge={true}
+                            user={userData?.user}
+                            className="mx-auto"
+                          />
+                          <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                            <svg
+                              className="w-6 h-6 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                          </div>
                         </div>
                       </div>
                     )}

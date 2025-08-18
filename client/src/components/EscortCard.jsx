@@ -55,12 +55,22 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
   };
 
   const getVerificationBadge = () => {
+    // For Premium users, show verified badge based on isVerified field
+    if (escort.subscriptionTier === "premium" && escort.isVerified) {
+      return (
+        <Badge variant="default" className="bg-purple-500 text-white">
+          <Shield className="w-3 h-3 mr-1" />
+          Verified
+        </Badge>
+      );
+    }
+    // For other users, check verification documents
     if (
       escort.verification?.idVerified &&
       escort.verification?.selfieVerified
     ) {
       return (
-        <Badge variant="default" className="bg-green-500 text-white">
+        <Badge variant="default" className="bg-purple-500 text-white">
           <Shield className="w-3 h-3 mr-1" />
           Verified
         </Badge>
@@ -129,9 +139,9 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
             onError={handleImageError}
           />
 
-          {/* Overlay with badges - Only the changing badge */}
+          {/* Overlay with badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
-            {/* Only show tier badge (Featured/Premium) - not basic */}
+            {/* Tier badge (Featured/Premium) - not basic */}
             {escort.subscriptionTier && escort.subscriptionTier !== "basic" && (
               <Badge
                 variant="secondary"

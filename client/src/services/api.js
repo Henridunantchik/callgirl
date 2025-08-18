@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "http://localhost:5000/api", // Direct backend URL
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api", // Use environment variable for production
   withCredentials: true,
   timeout: 60000, // Increased to 60 seconds for file uploads
 });
@@ -148,6 +148,10 @@ export const escortAPI = {
   // Get escort statistics
   getEscortStats: (id) => api.get(`/escort/stats/${id}`),
 
+  // Get individual escort statistics with growth metrics
+  getIndividualEscortStats: (escortId) =>
+    api.get(`/escort/individual-stats/${escortId}`),
+
   // Get public escort statistics (no auth required)
   getPublicEscortStats: (id) => api.get(`/escort/public-stats/${id}`),
 };
@@ -222,7 +226,7 @@ export const messageAPI = {
   sendMessage: (messageData) => api.post("/message/send", messageData),
 
   // Get conversation between users
-  getConversation: (escortId, params = {}) => 
+  getConversation: (escortId, params = {}) =>
     api.get(`/message/conversation/${escortId}`, { params }),
 
   // Get user's conversations
@@ -257,7 +261,8 @@ export const paymentAPI = {
   getPayoutHistory: () => api.get("/payment/payouts"),
 
   // PesaPal specific endpoints
-  checkPesaPalStatus: (orderId) => api.get(`/payment/pesapal/status/${orderId}`),
+  checkPesaPalStatus: (orderId) =>
+    api.get(`/payment/pesapal/status/${orderId}`),
 };
 
 // Report API
@@ -309,6 +314,45 @@ export const userAPI = {
 export const statsAPI = {
   // Get global platform statistics
   getGlobalStats: (countryCode) => api.get(`/stats/global/${countryCode}`),
+};
+
+// Upgrade Request API
+export const upgradeAPI = {
+  // Create upgrade request
+  createRequest: (requestData) =>
+    api.post("/upgrade-request/create", requestData),
+
+  // Get escort's upgrade requests
+  getMyRequests: () => api.get("/upgrade-request/my-requests"),
+
+  // Get subscription status
+  getSubscriptionStatus: () => api.get("/upgrade-request/subscription-status"),
+
+  // Submit payment proof (escort)
+  submitPaymentProof: (requestId, paymentProof) =>
+    api.put(`/upgrade-request/submit-payment/${requestId}`, { paymentProof }),
+
+  // Get all upgrade requests (admin)
+  getAllRequests: (params = {}) => api.get("/upgrade-request/all", { params }),
+
+  // Send payment instructions (admin)
+  sendPaymentInstructions: (requestId, paymentData) =>
+    api.put(`/upgrade-request/send-payment/${requestId}`, paymentData),
+
+  // Confirm payment (admin)
+  confirmPayment: (requestId, adminNotes) =>
+    api.put(`/upgrade-request/confirm-payment/${requestId}`, { adminNotes }),
+
+  // Approve upgrade request (admin)
+  approveRequest: (requestId, adminNotes) =>
+    api.put(`/upgrade-request/approve/${requestId}`, { adminNotes }),
+
+  // Reject upgrade request (admin)
+  rejectRequest: (requestId, adminNotes) =>
+    api.put(`/upgrade-request/reject/${requestId}`, { adminNotes }),
+
+  // Get upgrade statistics (admin)
+  getStats: () => api.get("/upgrade-request/stats"),
 };
 
 // Admin API

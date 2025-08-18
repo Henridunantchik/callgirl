@@ -125,9 +125,13 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       filter.lastActive = { $gte: thirtyMinutesAgo };
     }
 
-    // Featured filter
-    if (featured === "true") {
-      filter.isFeatured = true;
+    // Featured filter - support multiple ways to identify featured escorts
+    if (featured === "true" || featured === true) {
+      // Filter by either isFeatured flag OR subscriptionTier being featured/premium
+      filter.$or = [
+        { isFeatured: true },
+        { subscriptionTier: { $in: ["featured", "premium"] } },
+      ];
     }
 
     // Build sort object
@@ -1155,6 +1159,134 @@ export const getEscortStats = asyncHandler(async (req, res, next) => {
       );
   } catch (error) {
     console.error("Error fetching escort stats:", error);
+    next(error);
+  }
+});
+
+/**
+ * Get individual escort statistics with growth metrics
+ * GET /api/escort/stats/:escortId
+ */
+export const getIndividualEscortStats = asyncHandler(async (req, res, next) => {
+  try {
+    const { escortId } = req.params;
+
+    // Get current month and last month dates
+    const now = new Date();
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    // Get escort data
+    const escort = await User.findById(escortId).lean();
+    if (!escort) {
+      throw new ApiError(404, "Escort not found");
+    }
+
+    // Get current month stats
+    const currentMonthStats = await Promise.all([
+      // Profile views (from stats field)
+      Promise.resolve(escort.stats?.views || 0),
+
+      // Messages received this month
+      Message.countDocuments({
+        recipient: escortId,
+        createdAt: { $gte: currentMonth },
+      }),
+
+      // Bookings this month
+      Booking.countDocuments({
+        escort: escortId,
+        createdAt: { $gte: currentMonth },
+      }),
+
+      // Revenue this month (sum of booking amounts)
+      Booking.aggregate([
+        {
+          $match: {
+            escort: new mongoose.Types.ObjectId(escortId),
+            createdAt: { $gte: currentMonth },
+            status: { $in: ["completed", "confirmed"] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$amount" },
+          },
+        },
+      ]).then((result) => result[0]?.total || 0),
+    ]);
+
+    // Get last month stats for growth calculation
+    const lastMonthStats = await Promise.all([
+      // Profile views last month (approximate)
+      Promise.resolve(Math.floor((escort.stats?.views || 0) * 0.8)), // Estimate
+
+      // Messages received last month
+      Message.countDocuments({
+        recipient: escortId,
+        createdAt: { $gte: lastMonth, $lt: currentMonth },
+      }),
+
+      // Bookings last month
+      Booking.countDocuments({
+        escort: escortId,
+        createdAt: { $gte: lastMonth, $lt: currentMonth },
+      }),
+
+      // Revenue last month
+      Booking.aggregate([
+        {
+          $match: {
+            escort: new mongoose.Types.ObjectId(escortId),
+            createdAt: { $gte: lastMonth, $lt: currentMonth },
+            status: { $in: ["completed", "confirmed"] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$amount" },
+          },
+        },
+      ]).then((result) => result[0]?.total || 0),
+    ]);
+
+    // Calculate growth percentages
+    const calculateGrowth = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+
+    const stats = {
+      profileViews: currentMonthStats[0],
+      profileViewsGrowth: calculateGrowth(
+        currentMonthStats[0],
+        lastMonthStats[0]
+      ),
+      messages: currentMonthStats[1],
+      messagesGrowth: calculateGrowth(currentMonthStats[1], lastMonthStats[1]),
+      bookings: currentMonthStats[2],
+      bookingsGrowth: calculateGrowth(currentMonthStats[2], lastMonthStats[2]),
+      revenue: currentMonthStats[3],
+      revenueGrowth: calculateGrowth(currentMonthStats[3], lastMonthStats[3]),
+      // Additional stats
+      totalViews: escort.stats?.views || 0,
+      totalFavorites: escort.stats?.favorites || 0,
+      totalReviews: escort.stats?.reviews || 0,
+      averageRating: escort.stats?.rating || 0,
+    };
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { stats },
+          "Individual escort statistics retrieved successfully"
+        )
+      );
+  } catch (error) {
     next(error);
   }
 });

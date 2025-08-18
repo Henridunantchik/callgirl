@@ -3,6 +3,7 @@ import Message from "../models/message.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import cloudinary from "../config/cloudinary.js";
 
 // Send a message
 const sendMessage = asyncHandler(async (req, res) => {
@@ -21,12 +22,12 @@ const sendMessage = asyncHandler(async (req, res) => {
   });
 
   const populatedMessage = await Message.findById(message._id)
-    .populate("sender", "name alias avatar")
-    .populate("recipient", "name alias avatar");
+    .populate("sender", "name alias avatar subscriptionTier isVerified")
+    .populate("recipient", "name alias avatar subscriptionTier isVerified");
 
-  return res.status(201).json(
-    new ApiResponse(201, populatedMessage, "Message sent successfully")
-  );
+  return res
+    .status(201)
+    .json(new ApiResponse(201, populatedMessage, "Message sent successfully"));
 });
 
 // Get conversation between users
@@ -43,8 +44,8 @@ const getConversation = asyncHandler(async (req, res) => {
       { sender: escortId, recipient: userId },
     ],
   })
-    .populate("sender", "name alias avatar")
-    .populate("recipient", "name alias avatar")
+    .populate("sender", "name alias avatar subscriptionTier isVerified")
+    .populate("recipient", "name alias avatar subscriptionTier isVerified")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit));
@@ -57,12 +58,16 @@ const getConversation = asyncHandler(async (req, res) => {
   });
 
   return res.status(200).json(
-    new ApiResponse(200, {
-      messages: messages.reverse(),
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit),
-    }, "Conversation retrieved successfully")
+    new ApiResponse(
+      200,
+      {
+        messages: messages.reverse(),
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      "Conversation retrieved successfully"
+    )
   );
 });
 
@@ -73,7 +78,10 @@ const getUserConversations = asyncHandler(async (req, res) => {
   const conversations = await Message.aggregate([
     {
       $match: {
-        $or: [{ sender: new mongoose.Types.ObjectId(userId) }, { recipient: new mongoose.Types.ObjectId(userId) }],
+        $or: [
+          { sender: new mongoose.Types.ObjectId(userId) },
+          { recipient: new mongoose.Types.ObjectId(userId) },
+        ],
       },
     },
     {
@@ -92,12 +100,12 @@ const getUserConversations = asyncHandler(async (req, res) => {
         unreadCount: {
           $sum: {
             $cond: [
-                              {
-                  $and: [
-                    { $eq: ["$recipient", new mongoose.Types.ObjectId(userId)] },
-                    { $eq: ["$isRead", false] },
-                  ],
-                },
+              {
+                $and: [
+                  { $eq: ["$recipient", new mongoose.Types.ObjectId(userId)] },
+                  { $eq: ["$isRead", false] },
+                ],
+              },
               1,
               0,
             ],
@@ -123,6 +131,8 @@ const getUserConversations = asyncHandler(async (req, res) => {
           name: 1,
           alias: 1,
           avatar: 1,
+          subscriptionTier: 1,
+          isVerified: 1,
         },
         lastMessage: 1,
         unreadCount: 1,
@@ -130,9 +140,15 @@ const getUserConversations = asyncHandler(async (req, res) => {
     },
   ]);
 
-  return res.status(200).json(
-    new ApiResponse(200, conversations, "Conversations retrieved successfully")
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        conversations,
+        "Conversations retrieved successfully"
+      )
+    );
 });
 
 // Mark message as read
@@ -156,9 +172,9 @@ const markAsRead = asyncHandler(async (req, res) => {
     { new: true }
   );
 
-  return res.status(200).json(
-    new ApiResponse(200, updatedMessage, "Message marked as read")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedMessage, "Message marked as read"));
 });
 
 // Delete message
@@ -178,9 +194,36 @@ const deleteMessage = asyncHandler(async (req, res) => {
 
   await Message.findByIdAndDelete(messageId);
 
-  return res.status(200).json(
-    new ApiResponse(200, {}, "Message deleted successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Message deleted successfully"));
+});
+
+// Upload image for message
+const uploadMessageImage = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError(400, "Image file is required");
+  }
+
+  try {
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "message-images",
+      resource_type: "image",
+    });
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { url: result.secure_url },
+          "Image uploaded successfully"
+        )
+      );
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    throw new ApiError(500, "Failed to upload image");
+  }
 });
 
 export {
@@ -189,4 +232,5 @@ export {
   getUserConversations,
   markAsRead,
   deleteMessage,
-}; 
+  uploadMessageImage,
+};

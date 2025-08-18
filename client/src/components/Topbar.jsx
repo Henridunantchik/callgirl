@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import usericon from "@/assets/images/user.png";
+import PremiumAvatar from "./PremiumAvatar";
 
 import {
   FaRegUser,
@@ -61,7 +62,7 @@ const Topbar = () => {
   // Fetch unread messages count
   const fetchUnreadMessagesCount = async () => {
     if (!user?.user?._id) return;
-    
+
     try {
       const response = await messageAPI.getUserConversations();
       if (response.data && response.data.data) {
@@ -141,7 +142,7 @@ const Topbar = () => {
         <button onClick={toggleSidebar} className="md:hidden" type="button">
           <AiOutlineMenu />
         </button>
-        <Link to={`/${countryCode || 'ug'}`}>
+        <Link to={`/${countryCode || "ug"}`}>
           <img src={logo} className="w-20 h-auto" />
         </Link>
       </div>
@@ -180,9 +181,13 @@ const Topbar = () => {
           <DropdownMenu>
             <DropdownMenuTrigger>
               <div className="flex items-center gap-2">
-                <Avatar>
-                  <AvatarImage src={user?.user?.avatar || usericon} />
-                </Avatar>
+                <PremiumAvatar
+                  src={user?.user?.avatar || usericon}
+                  alt={user?.user?.name || "User"}
+                  size="w-10 h-10"
+                  showBadge={false}
+                  user={user?.user}
+                />
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-medium">
                     {user?.user?.name || "User"}
@@ -194,9 +199,13 @@ const Topbar = () => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex items-center gap-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={user?.user?.avatar || usericon} />
-                  </Avatar>
+                  <PremiumAvatar
+                    src={user?.user?.avatar || usericon}
+                    alt={user?.user?.name || "User"}
+                    size="w-8 h-8"
+                    showBadge={false}
+                    user={user?.user}
+                  />
                   <div>
                     <p className="font-medium">{user?.user?.name || "User"}</p>
                     <p className="text-sm text-gray-500">
@@ -273,7 +282,11 @@ const Topbar = () => {
 
               {/* Common menu items */}
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to={`/${countryCode}/${user?.user?.role || 'client'}/messages`}>
+                <Link
+                  to={`/${countryCode}/${
+                    user?.user?.role || "client"
+                  }/messages`}
+                >
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center">
                       <FaEnvelope className="mr-2" />
