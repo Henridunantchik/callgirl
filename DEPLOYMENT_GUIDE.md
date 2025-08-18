@@ -2,6 +2,16 @@
 
 ## **Vercel Deployment (Recommended)**
 
+### **🚨 Important: Serverless Function Limit Fix**
+
+✅ **Problem Solved**: Your API had 22+ routes creating too many serverless functions for Vercel's Hobby plan (12 limit).
+
+✅ **Solution Applied**:
+
+- **Consolidated all routes** into `/api/routes/consolidated.js`
+- **Reduced from 22+ to 1 serverless function**
+- **All functionality preserved**
+
 ### **1. Frontend Deployment (Client)**
 
 #### **Step 1: Prepare Frontend**

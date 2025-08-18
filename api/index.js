@@ -37,28 +37,8 @@ import {
   validateFileUpload,
 } from "./middleware/validateInput.js";
 
-// Import routes
-import AuthRoute from "./routes/Auth.route.js";
-import UserRoute from "./routes/User.route.js";
-import EscortRoute from "./routes/Escort.route.js";
-import CategoryRoute from "./routes/Category.route.js";
-import BlogRoute from "./routes/Blog.route.js";
-import BloglikeRoute from "./routes/Bloglike.route.js";
-import CommentRoute from "./routes/Comment.route.js";
-import BookingRoute from "./routes/Booking.route.js";
-import FavoriteRoute from "./routes/Favorite.route.js";
-import MessageRoute from "./routes/Message.route.js";
-import PaymentRoute from "./routes/Payment.route.js";
-import ReportRoute from "./routes/Report.route.js";
-import ReviewRoute from "./routes/Review.route.js";
-import AgeVerificationRoute from "./routes/AgeVerification.route.js";
-import AdminAgeVerificationRoute from "./routes/AdminAgeVerification.route.js";
-import SubscriptionRoute from "./routes/Subscription.route.js";
-import AdminSubscriptionRoute from "./routes/AdminSubscription.route.js";
-import TransportRoute from "./routes/Transport.route.js";
-import StatsRoute from "./routes/Stats.route.js";
-import UpgradeRequestRoute from "./routes/UpgradeRequest.route.js";
-import AdminRoute from "./routes/admin.route.js";
+// Import consolidated routes
+import ConsolidatedRoutes from "./routes/consolidated.js";
 
 // Load environment variables
 dotenv.config();
@@ -170,37 +150,8 @@ if (config.NODE_ENV === "development") {
   );
 }
 
-// API Routes
-app.use("/api/auth", AuthRoute);
-app.use("/api/user", UserRoute);
-app.use("/api/escort", EscortRoute);
-
-app.use("/api/category", CategoryRoute);
-app.use("/api/blog", BlogRoute);
-app.use("/api/bloglike", BloglikeRoute);
-app.use("/api/comment", CommentRoute);
-app.use("/api/booking", BookingRoute);
-app.use("/api/favorite", FavoriteRoute);
-app.use("/api/message", MessageRoute);
-app.use("/api/payment", PaymentRoute);
-app.use("/api/report", ReportRoute);
-app.use("/api/review", ReviewRoute);
-
-// Age verification routes
-app.use("/api/auth/age-verification", AgeVerificationRoute);
-app.use("/api/admin/age-verification", AdminAgeVerificationRoute);
-
-// Subscription routes
-app.use("/api/subscription", SubscriptionRoute);
-app.use("/api/admin/subscription", AdminSubscriptionRoute);
-
-// Transport routes
-app.use("/api/transport", TransportRoute);
-app.use("/api/stats", StatsRoute);
-app.use("/api/upgrade-request", UpgradeRequestRoute);
-
-// Admin routes
-app.use("/api/admin", AdminRoute);
+// Consolidated API Routes - Reduces serverless function count for Vercel
+app.use("/api", ConsolidatedRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
