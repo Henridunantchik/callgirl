@@ -1,208 +1,193 @@
-# 🚀 Escort Directory - Deployment Guide
+# 🚀 Production Deployment Guide
 
-## Overview
-This guide covers deploying the Escort Directory application to production.
+## **Vercel Deployment (Recommended)**
 
-## 📋 Prerequisites
+### **1. Frontend Deployment (Client)**
 
-### Backend (API) Requirements
-- Node.js 18+ 
-- MongoDB Atlas account
-- Cloudinary account
-- VPS or cloud hosting (Vercel, Railway, Render, etc.)
+#### **Step 1: Prepare Frontend**
 
-### Frontend Requirements
-- Node.js 18+
-- Vite build system
-- Static hosting (Vercel, Netlify, etc.)
-
-## 🔧 Backend Deployment
-
-### 1. Environment Variables
-Create `.env.production` in the `api` folder:
-
-```env
-NODE_ENV=production
-PORT=5000
-MONGODB_CONN=your_mongodb_connection_string
-JWT_SECRET=your_secure_jwt_secret
-FRONTEND_URL=https://your-frontend-domain.com
-CLOUDINARY_APP_NAME=your_cloudinary_app_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+```bash
+cd client
+npm run build  # ✅ Already done!
 ```
 
-### 2. Production Scripts
-The API includes these production scripts:
-- `npm start` - Start production server
-- `npm run build` - Build preparation
-- `npm test` - Run tests
+#### **Step 2: Deploy to Vercel**
 
-### 3. Deployment Options
+1. **Connect GitHub repo** to Vercel
+2. **Set build settings**:
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Install Command**: `npm install`
 
-#### Option A: Vercel
+#### **Step 3: Environment Variables**
+
+Set these in Vercel dashboard:
+
+```
+VITE_API_URL=https://your-api-domain.vercel.app/api
+VITE_SOCKET_URL=https://your-api-domain.vercel.app
+```
+
+### **2. Backend Deployment (API)**
+
+#### **Step 1: Deploy API to Vercel**
+
+1. **Create new Vercel project** for API
+2. **Set root directory** to `/api`
+3. **Framework Preset**: Node.js
+4. **Build Command**: `npm install` (no build needed)
+5. **Output Directory**: `.` (root)
+
+#### **Step 2: Environment Variables for API**
+
+Set these in Vercel dashboard:
+
+```
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+CLOUDINARY_CLOUD_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+PESAPAL_CONSUMER_KEY=your_pesapal_key
+PESAPAL_CONSUMER_SECRET=your_pesapal_secret
+PESAPAL_ENVIRONMENT=sandbox_or_live
+```
+
+### **3. Database Setup**
+
+#### **MongoDB Atlas (Recommended)**
+
+1. **Create cluster** on MongoDB Atlas
+2. **Get connection string**
+3. **Add to Vercel environment variables**
+
+### **4. File Storage**
+
+#### **Cloudinary Setup**
+
+1. **Create Cloudinary account**
+2. **Get credentials**
+3. **Add to Vercel environment variables**
+
+## **Alternative: Docker Deployment**
+
+### **For Other Platforms (DigitalOcean, AWS, etc.)**
+
+#### **Frontend Dockerfile**
+
+```dockerfile
+FROM nginx:alpine
+COPY client/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+#### **Backend Dockerfile**
+
+✅ **Already exists** in `/api/Dockerfile`
+
+#### **Docker Compose**
+
+```yaml
+version: "3.8"
+services:
+  frontend:
+    build: ./client
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./api
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
+```
+
+## **🚀 Quick Vercel Deployment**
+
+### **1. Frontend (Client)**
+
 ```bash
 # Install Vercel CLI
 npm i -g vercel
 
-# Deploy API
-cd api
-vercel --prod
-```
-
-#### Option B: Railway
-```bash
-# Connect to Railway
-railway login
-railway init
-railway up
-```
-
-#### Option C: Render
-1. Connect GitHub repository
-2. Set environment variables
-3. Deploy automatically
-
-## 🌐 Frontend Deployment
-
-### 1. Environment Variables
-Create `.env.production` in the `client` folder:
-
-```env
-VITE_API_BASE_URL=https://your-api-domain.com/api
-VITE_FIREBASE_API=your_firebase_api_key
-```
-
-### 2. Build and Deploy
-```bash
-cd client
-npm run build
-```
-
-### 3. Deployment Options
-
-#### Option A: Vercel
-```bash
 # Deploy frontend
 cd client
 vercel --prod
 ```
 
-#### Option B: Netlify
-1. Connect GitHub repository
-2. Set build command: `npm run build`
-3. Set publish directory: `dist`
+### **2. Backend (API)**
 
-## 🔒 Security Checklist
-
-### Backend Security
-- [ ] JWT_SECRET is 64+ characters
-- [ ] CORS is properly configured
-- [ ] Rate limiting is enabled
-- [ ] Input validation is active
-- [ ] File upload limits are set
-- [ ] HTTPS is enforced
-
-### Frontend Security
-- [ ] Environment variables are secure
-- [ ] API keys are not exposed
-- [ ] HTTPS is enforced
-- [ ] CSP headers are set
-
-## 📊 Monitoring & Analytics
-
-### 1. Health Checks
-- API health endpoint: `/health`
-- Performance monitoring: `/api/performance`
-
-### 2. Logging
-- Request logging enabled
-- Error tracking configured
-- Performance monitoring active
-
-## 🧪 Testing
-
-### 1. API Tests
 ```bash
+# Deploy backend
 cd api
-npm test
+vercel --prod
 ```
 
-### 2. Frontend Tests
-```bash
-cd client
-npm test
+### **3. Update Frontend API URL**
+
+After backend deployment, update frontend environment:
+
+```
+VITE_API_URL=https://your-api-domain.vercel.app/api
 ```
 
-### 3. Manual Testing
-- Visit `/test` page to run API tests
-- Test escort registration flow
-- Test escort listing and search
-- Test authentication flow
+## **✅ Production Checklist**
 
-## 🚀 Quick Deploy Commands
+- [ ] **Frontend built** successfully
+- [ ] **Backend configured** with vercel.json
+- [ ] **Environment variables** set
+- [ ] **Database connected** (MongoDB Atlas)
+- [ ] **File storage** configured (Cloudinary)
+- [ ] **Payment integration** configured (PesaPal)
+- [ ] **Domain configured** (optional)
+- [ ] **SSL certificates** active
+- [ ] **Monitoring** set up
 
-### Backend
-```bash
-cd api
-npm install
-npm start
-```
+## **🔧 Post-Deployment**
 
-### Frontend
-```bash
-cd client
-npm install
-npm run build
-npm run preview
-```
+### **Test All Features:**
 
-## 📝 Post-Deployment Checklist
+- [ ] User registration/login
+- [ ] Escort profile creation
+- [ ] Upgrade system (Basic → Featured → Premium)
+- [ ] Messaging system
+- [ ] Payment processing
+- [ ] File uploads
+- [ ] Real-time features
 
-- [ ] All API endpoints respond correctly
-- [ ] File uploads work (Cloudinary)
-- [ ] Authentication works
-- [ ] Escort registration works
-- [ ] Search and filtering work
-- [ ] Mobile responsiveness
-- [ ] Performance is acceptable
-- [ ] SSL certificate is valid
-- [ ] Domain is configured
-- [ ] Analytics are tracking
+### **Performance Optimization:**
 
-## 🔧 Troubleshooting
+- [ ] Enable Vercel Analytics
+- [ ] Configure CDN
+- [ ] Set up monitoring
+- [ ] Optimize images
 
-### Common Issues
+## **📞 Support**
 
-1. **CORS Errors**
-   - Check FRONTEND_URL in backend .env
-   - Verify CORS configuration
+If you encounter issues:
 
-2. **MongoDB Connection**
-   - Verify connection string
-   - Check network access
+1. **Check Vercel logs**
+2. **Verify environment variables**
+3. **Test API endpoints**
+4. **Check database connection**
 
-3. **File Upload Issues**
-   - Verify Cloudinary credentials
-   - Check file size limits
-
-4. **Authentication Issues**
-   - Verify JWT_SECRET
-   - Check token expiration
-
-## 📞 Support
-
-For deployment issues:
-1. Check the test page at `/test`
-2. Review server logs
-3. Verify environment variables
-4. Test API endpoints manually
-
-## 🎯 Next Steps
-
-After successful deployment:
-1. Set up monitoring (Sentry, LogRocket)
-2. Configure analytics (Google Analytics)
-3. Set up backup strategies
-4. Plan scaling strategy
-5. Implement CI/CD pipeline
+**Your app is ready for production!** 🎉

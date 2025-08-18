@@ -10,9 +10,39 @@ import {
   Star,
   Calendar,
   DollarSign,
+  HelpCircle,
+  BarChart3,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { showToast } from "../helpers/showToast";
 
 const PremiumStats = ({ stats }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleContactSupport = () => {
+    // Open WhatsApp with pre-filled message for premium support
+    const message = `Hello! I'm a Premium user (${
+      user?.name || user?.email
+    }) and I need support.`;
+    const whatsappUrl = `https://wa.me/+256701760214?text=${encodeURIComponent(
+      message
+    )}`;
+    window.open(whatsappUrl, "_blank");
+    showToast("success", "Opening WhatsApp for Premium support...");
+  };
+
+  const handleViewAnalytics = () => {
+    // Scroll to the analytics section
+    const analyticsSection = document.querySelector("[data-analytics-section]");
+    if (analyticsSection) {
+      analyticsSection.scrollIntoView({ behavior: "smooth" });
+      showToast("success", "Scrolling to analytics...");
+    } else {
+      showToast("info", "Analytics are displayed above!");
+    }
+  };
   const premiumFeatures = [
     {
       icon: <Crown className="w-6 h-6 text-green-600" />,
@@ -87,9 +117,7 @@ const PremiumStats = ({ stats }) => {
                   <h3 className="font-semibold text-gray-900">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-gray-600">
-                    {feature.description}
-                  </p>
+                  <p className="text-sm text-gray-600">{feature.description}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -104,7 +132,10 @@ const PremiumStats = ({ stats }) => {
 
       {/* Statistiques Avancées */}
       {stats && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div
+          data-analytics-section
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -129,7 +160,7 @@ const PremiumStats = ({ stats }) => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">
-                {stats.messagesReceived || 0}
+                {stats.messages || 0}
               </div>
               <p className="text-xs text-gray-600 mt-1">
                 +{stats.messagesGrowth || 0}% ce mois
@@ -161,10 +192,10 @@ const PremiumStats = ({ stats }) => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">
-                ${stats.revenue || 0}
+                ${stats.earnings || 0}
               </div>
               <p className="text-xs text-gray-600 mt-1">
-                +{stats.revenueGrowth || 0}% ce mois
+                +{stats.earningsGrowth || 0}% ce mois
               </p>
             </CardContent>
           </Card>
@@ -181,10 +212,18 @@ const PremiumStats = ({ stats }) => {
             Besoin d'aide ? Notre équipe support prioritaire est là pour vous.
           </p>
           <div className="flex justify-center gap-4">
-            <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg text-sm font-medium">
+            <button
+              onClick={handleContactSupport}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+            >
+              <HelpCircle className="w-4 h-4" />
               Contact Support
             </button>
-            <button className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg text-sm font-medium">
+            <button
+              onClick={handleViewAnalytics}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+            >
+              <BarChart3 className="w-4 h-4" />
               Voir les Analytics
             </button>
           </div>

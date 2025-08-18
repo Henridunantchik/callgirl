@@ -7,16 +7,21 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { X, MessageCircle, Phone, Zap, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { messageAPI, upgradeAPI } from "../services/api";
+import { showToast } from "../helpers/showToast";
 
-const UpgradeModal = ({ 
-  isOpen, 
-  onClose, 
-  selectedPlan, 
+const UpgradeModal = ({
+  isOpen,
+  onClose,
+  selectedPlan,
+  setSelectedPlan,
   currentPlan,
   onWhatsAppContact,
-  onMessengerContact 
+  onMessengerContact,
+  onRequestCreated,
 }) => {
   const [contactMethod, setContactMethod] = useState(null);
+  const [subscriptionPeriod, setSubscriptionPeriod] = useState("monthly");
   const [formData, setFormData] = useState({
     escortName: "",
     escortPhone: "",
@@ -30,18 +35,18 @@ const UpgradeModal = ({
       price: "$12",
       icon: <Zap className="h-6 w-6" />,
       color: "bg-blue-500",
-      description: "Plus de visibilité, contact visible, 3x plus de clients",
+      description: "More visibility, visible contact, 3x more clients",
     },
     premium: {
       title: "Premium",
-      price: "$5/mois",
+      price: subscriptionPeriod === "annual" ? "$60/year" : "$5/month",
       icon: <Crown className="h-6 w-6" />,
       color: "bg-gradient-to-r from-purple-500 to-pink-500",
-      description: "Visibilité maximale, badge verified, 5x plus de clients",
+      description: "Maximum visibility, verified badge, 5x more clients",
     },
   };
 
-  const planData = plans[selectedPlan];
+  const planData = plans[selectedPlan] || plans.featured; // Default to featured if no plan selected
 
   const handleInputChange = (e) => {
     setFormData({
@@ -51,28 +56,69 @@ const UpgradeModal = ({
   };
 
   const handleWhatsApp = () => {
-    const message = `Bonjour! Je veux devenir ${planData.title}.
+    const messageContent = `Hello! I want to become ${planData.title}.
 
-Nom: ${formData.escortName}
-Téléphone: ${formData.escortPhone}
+Name: ${formData.escortName}
+Phone: ${formData.escortPhone}
 Email: ${formData.escortEmail}
-Plan actuel: ${currentPlan}
-Plan demandé: ${selectedPlan}
-Prix: ${planData.price}`;
+Current plan: ${currentPlan}
+Requested plan: ${selectedPlan}
+Price: ${planData.price}`;
 
-    const whatsappUrl = `https://wa.me/+1234567890?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    // Open WhatsApp with pre-filled message
+    const whatsappUrl = `https://wa.me/+256701760214?text=${encodeURIComponent(
+      messageContent
+    )}`;
+    window.open(whatsappUrl, "_blank");
+    showToast("success", "Opening WhatsApp...");
     onClose();
   };
 
-  const handleMessenger = () => {
-    // Ici on enverrait la demande via la messagerie existante
-    onMessengerContact({
-      ...formData,
-      requestedPlan: selectedPlan,
-      contactMethod: "messenger",
-    });
-    onClose();
+  const handleMessenger = async () => {
+    try {
+      const messageContent = `Hello! I want to upgrade to ${planData.title} plan.
+
+Name: ${formData.escortName}
+Phone: ${formData.escortPhone}
+Email: ${formData.escortEmail}
+Current plan: ${currentPlan}
+Requested plan: ${selectedPlan}
+Price: ${planData.price}`;
+
+      // Create upgrade request in the system
+      await upgradeAPI.createRequest({
+        escortName: formData.escortName,
+        escortPhone: formData.escortPhone,
+        escortEmail: formData.escortEmail,
+        currentPlan: currentPlan,
+        requestedPlan: selectedPlan,
+        contactMethod: "messenger",
+        paymentAmount: selectedPlan === "premium" ? "5" : "12",
+        countryCode: "ug",
+      });
+
+      // Send message to admin via your system
+      await messageAPI.sendMessage({
+        escortId: "67bb7464ac51a7a6674dca42", // Admin user ID
+        content: messageContent,
+        type: "text",
+      });
+
+      showToast("success", "Upgrade request sent successfully!");
+
+      // Call callback to refresh requests list
+      if (onRequestCreated) {
+        onRequestCreated();
+      }
+
+      onClose();
+    } catch (error) {
+      console.error("Error sending upgrade request:", error);
+      showToast(
+        "error",
+        "Failed to send upgrade request. Please try WhatsApp instead."
+      );
+    }
   };
 
   const handleSubmit = (e) => {
@@ -95,13 +141,13 @@ Prix: ${planData.price}`;
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="relative w-full max-w-md mx-4"
+            className="relative w-full max-w-lg mx-4"
           >
             <Card className="shadow-xl border-0">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xl font-bold">
-                    Devenir {planData.title}
+                    Become {planData.title}
                   </CardTitle>
                   <button
                     onClick={onClose}
@@ -110,47 +156,119 @@ Prix: ${planData.price}`;
                     <X className="h-5 w-5" />
                   </button>
                 </div>
-                
+
                 <div className="flex items-center gap-3 mt-2">
-                  <div className={`w-12 h-12 rounded-full ${planData.color} text-white flex items-center justify-center`}>
+                  <div
+                    className={`w-12 h-12 rounded-full ${planData.color} text-white flex items-center justify-center`}
+                  >
                     {planData.icon}
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-gray-900">
                       {planData.price}
                       {selectedPlan === "premium" && (
-                        <span className="text-sm font-normal text-gray-500">/mois</span>
+                        <span className="text-sm font-normal text-gray-500">
+                          /month
+                        </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">{planData.description}</p>
+                    <p className="text-sm text-gray-600">
+                      {planData.description}
+                    </p>
                   </div>
                 </div>
               </CardHeader>
 
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="escortName">Nom complet</Label>
-                    <Input
-                      id="escortName"
-                      name="escortName"
-                      value={formData.escortName}
-                      onChange={handleInputChange}
-                      placeholder="Votre nom complet"
-                      required
-                    />
-                  </div>
+                  {/* Plan Selection - Show when no plan is pre-selected */}
+                  {!selectedPlan && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">
+                        Select Plan:
+                      </Label>
+                      <div
+                        className={`grid ${
+                          currentPlan === "featured"
+                            ? "grid-cols-2"
+                            : "grid-cols-1"
+                        } gap-3`}
+                      >
+                        {/* Show Featured for Basic users */}
+                        {currentPlan === "basic" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setSelectedPlan("featured")}
+                            className="h-20 flex flex-col items-center justify-center p-3"
+                          >
+                            <Zap className="h-6 w-6 mb-2 text-blue-500" />
+                            <span className="font-semibold">Featured</span>
+                            <span className="text-sm text-gray-600">$12</span>
+                          </Button>
+                        )}
 
-                  <div>
-                    <Label htmlFor="escortPhone">Téléphone</Label>
-                    <Input
-                      id="escortPhone"
-                      name="escortPhone"
-                      value={formData.escortPhone}
-                      onChange={handleInputChange}
-                      placeholder="Votre numéro de téléphone"
-                      required
-                    />
+                        {/* Show Premium for Featured users */}
+                        {currentPlan === "featured" && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setSelectedPlan("featured")}
+                              className="h-20 flex flex-col items-center justify-center p-3"
+                            >
+                              <Zap className="h-6 w-6 mb-2 text-blue-500" />
+                              <span className="font-semibold">Featured</span>
+                              <span className="text-sm text-gray-600">$12</span>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setSelectedPlan("premium")}
+                              className="h-20 flex flex-col items-center justify-center p-3"
+                            >
+                              <Crown className="h-6 w-6 mb-2 text-purple-500" />
+                              <span className="font-semibold">Premium</span>
+                              <span className="text-sm text-gray-600">
+                                $5/month
+                              </span>
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="escortName">Full Name</Label>
+                      <Input
+                        id="escortName"
+                        name="escortName"
+                        value={formData.escortName}
+                        onChange={handleInputChange}
+                        placeholder="Your full name"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="escortPhone">Phone</Label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 text-sm">+</span>
+                        </div>
+                        <Input
+                          id="escortPhone"
+                          name="escortPhone"
+                          value={formData.escortPhone}
+                          onChange={handleInputChange}
+                          placeholder="256 123 456 789"
+                          className="pl-8"
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -161,66 +279,87 @@ Prix: ${planData.price}`;
                       type="email"
                       value={formData.escortEmail}
                       onChange={handleInputChange}
-                      placeholder="Votre email"
+                      placeholder="your.email@example.com"
                       required
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="paymentProof">Preuve de paiement (optionnel)</Label>
-                    <Textarea
-                      id="paymentProof"
-                      name="paymentProof"
-                      value={formData.paymentProof}
-                      onChange={handleInputChange}
-                      placeholder="Collez ici le lien de la capture d'écran ou décrivez votre paiement"
-                      rows={3}
-                    />
-                  </div>
+                  {/* Subscription Period Selection for Premium */}
+                  {selectedPlan === "premium" && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Subscription Period:
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant={
+                            subscriptionPeriod === "monthly"
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => setSubscriptionPeriod("monthly")}
+                          className="h-12"
+                        >
+                          <span className="text-sm">Monthly</span>
+                          <span className="text-xs ml-1">$5/month</span>
+                        </Button>
 
-                  <div className="space-y-3">
-                    <Label>Choisissez votre méthode de contact :</Label>
-                    
-                    <div className="grid grid-cols-1 gap-3">
+                        <Button
+                          type="button"
+                          variant={
+                            subscriptionPeriod === "annual"
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => setSubscriptionPeriod("annual")}
+                          className="h-12"
+                        >
+                          <span className="text-sm">Annual</span>
+                          <span className="text-xs ml-1">$60/year</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Contact Method:
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         type="button"
-                        variant={contactMethod === "whatsapp" ? "default" : "outline"}
+                        variant={
+                          contactMethod === "whatsapp" ? "default" : "outline"
+                        }
                         onClick={() => setContactMethod("whatsapp")}
-                        className="justify-start h-auto p-4"
+                        className="h-12"
                       >
-                        <Phone className="h-5 w-5 mr-3 text-green-500" />
-                        <div className="text-left">
-                          <div className="font-semibold">WhatsApp</div>
-                          <div className="text-sm text-gray-600">
-                            Contactez-nous directement sur WhatsApp
-                          </div>
-                        </div>
+                        <Phone className="h-4 w-4 mr-2 text-green-500" />
+                        WhatsApp
                       </Button>
 
                       <Button
                         type="button"
-                        variant={contactMethod === "messenger" ? "default" : "outline"}
+                        variant={
+                          contactMethod === "messenger" ? "default" : "outline"
+                        }
                         onClick={() => setContactMethod("messenger")}
-                        className="justify-start h-auto p-4"
+                        className="h-12"
                       >
-                        <MessageCircle className="h-5 w-5 mr-3 text-blue-500" />
-                        <div className="text-left">
-                          <div className="font-semibold">Messagerie</div>
-                          <div className="text-sm text-gray-600">
-                            Envoyez votre demande via notre messagerie
-                          </div>
-                        </div>
+                        <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
+                        Message
                       </Button>
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-4">
+                  <div className="flex gap-3 pt-2">
                     <Button
                       type="submit"
                       disabled={!contactMethod}
                       className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold"
                     >
-                      Envoyer la demande
+                      Send Request
                     </Button>
                     <Button
                       type="button"
@@ -228,16 +367,16 @@ Prix: ${planData.price}`;
                       onClick={onClose}
                       className="flex-1"
                     >
-                      Annuler
+                      Cancel
                     </Button>
                   </div>
                 </form>
 
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>Note :</strong> Après envoi de votre demande, nous vous 
-                    fournirons les instructions de paiement. Une fois le paiement 
-                    effectué, votre profil sera mis à jour dans les 24h.
+                    <strong>Note:</strong> After sending your request, we will
+                    provide you with payment instructions. Once payment is
+                    completed, your profile will be updated within 24 hours.
                   </p>
                 </div>
               </CardContent>

@@ -62,6 +62,29 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "inactive", "cancelled", "expired"],
       default: "active",
     },
+    subscriptionDetails: {
+      period: {
+        type: String,
+        enum: ["monthly", "annual"],
+        default: "monthly",
+      },
+      startDate: {
+        type: Date,
+      },
+      endDate: {
+        type: Date,
+      },
+      autoRenew: {
+        type: Boolean,
+        default: false,
+      },
+      lastPaymentDate: {
+        type: Date,
+      },
+      nextPaymentDate: {
+        type: Date,
+      },
+    },
     // Escort-specific fields
     age: {
       type: Number,

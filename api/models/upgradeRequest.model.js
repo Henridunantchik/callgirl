@@ -36,7 +36,14 @@ const upgradeRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: [
+        "pending",
+        "payment_required",
+        "payment_confirmed",
+        "approved",
+        "rejected",
+        "expired",
+      ],
       default: "pending",
     },
     paymentProof: {
@@ -45,6 +52,26 @@ const upgradeRequestSchema = new mongoose.Schema(
     paymentAmount: {
       type: Number,
       required: true,
+    },
+    subscriptionPeriod: {
+      type: String,
+      enum: ["monthly", "annual"],
+      default: "monthly",
+    },
+    subscriptionStartDate: {
+      type: Date,
+    },
+    subscriptionEndDate: {
+      type: Date,
+    },
+    paymentInstructions: {
+      type: String, // Admin sends payment instructions
+    },
+    paymentDeadline: {
+      type: Date, // 48 hours from when payment is required
+    },
+    paymentMethod: {
+      type: String, // Method provided by admin (bank transfer, mobile money, etc.)
     },
     adminNotes: {
       type: String,

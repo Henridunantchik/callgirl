@@ -41,20 +41,24 @@ import { useFetch } from "@/hooks/useFetch";
 import { getEvn } from "@/helpers/getEnv";
 import { useSelector } from "react-redux";
 import { getCitiesByCountry, getCountryByCode } from "@/helpers/countries";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { messageAPI, bookingAPI, reviewAPI } from "@/services/api";
+import { Badge } from "@/components/ui/badge";
 
 const AppSidebar = () => {
   const user = useSelector((state) => state.user);
   const { countryCode } = useParams();
   const [showAllCities, setShowAllCities] = useState(false);
   const [showAllServices, setShowAllServices] = useState(false);
-  const { data: categoryData } = useFetch(
-    `category/all-category`,
-    {
-      method: "get",
-      credentials: "include",
-    }
-  );
+  const [notificationCounts, setNotificationCounts] = useState({
+    messages: 0,
+    bookings: 0,
+    reviews: 0,
+  });
+  const { data: categoryData } = useFetch(`category/all-category`, {
+    method: "get",
+    credentials: "include",
+  });
 
   // Get cities for the current country
   const cities = getCitiesByCountry(countryCode);
@@ -63,10 +67,132 @@ const AppSidebar = () => {
   // Show first 8 cities by default, or all cities if expanded
   const displayedCities = showAllCities ? cities : cities.slice(0, 8);
 
+  // Fetch notification counts for users
+  useEffect(() => {
+    const fetchNotificationCounts = async () => {
+      if (!user?.isLoggedIn) return;
+
+      try {
+        console.log(
+          "🔍 Fetching notification counts for user:",
+          user?.user?.role
+        );
+
+        // Fetch unread message count (for both clients and escorts)
+        const messagesResponse = await messageAPI.getUserConversations();
+        console.log("📨 Messages response:", messagesResponse.data);
+        console.log(
+          "📨 Messages data structure:",
+          JSON.stringify(messagesResponse.data, null, 2)
+        );
+
+        const unreadMessages =
+          messagesResponse.data?.data?.reduce((total, conv) => {
+            console.log("📨 Conversation:", conv);
+            console.log("📨 Unread count for this conv:", conv.unreadCount);
+            return total + (conv.unreadCount || 0);
+          }, 0) || 0;
+
+        console.log("📨 Unread messages count:", unreadMessages);
+
+        let pendingBookings = 0;
+        let newReviews = 0;
+
+        if (user?.user?.role === "escort") {
+          // Fetch pending bookings count for escorts
+          const bookingsResponse = await bookingAPI.getEscortBookings();
+          console.log("📅 Bookings response:", bookingsResponse.data);
+          console.log(
+            "📅 Bookings data structure:",
+            JSON.stringify(bookingsResponse.data, null, 2)
+          );
+
+          // Fix: bookings are in data.bookings array
+          const bookings = bookingsResponse.data?.data?.bookings || [];
+          pendingBookings =
+            bookings.filter((booking) => booking.status === "pending").length ||
+            0;
+
+          console.log("📅 Pending bookings count:", pendingBookings);
+
+          // Fetch new reviews count (reviews from last 7 days) for escorts
+          try {
+            const reviewsResponse = await reviewAPI.getUserReviews();
+            console.log("⭐ Reviews response:", reviewsResponse.data);
+            console.log(
+              "⭐ Reviews data structure:",
+              JSON.stringify(reviewsResponse.data, null, 2)
+            );
+
+            // Fix: reviews might be in data.reviews array or directly in data
+            const reviews =
+              reviewsResponse.data?.data?.reviews ||
+              reviewsResponse.data?.data ||
+              [];
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            newReviews =
+              reviews.filter(
+                (review) => new Date(review.createdAt) > sevenDaysAgo
+              ).length || 0;
+
+            console.log("⭐ New reviews count:", newReviews);
+          } catch (error) {
+            console.error("Error fetching reviews:", error);
+            newReviews = 0;
+          }
+        } else if (user?.user?.role === "client") {
+          // Fetch pending bookings count for clients
+          const bookingsResponse = await bookingAPI.getUserBookings();
+          console.log("📅 Client bookings response:", bookingsResponse.data);
+          console.log(
+            "📅 Client bookings data structure:",
+            JSON.stringify(bookingsResponse.data, null, 2)
+          );
+
+          // Fix: bookings are in data.bookings array
+          const bookings = bookingsResponse.data?.data?.bookings || [];
+          pendingBookings =
+            bookings.filter((booking) => booking.status === "pending").length ||
+            0;
+
+          console.log("📅 Client pending bookings count:", pendingBookings);
+        }
+
+        console.log("📊 Final notification counts:", {
+          messages: unreadMessages,
+          bookings: pendingBookings,
+          reviews: newReviews,
+        });
+
+        console.log("📊 Final notification counts:", {
+          messages: unreadMessages,
+          bookings: pendingBookings,
+          reviews: newReviews,
+        });
+
+        setNotificationCounts({
+          messages: unreadMessages,
+          bookings: pendingBookings,
+          reviews: newReviews,
+        });
+      } catch (error) {
+        console.error("Error fetching notification counts:", error);
+      }
+    };
+
+    fetchNotificationCounts();
+
+    // Refresh counts every 30 seconds
+    const interval = setInterval(fetchNotificationCounts, 30000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   return (
     <Sidebar>
       <SidebarHeader className="bg-white">
-        <Link to={`/${countryCode || 'ug'}`}>
+        <Link to={`/${countryCode || "ug"}`}>
           <img src={logo} width={80} className="h-auto" />
         </Link>
       </SidebarHeader>
@@ -111,6 +237,16 @@ const AppSidebar = () => {
                         <Link to={`/${countryCode}/client/bookings`}>
                           My Bookings
                         </Link>
+                        {notificationCounts.bookings > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="ml-auto text-xs px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                          >
+                            {notificationCounts.bookings > 99
+                              ? "99+"
+                              : notificationCounts.bookings}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -119,6 +255,16 @@ const AppSidebar = () => {
                         <Link to={`/${countryCode}/client/messages`}>
                           Messages
                         </Link>
+                        {notificationCounts.messages > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="ml-auto text-xs px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                          >
+                            {notificationCounts.messages > 99
+                              ? "99+"
+                              : notificationCounts.messages}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </>
@@ -141,6 +287,16 @@ const AppSidebar = () => {
                         <Link to={`/${countryCode}/escort/bookings`}>
                           Bookings
                         </Link>
+                        {notificationCounts.bookings > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="ml-auto text-xs px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                          >
+                            {notificationCounts.bookings > 99
+                              ? "99+"
+                              : notificationCounts.bookings}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -149,6 +305,16 @@ const AppSidebar = () => {
                         <Link to={`/${countryCode}/escort/messages`}>
                           Messages
                         </Link>
+                        {notificationCounts.messages > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="ml-auto text-xs px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                          >
+                            {notificationCounts.messages > 99
+                              ? "99+"
+                              : notificationCounts.messages}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -157,6 +323,16 @@ const AppSidebar = () => {
                         <Link to={`/${countryCode}/escort/reviews`}>
                           Reviews
                         </Link>
+                        {notificationCounts.reviews > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="ml-auto text-xs px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                          >
+                            {notificationCounts.reviews > 99
+                              ? "99+"
+                              : notificationCounts.reviews}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </>

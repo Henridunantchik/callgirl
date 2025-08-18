@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "http://localhost:5000/api", // Direct backend URL
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api", // Use environment variable for production
   withCredentials: true,
   timeout: 60000, // Increased to 60 seconds for file uploads
 });
@@ -147,6 +147,10 @@ export const escortAPI = {
 
   // Get escort statistics
   getEscortStats: (id) => api.get(`/escort/stats/${id}`),
+
+  // Get individual escort statistics with growth metrics
+  getIndividualEscortStats: (escortId) =>
+    api.get(`/escort/individual-stats/${escortId}`),
 
   // Get public escort statistics (no auth required)
   getPublicEscortStats: (id) => api.get(`/escort/public-stats/${id}`),
@@ -321,8 +325,23 @@ export const upgradeAPI = {
   // Get escort's upgrade requests
   getMyRequests: () => api.get("/upgrade-request/my-requests"),
 
+  // Get subscription status
+  getSubscriptionStatus: () => api.get("/upgrade-request/subscription-status"),
+
+  // Submit payment proof (escort)
+  submitPaymentProof: (requestId, paymentProof) =>
+    api.put(`/upgrade-request/submit-payment/${requestId}`, { paymentProof }),
+
   // Get all upgrade requests (admin)
   getAllRequests: (params = {}) => api.get("/upgrade-request/all", { params }),
+
+  // Send payment instructions (admin)
+  sendPaymentInstructions: (requestId, paymentData) =>
+    api.put(`/upgrade-request/send-payment/${requestId}`, paymentData),
+
+  // Confirm payment (admin)
+  confirmPayment: (requestId, adminNotes) =>
+    api.put(`/upgrade-request/confirm-payment/${requestId}`, { adminNotes }),
 
   // Approve upgrade request (admin)
   approveRequest: (requestId, adminNotes) =>

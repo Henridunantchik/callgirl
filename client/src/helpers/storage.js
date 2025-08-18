@@ -33,6 +33,8 @@ export const getEssentialUserData = (user) => {
     experience: user.experience,
     isVerified: user.isVerified,
     isActive: user.isActive,
+    subscriptionTier: user.subscriptionTier,
+    subscriptionStatus: user.subscriptionStatus,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

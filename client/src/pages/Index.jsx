@@ -69,7 +69,7 @@ const Index = () => {
         // Fetch escorts and stats in parallel
         const [escortsResponse, statsResponse] = await Promise.all([
           escortAPI.getAllEscorts({
-            featured: true,
+            featured: "true", // Use string "true" instead of boolean true
             countryCode: countryCode || "ug", // Add country code filter
             _t: Date.now(), // Cache busting parameter
           }),
@@ -84,14 +84,49 @@ const Index = () => {
           escortsResponse.data.data?.escorts || escortsResponse.data.data || [];
 
         // Filter: Only Premium/Elite and Featured escorts
+        console.log("All escorts before filtering:", escorts);
+
+        // If no escorts found, try fetching all escorts and filter on frontend
+        if (escorts.length === 0) {
+          console.log(
+            "No escorts found with featured filter, trying to fetch all escorts..."
+          );
+          try {
+            const allEscortsResponse = await escortAPI.getAllEscorts({
+              countryCode: countryCode || "ug",
+              limit: 100, // Get more escorts to filter from
+              _t: Date.now(),
+            });
+            escorts =
+              allEscortsResponse.data.data?.escorts ||
+              allEscortsResponse.data.data ||
+              [];
+            console.log("All escorts fetched:", escorts);
+          } catch (error) {
+            console.error("Error fetching all escorts:", error);
+          }
+        }
+
         escorts = escorts.filter((escort) => {
           const accessLevel = getEscortAccessLevel(escort);
+          const isFeatured = escort.isFeatured === true;
+          const hasFeaturedTier =
+            escort.subscriptionTier === "featured" ||
+            escort.subscriptionTier === "premium";
+
+          console.log(
+            `Escort ${escort.name}: subscriptionTier=${escort.subscriptionTier}, isFeatured=${isFeatured}, accessLevel=${accessLevel}`
+          );
+
           return (
             accessLevel === "elite" ||
             accessLevel === "premium" ||
-            accessLevel === "featured"
+            accessLevel === "featured" ||
+            isFeatured ||
+            hasFeaturedTier
           );
         });
+        console.log("Escorts after filtering:", escorts);
 
         // Sort: Premium/Elite first, then Featured
         escorts.sort((a, b) => {

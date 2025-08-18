@@ -20,8 +20,9 @@ import {
   Settings,
   Heart,
   MessageSquare,
+  Crown,
 } from "lucide-react";
-import { escortAPI, bookingAPI } from "../../services/api";
+import { escortAPI, bookingAPI, upgradeAPI } from "../../services/api";
 import Loading from "../../components/Loading";
 import { showToast } from "../../helpers/showToast";
 import UpgradeCard from "../../components/UpgradeCard";
@@ -44,6 +45,7 @@ const EscortDashboard = () => {
   });
   const [recentBookings, setRecentBookings] = useState([]);
   const [escortData, setEscortData] = useState(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
 
   // Vérifier le plan de l'utilisateur
   const currentPlan = user?.user?.subscriptionTier || "basic";
@@ -78,8 +80,20 @@ const EscortDashboard = () => {
         console.log("Fetching stats for user ID:", user.user._id);
         let statsResponse;
         try {
-          statsResponse = await escortAPI.getEscortStats(user.user._id);
+          statsResponse = await escortAPI.getIndividualEscortStats(
+            user.user._id
+          );
           console.log("Stats response:", statsResponse.data);
+
+          // Fetch subscription status
+          try {
+            const subscriptionResponse =
+              await upgradeAPI.getSubscriptionStatus();
+            setSubscriptionStatus(subscriptionResponse.data.data);
+            console.log("Subscription status:", subscriptionResponse.data.data);
+          } catch (error) {
+            console.error("Error fetching subscription status:", error);
+          }
 
           if (
             statsResponse.data &&
@@ -89,23 +103,31 @@ const EscortDashboard = () => {
             const apiStats = statsResponse.data.data.stats;
             setStats({
               profileViews: apiStats.profileViews || 0,
+              profileViewsGrowth: apiStats.profileViewsGrowth || 0,
               messages: apiStats.messages || 0,
+              messagesGrowth: apiStats.messagesGrowth || 0,
               bookings: apiStats.bookings || 0,
-              favorites: apiStats.favorites || 0,
-              reviews: apiStats.reviews || 0,
-              rating: apiStats.rating || 0,
-              earnings: apiStats.earnings || 0,
+              bookingsGrowth: apiStats.bookingsGrowth || 0,
+              earnings: apiStats.revenue || 0,
+              earningsGrowth: apiStats.revenueGrowth || 0,
+              favorites: apiStats.totalFavorites || 0,
+              reviews: apiStats.totalReviews || 0,
+              rating: apiStats.averageRating || 0,
             });
           } else {
             console.log("No stats data in response, using fallback");
             setStats({
               profileViews: user.user?.stats?.profileViews || 0,
+              profileViewsGrowth: 0,
               messages: 0,
+              messagesGrowth: 0,
               bookings: 0,
+              bookingsGrowth: 0,
+              earnings: 0,
+              earningsGrowth: 0,
               favorites: 0,
               reviews: 0,
               rating: user.user?.stats?.averageRating || 0,
-              earnings: 0,
             });
           }
         } catch (statsError) {
@@ -114,12 +136,16 @@ const EscortDashboard = () => {
           // Use fallback stats from escort data
           setStats({
             profileViews: user.user?.stats?.profileViews || 0,
+            profileViewsGrowth: 0,
             messages: 0,
+            messagesGrowth: 0,
             bookings: 0,
+            bookingsGrowth: 0,
+            earnings: 0,
+            earningsGrowth: 0,
             favorites: 0,
             reviews: 0,
             rating: user.user?.stats?.averageRating || 0,
-            earnings: 0,
           });
         }
 
@@ -177,6 +203,106 @@ const EscortDashboard = () => {
             Manage your profile and track your success
           </p>
         </div>
+
+        {/* Subscription Status Banner */}
+        {subscriptionStatus && subscriptionStatus.tier === "premium" && (
+          <div className="mb-6">
+            <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                      <Crown className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-purple-800">
+                          Premium Subscription Active
+                        </h3>
+                        <Badge
+                          variant="secondary"
+                          className="bg-purple-100 text-purple-800"
+                        >
+                          {subscriptionStatus.period === "annual"
+                            ? "Annual"
+                            : "Monthly"}
+                        </Badge>
+                      </div>
+                      {subscriptionStatus.remainingDays !== null && (
+                        <p className="text-sm text-purple-700">
+                          {subscriptionStatus.remainingDays > 0 ? (
+                            <>
+                              <span className="font-medium">
+                                {subscriptionStatus.remainingDays} days
+                                remaining
+                              </span>
+                              {subscriptionStatus.remainingDays <= 7 && (
+                                <span className="ml-2 text-orange-600 font-medium">
+                                  ⚠️ Renewal needed soon
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-red-600 font-medium">
+                              ⚠️ Subscription expired - please renew
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => navigate("/ug/escort/upgrade")}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    size="sm"
+                  >
+                    Renew Subscription
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Featured Subscription Status */}
+        {subscriptionStatus && subscriptionStatus.tier === "featured" && (
+          <div className="mb-6">
+            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-blue-800">
+                          Featured Profile Active
+                        </h3>
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-100 text-blue-800"
+                        >
+                          Permanent
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        Your featured profile has no expiration date
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => navigate("/ug/escort/upgrade")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
+                    Upgrade to Premium
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-8">
@@ -244,7 +370,10 @@ const EscortDashboard = () => {
           <div className="mb-8">
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle
+                  className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => navigate("/ug/escort/upgrade")}
+                >
                   <TrendingUp className="h-5 w-5 text-blue-600" />
                   Upgrade Your Profile
                 </CardTitle>
@@ -296,6 +425,14 @@ const EscortDashboard = () => {
                 >
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => navigate(`/ug/escort/upgrade`)}
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Upgrade Profile
                 </Button>
                 <Button
                   className="w-full"

@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import PremiumAvatar from "../../components/PremiumAvatar";
 import {
   MapPin,
   Phone,
@@ -343,17 +344,18 @@ const EscortProfile = () => {
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             {/* Avatar */}
-            <div className="relative">
-              <img
-                src={
-                  escort.avatar ||
-                  escort.gallery?.[0]?.url ||
-                  "/default-escort.jpg"
-                }
-                alt={escort.alias || escort.name}
-                className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
-              />
-            </div>
+            <PremiumAvatar
+              src={
+                escort.avatar ||
+                escort.gallery?.[0]?.url ||
+                "/default-escort.jpg"
+              }
+              alt={escort.alias || escort.name}
+              size="w-32 h-32"
+              showBadge={true}
+              subscriptionTier={escort.subscriptionTier}
+              isVerified={escort.isVerified}
+            />
 
             {/* Basic Info */}
             <div className="flex-1">

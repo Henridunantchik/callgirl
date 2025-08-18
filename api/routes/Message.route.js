@@ -5,6 +5,7 @@ import {
   getUserConversations,
   markAsRead,
   deleteMessage,
+  uploadMessageImage,
 } from "../controllers/Message.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import upload from "../config/multer.js";
@@ -13,6 +14,12 @@ const MessageRoute = express.Router();
 
 // Authenticated routes
 MessageRoute.post("/send", authenticate, sendMessage);
+MessageRoute.post(
+  "/upload-image",
+  authenticate,
+  upload.single("image"),
+  uploadMessageImage
+);
 MessageRoute.get("/conversation/:escortId", authenticate, getConversation);
 MessageRoute.get("/conversations", authenticate, getUserConversations);
 MessageRoute.put("/read/:messageId", authenticate, markAsRead);

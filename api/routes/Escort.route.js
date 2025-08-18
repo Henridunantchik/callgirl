@@ -13,6 +13,7 @@ import {
   searchEscorts,
   updateEscortFeaturedStatus,
   getEscortStats,
+  getIndividualEscortStats,
 } from "../controllers/Escort.controller.js";
 import upload from "../config/multer.js";
 import { authenticate } from "../middleware/authenticate.js";
@@ -30,6 +31,13 @@ EscortRoute.get("/stats/:id", authenticate, getEscortStats);
 
 // Public escort statistics (no authentication required)
 EscortRoute.get("/public-stats/:id", getEscortStats);
+
+// Individual escort statistics with growth metrics
+EscortRoute.get(
+  "/individual-stats/:escortId",
+  authenticate,
+  getIndividualEscortStats
+);
 
 // Create escort profile (requires authentication)
 EscortRoute.post(

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { showToast } from "../../helpers/showToast";
 import { RouteSignIn } from "../../helpers/RouteName";
-import { upgradeAPI } from "../../services/api";
+import { upgradeAPI, messageAPI } from "../../services/api";
 import UpgradeCard from "../../components/UpgradeCard";
 import UpgradeModal from "../../components/UpgradeModal";
 import UpgradeNotification from "../../components/UpgradeNotification";
@@ -26,6 +26,8 @@ import {
   Eye,
   TrendingUp,
   Phone,
+  Clock,
+  MessageCircle,
 } from "lucide-react";
 
 const UpgradeProfile = () => {
@@ -37,6 +39,9 @@ const UpgradeProfile = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [upgradeRequests, setUpgradeRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   // Hook pour les notifications d'upgrade
   const {
@@ -54,19 +59,61 @@ const UpgradeProfile = () => {
     const isUserAuthenticated = isAuthenticated();
 
     if (!userId && !isUserAuthenticated) {
-      showToast("error", "Veuillez vous connecter pour accéder à cette page");
+      showToast("error", "Please log in to access this page");
       navigate(RouteSignIn);
       return;
     }
 
-    if (user?.user?.role !== "escort") {
-      showToast("error", "Cette page est réservée aux escorts");
+    if (user?.role !== "escort") {
+      showToast("error", "This page is reserved for escorts");
       navigate("/");
       return;
     }
   }, [user, navigate, getUserId, isAuthenticated]);
 
-  const currentPlan = user?.user?.subscriptionTier || "basic";
+  // Fetch upgrade requests and subscription status
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user || user.role !== "escort") return;
+
+      try {
+        setRequestsLoading(true);
+        setSubscriptionLoading(true);
+
+        // Fetch upgrade requests
+        const requestsResponse = await upgradeAPI.getMyRequests();
+        setUpgradeRequests(requestsResponse.data.data || []);
+
+        // Fetch subscription status
+        const statusResponse = await upgradeAPI.getSubscriptionStatus();
+        setSubscriptionStatus(statusResponse.data.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setRequestsLoading(false);
+        setSubscriptionLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
+  // Function to fetch upgrade requests
+  const fetchUpgradeRequests = async () => {
+    if (!user || user.role !== "escort") return;
+
+    try {
+      setRequestsLoading(true);
+      const requestsResponse = await upgradeAPI.getMyRequests();
+      setUpgradeRequests(requestsResponse.data.data || []);
+    } catch (error) {
+      console.error("Error fetching upgrade requests:", error);
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const currentPlan = user?.subscriptionTier || "basic";
 
   // Vérifier si l'utilisateur est déjà Premium
   const isPremium = currentPlan === "premium";
@@ -74,12 +121,21 @@ const UpgradeProfile = () => {
 
   const handleUpgrade = (plan) => {
     if (plan === "basic") {
-      showToast("info", "Vous êtes déjà sur le plan Basic");
+      showToast("info", "You are already on the Basic plan");
       return;
     }
 
     if (plan === currentPlan) {
-      showToast("info", `Vous êtes déjà sur le plan ${plan}`);
+      showToast("info", `You are already on the ${plan} plan`);
+      return;
+    }
+
+    // Enforce progression: Basic → Featured → Premium
+    if (currentPlan === "basic" && plan === "premium") {
+      showToast(
+        "info",
+        "You must upgrade to Featured first before becoming Premium"
+      );
       return;
     }
 
@@ -87,24 +143,31 @@ const UpgradeProfile = () => {
     setIsModalOpen(true);
   };
 
-  const handleWhatsAppContact = (data) => {
-    // Logique pour WhatsApp (déjà gérée dans le modal)
-    showToast("success", "Redirection vers WhatsApp...");
+  const handleWhatsAppContact = () => {
+    // Open WhatsApp with pre-filled message for upgrade help
+    const message = `Hello! I'm a Featured user (${
+      user?.name || user?.email
+    }) and I need help with upgrading to Premium.`;
+    const whatsappUrl = `https://wa.me/+256701760214?text=${encodeURIComponent(
+      message
+    )}`;
+    window.open(whatsappUrl, "_blank");
+    showToast("success", "Opening WhatsApp for upgrade support...");
   };
 
-  const handleMessengerContact = async (data) => {
+  const handleMessengerContact = async () => {
     try {
       setLoading(true);
 
-      const response = await upgradeAPI.createRequest({
-        ...data,
-        countryCode: countryCode || "ug",
-      });
+      // Navigate to messages page with admin conversation
+      navigate(
+        `/${countryCode}/escort/messages?admin=67bb7464ac51a7a6674dca42`
+      );
 
-      showToast("success", "Demande envoyée avec succès!");
+      showToast("success", "Opening messaging system...");
     } catch (error) {
-      console.error("Erreur lors de l'envoi de la demande:", error);
-      showToast("error", "Erreur lors de l'envoi de la demande");
+      console.error("Error opening messaging:", error);
+      showToast("error", "Error opening messaging system");
     } finally {
       setLoading(false);
     }
@@ -118,23 +181,23 @@ const UpgradeProfile = () => {
   const benefits = [
     {
       icon: <Users className="h-6 w-6 text-blue-500" />,
-      title: "Plus de clients",
-      description: "Recevez 3x plus de messages et de demandes",
+      title: "More Clients",
+      description: "Receive 3x more messages and requests",
     },
     {
       icon: <Eye className="h-6 w-6 text-purple-500" />,
-      title: "Visibilité accrue",
-      description: "Apparaissez en premier dans les listes",
+      title: "Increased Visibility",
+      description: "Appear first in listings",
     },
     {
       icon: <TrendingUp className="h-6 w-6 text-green-500" />,
-      title: "Revenus augmentés",
-      description: "Gagnez plus grâce à une meilleure visibilité",
+      title: "Higher Revenue",
+      description: "Earn more through better visibility",
     },
     {
       icon: <CheckCircle className="h-6 w-6 text-orange-500" />,
-      title: "Contact visible",
-      description: "Les clients peuvent vous contacter directement",
+      title: "Visible Contact",
+      description: "Clients can contact you directly",
     },
   ];
 
@@ -145,7 +208,7 @@ const UpgradeProfile = () => {
         <div className="mb-8">
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
+            Back
           </Button>
 
           <div className="text-center">
@@ -156,15 +219,247 @@ const UpgradeProfile = () => {
               Improve your visibility and get more clients
             </p>
 
-            {/* Plan actuel */}
+            {/* Current Plan */}
             <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                Plan Actuel:{" "}
+                Current Plan:{" "}
                 {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
               </Badge>
             </div>
+
+            {/* Subscription Status for Premium Users */}
+            {subscriptionStatus && subscriptionStatus.tier === "premium" && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-purple-50 px-4 py-2 rounded-full">
+                <Badge
+                  variant="secondary"
+                  className="bg-purple-100 text-purple-800"
+                >
+                  {subscriptionStatus.period === "annual"
+                    ? "Annual"
+                    : "Monthly"}{" "}
+                  Premium
+                </Badge>
+                {subscriptionStatus.remainingDays !== null && (
+                  <span className="text-sm text-purple-700">
+                    {subscriptionStatus.remainingDays > 0
+                      ? `${subscriptionStatus.remainingDays} days remaining`
+                      : "Subscription expired"}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Upgrade Requests Status */}
+        {upgradeRequests.length > 0 && (
+          <div className="mb-8">
+            <Card className="border-orange-200 bg-orange-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <Clock className="h-5 w-5" />
+                  Your Upgrade Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {requestsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+                    <span className="ml-2 text-orange-600">
+                      Loading requests...
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(() => {
+                      // Debug: Log all requests
+                      console.log("All upgrade requests:", upgradeRequests);
+
+                      // Simple approach: Show only the most recent request
+                      const sortedRequests = upgradeRequests.sort(
+                        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+                      );
+                      const filteredRequests = sortedRequests.slice(0, 1); // Show only the most recent
+
+                      console.log("Sorted requests:", sortedRequests);
+                      console.log(
+                        "Filtered requests (most recent only):",
+                        filteredRequests
+                      );
+
+                      console.log("Filtered requests:", filteredRequests);
+
+                      return filteredRequests.map((request) => (
+                        <div
+                          key={request._id}
+                          className="flex items-center justify-between p-4 bg-white rounded-lg border border-orange-200"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <Badge
+                                variant={
+                                  request.status === "pending"
+                                    ? "secondary"
+                                    : request.status === "payment_required"
+                                    ? "secondary"
+                                    : request.status === "payment_confirmed"
+                                    ? "secondary"
+                                    : request.status === "approved"
+                                    ? "default"
+                                    : "destructive"
+                                }
+                                className={
+                                  request.status === "pending"
+                                    ? "bg-orange-100 text-orange-800"
+                                    : request.status === "payment_required"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : request.status === "payment_confirmed"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : request.status === "approved"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }
+                              >
+                                {request.status === "pending" && "Pending"}
+                                {request.status === "payment_required" &&
+                                  "Payment Required"}
+                                {request.status === "payment_confirmed" &&
+                                  "Payment Confirmed"}
+                                {request.status === "approved" && "Approved"}
+                                {request.status === "rejected" && "Rejected"}
+                                {request.status === "expired" && "Expired"}
+                              </Badge>
+                              <span className="text-sm text-gray-600">
+                                {new Date(
+                                  request.createdAt
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              <strong>Requested Plan:</strong>{" "}
+                              {request.requestedPlan.charAt(0).toUpperCase() +
+                                request.requestedPlan.slice(1)}
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              <strong>Contact Method:</strong>{" "}
+                              {request.contactMethod.charAt(0).toUpperCase() +
+                                request.contactMethod.slice(1)}
+                            </div>
+
+                            {/* Payment Required Status */}
+                            {request.status === "payment_required" && (
+                              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <div className="text-sm font-medium text-blue-800 mb-2">
+                                  Payment Instructions:
+                                </div>
+                                <div className="text-sm text-blue-700 mb-2">
+                                  {request.paymentInstructions}
+                                </div>
+                                <div className="text-sm text-blue-600">
+                                  <strong>Payment Method:</strong>{" "}
+                                  {request.paymentMethod}
+                                </div>
+                                <div className="text-sm text-blue-600">
+                                  <strong>Deadline:</strong>{" "}
+                                  {new Date(
+                                    request.paymentDeadline
+                                  ).toLocaleString()}
+                                </div>
+                                <div className="text-sm text-blue-600">
+                                  <strong>Amount:</strong> $
+                                  {request.paymentAmount}
+                                </div>
+
+                                {/* Payment Instructions Message */}
+                                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <div className="text-sm font-medium text-blue-800 mb-2">
+                                    Payment Instructions Sent:
+                                  </div>
+                                  <div className="text-sm text-blue-700">
+                                    Check your messages or WhatsApp for complete
+                                    payment instructions.
+                                  </div>
+                                  <div className="text-sm text-blue-600 mt-2">
+                                    Please complete payment within 48 hours and
+                                    send the receipt via message.
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Payment Confirmed Status */}
+                            {request.status === "payment_confirmed" && (
+                              <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                <div className="text-sm font-medium text-purple-800 mb-2">
+                                  Payment Proof Submitted:
+                                </div>
+                                <div className="text-sm text-purple-700">
+                                  {request.paymentProof}
+                                </div>
+                                <div className="text-sm text-purple-600 mt-2">
+                                  Waiting for admin approval...
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Rejected Status */}
+                            {request.status === "rejected" && (
+                              <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                                <div className="text-sm font-medium text-red-800 mb-2">
+                                  Request Rejected
+                                </div>
+                                <div className="text-sm text-red-700 mb-3">
+                                  Your upgrade request has been rejected. You
+                                  can submit a new request.
+                                </div>
+                                <Button
+                                  onClick={() => setIsModalOpen(true)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  size="sm"
+                                >
+                                  <TrendingUp className="w-4 h-4 mr-2" />
+                                  Re-Upgrade
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Expired Status */}
+                            {request.status === "expired" && (
+                              <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                                <div className="text-sm font-medium text-red-800 mb-2">
+                                  Payment Deadline Expired
+                                </div>
+                                <div className="text-sm text-red-700 mb-3">
+                                  The 48-hour payment deadline has passed. You
+                                  can submit a new request.
+                                </div>
+                                <Button
+                                  onClick={() => setIsModalOpen(true)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  size="sm"
+                                >
+                                  <TrendingUp className="w-4 h-4 mr-2" />
+                                  Re-Upgrade
+                                </Button>
+                              </div>
+                            )}
+
+                            {request.adminNotes && (
+                              <div className="text-sm text-gray-600 mt-2 p-2 bg-gray-50 rounded">
+                                <strong>Admin Note:</strong>{" "}
+                                {request.adminNotes}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Benefits Section */}
         <div className="mb-12">
@@ -189,9 +484,9 @@ const UpgradeProfile = () => {
           </div>
         </div>
 
-        {/* Plans Section - Conditionnel selon le plan */}
+        {/* Plans Section - Conditional based on plan */}
         {isPremium ? (
-          // Contenu pour les utilisateurs Premium
+          // Content for Premium users
           <div className="mb-12">
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-2 bg-green-50 px-6 py-3 rounded-full mb-4">
@@ -211,7 +506,7 @@ const UpgradeProfile = () => {
               </p>
             </div>
 
-            {/* Avantages Premium */}
+            {/* Premium Benefits */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               <Card className="border-green-200 bg-green-50">
                 <CardContent className="p-6 text-center">
@@ -286,7 +581,7 @@ const UpgradeProfile = () => {
               </Card>
             </div>
 
-            {/* Actions pour Premium */}
+            {/* Actions for Premium */}
             <div className="text-center">
               <Button
                 onClick={() => navigate(`/${countryCode}/escort/dashboard`)}
@@ -297,7 +592,7 @@ const UpgradeProfile = () => {
             </div>
           </div>
         ) : isFeatured ? (
-          // Contenu pour les utilisateurs Featured
+          // Content for Featured users
           <div className="mb-12">
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-2 bg-purple-50 px-6 py-3 rounded-full mb-4">
@@ -306,43 +601,43 @@ const UpgradeProfile = () => {
                   variant="secondary"
                   className="bg-purple-100 text-purple-800"
                 >
-                  Plan Featured Actif
+                  Featured Plan Active
                 </Badge>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Vous êtes Featured !
+                You are Featured!
               </h2>
               <p className="text-lg text-gray-600 mb-6">
-                Passez au niveau supérieur avec Premium
+                Take it to the next level with Premium
               </p>
             </div>
 
-            {/* Comparaison Featured vs Premium */}
+            {/* Featured vs Premium Comparison */}
             <div className="grid md:grid-cols-2 gap-8 mb-8">
               <Card className="border-purple-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Star className="w-5 h-5 text-purple-600" />
-                    Votre Plan Featured
+                    Your Featured Plan
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Contact visible (téléphone, WhatsApp)</span>
+                      <span>Visible contact (phone, WhatsApp)</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Badge 'Featured'</span>
+                      <span>'Featured' badge</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Plus de visibilité</span>
+                      <span>More visibility</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>3x plus de clients</span>
+                      <span>3x more clients</span>
                     </li>
                   </ul>
                 </CardContent>
@@ -352,57 +647,57 @@ const UpgradeProfile = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Crown className="w-5 h-5 text-green-600" />
-                    Plan Premium
+                    Premium Plan
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Tout de Featured</span>
+                      <span>Everything from Featured</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Badge 'Verified' sur photo</span>
+                      <span>'Verified' badge on photo</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Visibilité maximale</span>
+                      <span>Maximum visibility</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Support prioritaire</span>
+                      <span>Priority support</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Statistiques avancées</span>
+                      <span>Advanced analytics</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>5x plus de clients</span>
+                      <span>5x more clients</span>
                     </li>
                   </ul>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Bouton pour upgrade vers Premium */}
+            {/* Button to upgrade to Premium */}
             <div className="text-center">
               <Button
                 onClick={() => handleUpgrade("premium")}
                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
               >
-                Devenir Premium - $5/mois
+                Become Premium - $5/month
               </Button>
             </div>
           </div>
         ) : (
-          // Contenu pour les utilisateurs Basic (plan normal)
+          // Content for Basic users (normal plan)
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
               Choose Your Plan
             </h2>
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               <UpgradeCard
                 plan="basic"
                 currentPlan={currentPlan}
@@ -415,12 +710,16 @@ const UpgradeProfile = () => {
                 onUpgrade={handleUpgrade}
                 isCurrent={currentPlan === "featured"}
               />
-              <UpgradeCard
-                plan="premium"
-                currentPlan={currentPlan}
-                onUpgrade={handleUpgrade}
-                isCurrent={currentPlan === "premium"}
-              />
+            </div>
+
+            {/* Premium info for Basic users */}
+            <div className="mt-8 text-center">
+              <div className="inline-flex items-center gap-2 bg-gray-50 px-6 py-3 rounded-full mb-4">
+                <Crown className="w-5 h-5 text-gray-600" />
+                <span className="text-gray-600 font-medium">
+                  Premium plan available after Featured upgrade
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -428,20 +727,20 @@ const UpgradeProfile = () => {
         {/* FAQ Section */}
         <div className="mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            Questions fréquentes
+            Frequently Asked Questions
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">
-                  Comment fonctionne le paiement ?
+                  How does payment work?
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Après avoir soumis votre demande, nous vous fournirons les
-                  instructions de paiement. Une fois le paiement effectué et
-                  vérifié, votre profil sera mis à jour dans les 24h.
+                  After submitting your request, we will provide you with
+                  payment instructions. Once payment is completed and verified,
+                  your profile will be updated within 24 hours.
                 </p>
               </CardContent>
             </Card>
@@ -449,14 +748,14 @@ const UpgradeProfile = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">
-                  Puis-je annuler mon abonnement ?
+                  Can I cancel my subscription?
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Oui, vous pouvez annuler votre abonnement Premium à tout
-                  moment. Votre statut Premium restera actif jusqu'à la fin de
-                  la période payée.
+                  Yes, you can cancel your Premium subscription at any time.
+                  Your Premium status will remain active until the end of the
+                  paid period.
                 </p>
               </CardContent>
             </Card>
@@ -464,14 +763,14 @@ const UpgradeProfile = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">
-                  Quelle est la différence entre Featured et Premium ?
+                  What's the difference between Featured and Premium?
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Featured (12$) : Contact visible, plus de visibilité, 3x plus
-                  de clients. Premium (5$/mois) : Tout de Featured + badge
-                  verified, visibilité maximale, 5x plus de clients.
+                  Featured ($12): Visible contact, more visibility, 3x more
+                  clients. Premium ($5/month): Everything from Featured +
+                  verified badge, maximum visibility, 5x more clients.
                 </p>
               </CardContent>
             </Card>
@@ -479,14 +778,13 @@ const UpgradeProfile = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">
-                  Combien de temps pour voir les résultats ?
+                  How long to see results?
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Vous verrez une augmentation immédiate de votre visibilité.
-                  Les résultats en termes de clients peuvent prendre quelques
-                  jours à une semaine.
+                  You will see an immediate increase in your visibility. Results
+                  in terms of clients may take a few days to a week.
                 </p>
               </CardContent>
             </Card>
@@ -498,25 +796,23 @@ const UpgradeProfile = () => {
           <Card className="max-w-2xl mx-auto">
             <CardContent className="p-8">
               <h3 className="text-xl font-bold text-gray-900 mb-4">
-                Besoin d'aide ?
+                Need help?
               </h3>
               <p className="text-gray-600 mb-6">
-                Notre équipe est là pour vous aider à choisir le bon plan et
-                répondre à toutes vos questions.
+                Our team is here to help you choose the right plan and answer
+                all your questions.
               </p>
               <div className="flex gap-4 justify-center">
                 <Button
-                  onClick={() =>
-                    window.open("https://wa.me/+1234567890", "_blank")
-                  }
+                  onClick={handleWhatsAppContact}
                   className="bg-green-500 hover:bg-green-600"
                 >
                   <Phone className="h-4 w-4 mr-2" />
                   WhatsApp
                 </Button>
-                <Button onClick={() => navigate("/messages")} variant="outline">
-                  <Star className="h-4 w-4 mr-2" />
-                  Messagerie
+                <Button onClick={handleMessengerContact} variant="outline">
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Messaging
                 </Button>
               </div>
             </CardContent>
@@ -529,9 +825,11 @@ const UpgradeProfile = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         selectedPlan={selectedPlan}
+        setSelectedPlan={setSelectedPlan}
         currentPlan={currentPlan}
         onWhatsAppContact={handleWhatsAppContact}
         onMessengerContact={handleMessengerContact}
+        onRequestCreated={fetchUpgradeRequests}
       />
 
       {/* Upgrade Notification */}
@@ -541,7 +839,7 @@ const UpgradeProfile = () => {
         onUpgrade={handleNotificationUpgradeClick}
         onLater={handleLater}
         type={currentNotificationType}
-        escortName={user?.user?.name || "Escort"}
+        escortName={user?.name || "Escort"}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -9,12 +9,14 @@ import {
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import { Badge } from "../../components/ui/badge";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "../../components/ui/avatar";
+import PremiumAvatar from "../../components/PremiumAvatar";
 import {
   MessageCircle,
   Send,
@@ -30,6 +32,7 @@ import {
   Reply,
   Image as ImageIcon,
   Paperclip,
+  X,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { showToast } from "../../helpers/showToast";
@@ -39,6 +42,7 @@ import { useSocket } from "../../contexts/SocketContext";
 const Messages = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     socket,
     isConnected,
@@ -58,22 +62,56 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Auto-resize textarea based on content
+  const autoResizeTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-resize textarea when message changes
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [message]);
 
   // Fetch conversations on component mount
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  // Handle admin parameter from URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const adminId = searchParams.get("admin");
+
+    if (adminId && conversations.length > 0) {
+      // Find admin conversation
+      const adminConversation = conversations.find(
+        (conv) => conv.user._id === adminId
+      );
+      if (adminConversation) {
+        setSelectedChat(adminConversation);
+        fetchMessages(adminId);
+      }
+    }
+  }, [conversations, location.search]);
 
   // Fetch messages when selected chat changes
   useEffect(() => {
@@ -162,19 +200,15 @@ const Messages = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      console.log("📞 Fetching conversations from Messages page...");
       const response = await messageAPI.getUserConversations();
-      console.log("📞 Conversations response:", response);
 
       if (response.data && response.data.data) {
-        console.log("📞 Setting conversations:", response.data.data);
         setConversations(response.data.data);
         // Auto-select first conversation if none selected
         if (response.data.data.length > 0 && !selectedChat) {
           setSelectedChat(response.data.data[0]);
         }
       } else {
-        console.log("📞 No conversations data in response");
         setConversations([]);
       }
     } catch (error) {
@@ -188,7 +222,6 @@ const Messages = () => {
   const fetchMessages = async (escortId) => {
     try {
       const response = await messageAPI.getConversation(escortId);
-      console.log("Messages:", response.data);
 
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
@@ -221,25 +254,68 @@ const Messages = () => {
   };
 
   const sendMessage = async () => {
-    if (!message.trim() || !selectedChat || sending || !user || !user._id)
+    if (
+      (!message.trim() && !selectedImage) ||
+      !selectedChat ||
+      sending ||
+      !user ||
+      !user._id
+    )
       return;
 
     const messageContent = message.trim();
     const recipientId = selectedChat.user._id;
 
-    console.log("📤 Sending message from Messages page:", {
-      content: messageContent,
-      recipientId,
-      senderId: user._id,
-    });
+    // Handle image upload if selected
+    let imageUrl = null;
+    if (selectedImage) {
+      try {
+        const formData = new FormData();
+        formData.append("image", selectedImage);
+
+        // Upload image to server
+        const uploadResponse = await fetch(
+          "http://localhost:5000/api/message/upload-image",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: formData,
+          }
+        );
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          imageUrl = uploadData.data?.url || uploadData.url;
+        } else {
+          const errorText = await uploadResponse.text();
+          console.error("📸 Upload failed:", errorText);
+          throw new Error("Image upload failed");
+        }
+      } catch (error) {
+        console.error("Image upload error:", error);
+        showToast("error", "Failed to upload image");
+        return;
+      }
+    }
 
     // Create temporary message for instant feedback
     const tempMessage = {
       _id: `temp_${Date.now()}_${Math.random()}`,
-      sender: user._id,
+      sender: {
+        _id: user._id,
+        name: user.name,
+        alias: user.alias,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        subscriptionTier: user.subscriptionTier,
+        isVerified: user.isVerified,
+      },
       recipient: recipientId,
-      content: messageContent,
-      type: "text",
+      content: imageUrl || messageContent,
+      type: imageUrl ? "image" : "text",
       isRead: false,
       createdAt: new Date().toISOString(),
       isTemp: true,
@@ -260,10 +336,8 @@ const Messages = () => {
     );
 
     try {
-      console.log("📤 Sending via socket...");
       // Send via socket in the background (non-blocking)
       socketSendMessage(recipientId, messageContent).catch((error) => {
-        console.error("Socket send failed:", error);
         // Mark message as failed
         setMessages((prev) =>
           prev.map((msg) =>
@@ -273,10 +347,13 @@ const Messages = () => {
         showToast("error", "Message failed to send");
       });
 
-      console.log("📤 Sending via API...");
       // Also send via API for persistence (non-blocking)
-      messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
-        console.error("API send failed:", error);
+      const messageData = {
+        escortId: recipientId,
+        content: imageUrl || messageContent,
+        type: imageUrl ? "image" : "text",
+      };
+      messageAPI.sendMessage(messageData).catch((error) => {
         // Don't show error to user if socket worked
       });
     } catch (error) {
@@ -290,6 +367,15 @@ const Messages = () => {
       showToast("error", "Failed to send message");
     } finally {
       setSending(false);
+      // Clear selected image and reset textarea height after sending
+      setSelectedImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
     }
   };
 
@@ -297,6 +383,28 @@ const Messages = () => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type.startsWith("image/")) {
+        setSelectedImage(file);
+        const reader = new FileReader();
+        reader.onload = (e) => setImagePreview(e.target.result);
+        reader.readAsDataURL(file);
+      } else {
+        showToast("error", "Please select an image file");
+      }
+    }
+  };
+
+  const removeSelectedImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -363,7 +471,18 @@ const Messages = () => {
     }
   };
 
-  const filteredConversations = conversations.filter(
+  // Sort conversations by most recent message first
+  const sortedConversations = conversations.sort((a, b) => {
+    const aTime = a.lastMessage?.createdAt
+      ? new Date(a.lastMessage.createdAt)
+      : new Date(0);
+    const bTime = b.lastMessage?.createdAt
+      ? new Date(b.lastMessage.createdAt)
+      : new Date(0);
+    return bTime - aTime; // Most recent first
+  });
+
+  const filteredConversations = sortedConversations.filter(
     (conv) =>
       conv.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       conv.user.alias?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -488,12 +607,15 @@ const Messages = () => {
                     >
                       <div className="flex items-center space-x-3">
                         <div className="relative">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={conversation.user.avatar} />
-                            <AvatarFallback>
-                              {conversation.user.name?.charAt(0) || "U"}
-                            </AvatarFallback>
-                          </Avatar>
+                          <PremiumAvatar
+                            src={conversation.user.avatar}
+                            alt={
+                              conversation.user.name || conversation.user.alias
+                            }
+                            size="h-10 w-10"
+                            showBadge={false}
+                            user={conversation.user}
+                          />
                           {isUserOnline(conversation.user._id) && (
                             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                           )}
@@ -512,8 +634,10 @@ const Messages = () => {
                           </div>
 
                           <p className="text-sm text-gray-600 truncate">
-                            {conversation.lastMessage?.content ||
-                              "No messages yet"}
+                            {conversation.lastMessage?.type === "image"
+                              ? "📷 Image"
+                              : conversation.lastMessage?.content ||
+                                "No messages yet"}
                           </p>
                         </div>
 
@@ -538,12 +662,15 @@ const Messages = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={selectedChat.user.avatar} />
-                          <AvatarFallback>
-                            {selectedChat.user.name?.charAt(0) || "U"}
-                          </AvatarFallback>
-                        </Avatar>
+                        <PremiumAvatar
+                          src={selectedChat.user.avatar}
+                          alt={
+                            selectedChat.user.name || selectedChat.user.alias
+                          }
+                          size="h-8 w-8"
+                          showBadge={false}
+                          user={selectedChat.user}
+                        />
                         <div>
                           <span className="font-medium">
                             {selectedChat.user.name || selectedChat.user.alias}
@@ -610,113 +737,184 @@ const Messages = () => {
                           <p>No messages yet. Start the conversation!</p>
                         </div>
                       ) : (
-                        messages.map((msg) => (
-                          <div
-                            key={msg._id}
-                            className={`flex ${
-                              msg.sender._id === user?._id
-                                ? "justify-end"
-                                : "justify-start"
-                            } mb-4`}
-                          >
+                        messages.map((msg) => {
+                          // Check if sender is admin
+                          const isAdmin =
+                            msg.sender.role === "admin" ||
+                            msg.sender.email ===
+                              "congogenocidememorial@gmail.com";
+                          const isMyMessage = msg.sender._id === user?._id;
+
+                          return (
                             <div
-                              className={`max-w-xs lg:max-w-md ${
-                                msg.sender._id === user?._id
-                                  ? "ml-auto"
-                                  : "mr-auto"
-                              }`}
+                              key={msg._id}
+                              className={`flex ${
+                                isMyMessage ? "justify-end" : "justify-start"
+                              } mb-4`}
                             >
                               <div
-                                className={`px-4 py-3 rounded-2xl shadow-sm message-bubble ${
-                                  msg.sender._id === user?._id
-                                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
-                                    : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
+                                className={`max-w-xs lg:max-w-md ${
+                                  isMyMessage ? "ml-auto" : "mr-auto"
                                 }`}
                               >
-                                <p className="text-sm leading-relaxed">
-                                  {msg.content}
-                                </p>
+                                {/* Show sender name for incoming messages */}
+                                {!isMyMessage && (
+                                  <div className="mb-1">
+                                    <span
+                                      className={`text-sm font-medium ${
+                                        isAdmin
+                                          ? "text-purple-600"
+                                          : "text-blue-600"
+                                      }`}
+                                    >
+                                      {msg.sender?.name ||
+                                        msg.sender?.alias ||
+                                        (msg.sender?.email
+                                          ? msg.sender.email.split("@")[0]
+                                          : "Unknown")}
+                                    </span>
+                                  </div>
+                                )}
                                 <div
-                                  className={`flex items-center gap-1 mt-2 text-xs ${
-                                    msg.sender._id === user?._id
-                                      ? "text-blue-100 opacity-80"
-                                      : "text-gray-500"
+                                  className={`px-4 py-3 rounded-2xl shadow-sm message-bubble ${
+                                    isMyMessage
+                                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
+                                      : isAdmin
+                                      ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-bl-md"
+                                      : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
                                   }`}
                                 >
-                                  <span>{formatTime(msg.createdAt)}</span>
-                                  {msg.sender._id === user?._id && (
-                                    <>
-                                      {msg.isRead ? (
-                                        <CheckCheck className="w-3 h-3 text-blue-200" />
-                                      ) : (
-                                        <Check className="w-3 h-3 text-blue-200" />
-                                      )}
-                                    </>
+                                  {msg.type === "image" ? (
+                                    <div className="space-y-2">
+                                      <img
+                                        src={msg.content}
+                                        alt="Message image"
+                                        className="max-w-full max-h-64 rounded-lg"
+                                        onError={(e) => {
+                                          e.target.style.display = "none";
+                                          e.target.nextSibling.style.display =
+                                            "block";
+                                        }}
+                                      />
+                                      <div className="hidden text-xs text-gray-500">
+                                        Image failed to load
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm leading-relaxed">
+                                      {msg.content}
+                                    </p>
                                   )}
+                                  <div
+                                    className={`flex items-center gap-1 mt-2 text-xs ${
+                                      isMyMessage
+                                        ? "text-blue-100 opacity-80"
+                                        : isAdmin
+                                        ? "text-purple-100 opacity-80"
+                                        : "text-gray-500"
+                                    }`}
+                                  >
+                                    <span>{formatTime(msg.createdAt)}</span>
+                                    {isMyMessage && (
+                                      <>
+                                        {msg.isRead ? (
+                                          <CheckCheck className="w-3 h-3 text-blue-200" />
+                                        ) : (
+                                          <Check className="w-3 h-3 text-blue-200" />
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
 
-                              {/* Message actions */}
-                              <div
-                                className={`flex items-center gap-1 mt-2 ${
-                                  msg.sender._id === user?._id
-                                    ? "justify-end"
-                                    : "justify-start"
-                                }`}
-                              >
-                                {msg.sender._id === user?._id && (
+                                {/* Message actions */}
+                                <div
+                                  className={`flex items-center gap-1 mt-2 ${
+                                    isMyMessage
+                                      ? "justify-end"
+                                      : "justify-start"
+                                  }`}
+                                >
+                                  {isMyMessage && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs hover:bg-blue-50 text-gray-500 hover:text-gray-700"
+                                      onClick={() => deleteMessage(msg._id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-xs hover:bg-blue-50 text-gray-500 hover:text-gray-700"
-                                    onClick={() => deleteMessage(msg._id)}
+                                    className="h-6 px-2 text-xs hover:bg-gray-100 text-gray-500 hover:text-gray-700"
                                   >
-                                    <Trash2 className="h-3 w-3" />
+                                    <Reply className="h-3 w-3" />
                                   </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                                >
-                                  <Reply className="h-3 w-3" />
-                                </Button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                       <div ref={messagesEndRef} />
                     </div>
 
                     {/* Message Input */}
                     <div className="p-4 border-t bg-gray-50 flex-shrink-0">
+                      {/* Image Preview */}
+                      {imagePreview && (
+                        <div className="mb-3 relative">
+                          <div className="relative inline-block">
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="max-h-32 rounded-lg border"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white rounded-full"
+                              onClick={removeSelectedImage}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex gap-2 items-center">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
                           className="hover:bg-gray-200"
-                        >
-                          <Paperclip className="h-4 w-4 text-gray-600" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-gray-200"
+                          onClick={() => fileInputRef.current?.click()}
                         >
                           <ImageIcon className="h-4 w-4 text-gray-600" />
                         </Button>
-                        <Input
+                        <Textarea
+                          ref={textareaRef}
                           value={message}
                           onChange={handleTyping}
                           placeholder="Type your message..."
                           onKeyPress={handleKeyPress}
-                          className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                          className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none min-h-[40px] max-h-[120px] overflow-y-auto"
                           disabled={sending}
+                          rows={1}
                         />
                         <Button
                           onClick={sendMessage}
-                          disabled={!message.trim() || sending}
+                          disabled={
+                            (!message.trim() && !selectedImage) || sending
+                          }
                           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
                         >
                           {sending ? (
