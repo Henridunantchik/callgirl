@@ -58,10 +58,10 @@ if (config.NODE_ENV === "development") {
   app.use("/api/search", searchRateLimiter);
 }
 
-// Apply CORS
+// Apply CORS - More permissive for debugging
 app.use(
   cors({
-    origin: config.FRONTEND_URL || "http://localhost:5173",
+    origin: true, // Allow all origins for now
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
@@ -73,6 +73,9 @@ app.use(
     ],
   })
 );
+
+// Handle preflight requests
+app.options("*", cors());
 
 // Apply middleware
 app.use(helmet());
@@ -124,10 +127,12 @@ app.use("*", (req, res) => {
 const connectToMongoDB = async () => {
   try {
     if (!config.MONGODB_CONN) {
-      console.log("⚠️ MongoDB connection string not found, running in demo mode");
+      console.log(
+        "⚠️ MongoDB connection string not found, running in demo mode"
+      );
       return;
     }
-    
+
     await mongoose.connect(config.MONGODB_CONN);
     console.log("✅ Connected to MongoDB");
   } catch (error) {
