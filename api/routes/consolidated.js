@@ -98,7 +98,7 @@ router.get(
   "/upgrade-request/user",
   authenticate,
   onlyEscort,
-  UpgradeRequestController.getUserUpgradeRequests
+  UpgradeRequestController.getEscortUpgradeRequests
 );
 router.get(
   "/upgrade-request/admin/all",
@@ -137,6 +137,6 @@ router.delete(
 router.get("/favorite/user", authenticate, FavoriteController.getUserFavorites);
 
 // ===== CATEGORY ROUTES =====
-router.get("/category/all-category", CategoryController.getAllCategories);
+router.get("/category/all-category", CategoryController.getAllCategory);
 
 export default router;
