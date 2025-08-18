@@ -1,91 +1,58 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
-import helmet from "helmet";
-import cookieParser from "cookie-parser";
-import config from "../config/env.js";
-import ConsolidatedRoutes from "../routes/consolidated.js";
+export default function handler(req, res) {
+  // Set CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+  );
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-// Load environment variables
-dotenv.config();
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
 
-const app = express();
+  // Health check
+  if (req.url === "/health" || req.url === "/") {
+    res.status(200).json({
+      success: true,
+      message: "API is running",
+      timestamp: new Date().toISOString(),
+      url: req.url,
+      method: req.method,
+    });
+    return;
+  }
 
-// Apply CORS - Allow all origins
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-      "Origin",
-    ],
-  })
-);
+  // API routes
+  if (req.url.startsWith("/api/")) {
+    // For now, return a simple response
+    res.status(200).json({
+      success: true,
+      message: "API endpoint reached",
+      url: req.url,
+      method: req.method,
+      data: {
+        escorts: [],
+        stats: {
+          totalEscorts: 0,
+          featuredEscorts: 0,
+          premiumEscorts: 0,
+        },
+      },
+    });
+    return;
+  }
 
-// Handle preflight requests
-app.options("*", cors());
-
-// Apply middleware
-app.use(helmet());
-app.use(cookieParser());
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "API is running",
-    timestamp: new Date().toISOString(),
-    environment: config.NODE_ENV || "production",
-  });
-});
-
-// Consolidated API Routes
-app.use("/api", ConsolidatedRoutes);
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(err.statusCode || 500).json({
-    success: false,
-    message: err.message || "Internal server error",
-  });
-});
-
-// 404 handler
-app.use("*", (req, res) => {
+  // 404 for everything else
   res.status(404).json({
     success: false,
     message: "Route not found",
+    url: req.url,
   });
-});
-
-// Connect to MongoDB (with fallback for missing env vars)
-const connectToMongoDB = async () => {
-  try {
-    if (!config.MONGODB_CONN) {
-      console.log(
-        "⚠️ MongoDB connection string not found, running in demo mode"
-      );
-      return;
-    }
-
-    await mongoose.connect(config.MONGODB_CONN);
-    console.log("✅ Connected to MongoDB");
-  } catch (error) {
-    console.error("❌ MongoDB connection failed:", error);
-    console.log("⚠️ Running in demo mode without database");
-  }
-};
-
-// Initialize MongoDB connection
-connectToMongoDB();
-
-export default app;
+}
