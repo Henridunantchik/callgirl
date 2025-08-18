@@ -1,13 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { io } from "socket.io-client";
+import { useAuth } from "./AuthContext";
 
 const SocketContext = createContext();
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
   if (!context) {
-    throw new Error('useSocket must be used within a SocketProvider');
+    throw new Error("useSocket must be used within a SocketProvider");
   }
   return context;
 };
@@ -23,43 +23,47 @@ export const SocketProvider = ({ children }) => {
     if (!user || !user._id) return;
 
     // Initialize socket connection
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+    const socketUrl =
+      import.meta.env.VITE_API_URL?.replace("/api", "") ||
+      "http://localhost:5000";
+    const newSocket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling']
+      transports: ["websocket", "polling"],
     });
 
     setSocket(newSocket);
 
     // Connection events
-    newSocket.on('connect', () => {
-      console.log('🔌 Socket connected:', newSocket.id);
+    newSocket.on("connect", () => {
+      console.log("🔌 Socket connected:", newSocket.id);
       setIsConnected(true);
-      
+
       // Authenticate with the server
-      const token = localStorage.getItem('token') || localStorage.getItem('auth');
-      newSocket.emit('authenticate', {
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("auth");
+      newSocket.emit("authenticate", {
         token,
-        userId: user._id
+        userId: user._id,
       });
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('🔌 Socket disconnected');
+    newSocket.on("disconnect", () => {
+      console.log("🔌 Socket disconnected");
       setIsConnected(false);
     });
 
-    newSocket.on('connect_error', (error) => {
-      console.error('🔌 Socket connection error:', error);
+    newSocket.on("connect_error", (error) => {
+      console.error("🔌 Socket connection error:", error);
       setIsConnected(false);
     });
 
     // Online status events
-    newSocket.on('user_online', ({ userId }) => {
-      setOnlineUsers(prev => new Set([...prev, userId]));
+    newSocket.on("user_online", ({ userId }) => {
+      setOnlineUsers((prev) => new Set([...prev, userId]));
     });
 
-    newSocket.on('user_offline', ({ userId }) => {
-      setOnlineUsers(prev => {
+    newSocket.on("user_offline", ({ userId }) => {
+      setOnlineUsers((prev) => {
         const newSet = new Set(prev);
         newSet.delete(userId);
         return newSet;
@@ -67,12 +71,12 @@ export const SocketProvider = ({ children }) => {
     });
 
     // Typing indicators
-    newSocket.on('user_typing', ({ senderId }) => {
-      setTypingUsers(prev => new Map(prev).set(senderId, true));
+    newSocket.on("user_typing", ({ senderId }) => {
+      setTypingUsers((prev) => new Map(prev).set(senderId, true));
     });
 
-    newSocket.on('user_stopped_typing', ({ senderId }) => {
-      setTypingUsers(prev => {
+    newSocket.on("user_stopped_typing", ({ senderId }) => {
+      setTypingUsers((prev) => {
         const newMap = new Map(prev);
         newMap.delete(senderId);
         return newMap;
@@ -88,17 +92,17 @@ export const SocketProvider = ({ children }) => {
   // Socket methods
   const sendMessage = (recipientId, content) => {
     if (!socket || !isConnected) {
-      throw new Error('Socket not connected');
+      throw new Error("Socket not connected");
     }
-    
+
     const messageId = Date.now().toString();
-    
+
     // Send immediately without waiting for confirmation
-    socket.emit('send_message', {
+    socket.emit("send_message", {
       senderId: user._id,
       recipientId,
       content,
-      messageId
+      messageId,
     });
 
     // Return a promise that resolves immediately for non-blocking behavior
@@ -107,27 +111,27 @@ export const SocketProvider = ({ children }) => {
 
   const startTyping = (recipientId) => {
     if (socket && isConnected) {
-      socket.emit('typing_start', {
+      socket.emit("typing_start", {
         senderId: user._id,
-        recipientId
+        recipientId,
       });
     }
   };
 
   const stopTyping = (recipientId) => {
     if (socket && isConnected) {
-      socket.emit('typing_stop', {
+      socket.emit("typing_stop", {
         senderId: user._id,
-        recipientId
+        recipientId,
       });
     }
   };
 
   const markMessageAsRead = (messageId) => {
     if (socket && isConnected) {
-      socket.emit('mark_read', {
+      socket.emit("mark_read", {
         messageId,
-        readerId: user._id
+        readerId: user._id,
       });
     }
   };
@@ -150,12 +154,10 @@ export const SocketProvider = ({ children }) => {
     stopTyping,
     markMessageAsRead,
     isUserOnline,
-    isUserTyping
+    isUserTyping,
   };
 
   return (
-    <SocketContext.Provider value={value}>
-      {children}
-    </SocketContext.Provider>
+    <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
   );
 };
