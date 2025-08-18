@@ -29,6 +29,7 @@ update-escort-countries.js
 # Exclude everything except the main entry point and essential files
 *
 !index.js
+!api/index.js
 !package.json
 !package-lock.json
 !routes/consolidated.js
