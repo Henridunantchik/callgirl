@@ -10,9 +10,11 @@ export const useFetch = (url, options = {}, dependencies = []) => {
       setLoading(true);
       try {
         // Convert relative URLs to absolute API URLs
+        const apiBase =
+          import.meta.env.VITE_API_URL || "http://localhost:5000/api";
         const fullUrl = url.startsWith("http")
           ? url
-          : `http://localhost:5000/api/${url.replace(/^\//, "")}`;
+          : `${apiBase}/${url.replace(/^\//, "")}`;
 
         const response = await fetch(fullUrl, options);
         const responseData = await response.json();

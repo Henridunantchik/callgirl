@@ -275,7 +275,9 @@ const Messages = () => {
 
         // Upload image to server
         const uploadResponse = await fetch(
-          "http://localhost:5000/api/message/upload-image",
+          `${
+            import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+          }/message/upload-image`,
           {
             method: "POST",
             headers: {
