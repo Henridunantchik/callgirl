@@ -28,7 +28,7 @@ update-escort-countries.js
 
 # Exclude everything except the main entry point and essential files
 *
-!vercel.js
+!index.js
 !package.json
 !package-lock.json
 !routes/consolidated.js
