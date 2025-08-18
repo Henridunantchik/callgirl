@@ -25,3 +25,16 @@ update-escort-countries.js
 
 # Old route files (if any remain)
 *.route.js
+
+# Exclude everything except the main entry point and essential files
+*
+!vercel.js
+!package.json
+!package-lock.json
+!routes/consolidated.js
+!controllers/
+!models/
+!middleware/
+!config/
+!utils/
+!helpers/
