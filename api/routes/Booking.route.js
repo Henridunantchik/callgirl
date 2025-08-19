@@ -7,6 +7,7 @@ import {
   updateBookingStatus,
   cancelBooking,
   getEscortAvailability,
+  getEscortBookings,
 } from "../controllers/Booking.controller.js";
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 // ===== BOOKING ROUTES =====
 router.post("/create", authenticate, createBooking);
 router.get("/user", authenticate, getUserBookings);
+router.get("/escort", authenticate, getEscortBookings);
 router.get("/:bookingId", authenticate, getBooking);
 router.put("/:bookingId/status", authenticate, updateBookingStatus);
 router.put("/:bookingId/cancel", authenticate, cancelBooking);
