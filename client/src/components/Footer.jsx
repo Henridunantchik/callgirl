@@ -6,7 +6,8 @@ const Footer = () => {
       © Copyright 2025 :{" "}
       <a href="#" className="font-bold">
         Epic Escorts
-      </a>
+      </a>{" "}
+      - the first verified and discreet escorts recognized
     </div>
   );
 };
