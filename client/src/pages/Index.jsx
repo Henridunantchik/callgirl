@@ -66,8 +66,8 @@ const Index = () => {
         setLoading(true);
         console.log("Fetching featured escorts and stats from API...");
 
-        // Fetch escorts and stats in parallel
-        const [escortsResponse, statsResponse] = await Promise.all([
+        // Fetch escorts and stats in parallel with error handling
+        const [escortsResponse, statsResponse] = await Promise.allSettled([
           escortAPI.getAllEscorts({
             featured: "true", // Use string "true" instead of boolean true
             countryCode: countryCode || "ug", // Add country code filter
@@ -76,12 +76,27 @@ const Index = () => {
           statsAPI.getGlobalStats(countryCode || "ug"),
         ]);
 
-        console.log("Escorts API response:", escortsResponse.data);
-        console.log("Stats API response:", statsResponse.data);
+        // Handle escorts response
+        if (escortsResponse.status === "fulfilled") {
+          console.log("Escorts API response:", escortsResponse.value.data);
+        } else {
+          console.error("Error fetching escorts:", escortsResponse.reason);
+          setError("Failed to load escorts");
+          setLoading(false);
+          return;
+        }
+
+        // Handle stats response
+        if (statsResponse.status === "fulfilled") {
+          console.log("Stats API response:", statsResponse.value.data);
+        } else {
+          console.error("Error fetching stats:", statsResponse.reason);
+          // Don't set error for stats, it's not critical
+        }
 
         // Filter and sort escort data
         let escorts =
-          escortsResponse.data.data?.escorts || escortsResponse.data.data || [];
+          escortsResponse.value.data.data?.escorts || escortsResponse.value.data.data || [];
 
         // Filter: Only Premium/Elite and Featured escorts
         console.log("All escorts before filtering:", escorts);
@@ -140,13 +155,13 @@ const Index = () => {
         });
 
         // Set escort data with filtered and sorted results
-        setEscortData({ ...escortsResponse.data.data, escorts });
+        setEscortData({ ...escortsResponse.value.data.data, escorts });
         setTotalEscorts(escorts.length);
         setTotalPages(Math.ceil(escorts.length / escortsPerPage));
 
         // Set stats data
-        if (statsResponse.data?.data?.stats) {
-          setStatsData(statsResponse.data.data.stats);
+        if (statsResponse.status === "fulfilled" && statsResponse.value.data?.data?.stats) {
+          setStatsData(statsResponse.value.data.data.stats);
         }
 
         setError(null);

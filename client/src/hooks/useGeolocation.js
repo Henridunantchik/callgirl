@@ -17,10 +17,10 @@ export const useGeolocation = () => {
         // Try multiple geolocation services for better reliability
         let data = null;
 
-        // Try ipapi.co first
+        // Try ipinfo.io first (HTTPS, no CORS issues)
         try {
           const response = await Promise.race([
-            fetch("https://ipapi.co/json/", {
+            fetch("https://ipinfo.io/json", {
               method: "GET",
               headers: {
                 Accept: "application/json",
@@ -31,15 +31,16 @@ export const useGeolocation = () => {
 
           if (response.ok) {
             data = await response.json();
+            console.log("✅ Geolocation successful via ipinfo.io");
           }
         } catch (err) {
-          console.log("ipapi.co failed, trying backup service...");
+          console.log("ipinfo.io failed, trying backup service...");
         }
 
-        // Backup: Try ip-api.com if first service failed
+        // Backup: Try ipapi.co with HTTPS
         if (!data) {
           try {
-            const response = await fetch("http://ip-api.com/json/", {
+            const response = await fetch("https://ipapi.co/json/", {
               method: "GET",
               headers: {
                 Accept: "application/json",
@@ -48,16 +49,17 @@ export const useGeolocation = () => {
 
             if (response.ok) {
               data = await response.json();
+              console.log("✅ Geolocation successful via ipapi.co");
             }
           } catch (err) {
-            console.log("ip-api.com failed, trying final backup...");
+            console.log("ipapi.co failed, trying final backup...");
           }
         }
 
-        // Final backup: Try ipinfo.io
+        // Final backup: Try ip-api.com with HTTPS
         if (!data) {
           try {
-            const response = await fetch("https://ipinfo.io/json", {
+            const response = await fetch("https://ip-api.com/json/", {
               method: "GET",
               headers: {
                 Accept: "application/json",
@@ -66,9 +68,10 @@ export const useGeolocation = () => {
 
             if (response.ok) {
               data = await response.json();
+              console.log("✅ Geolocation successful via ip-api.com");
             }
           } catch (err) {
-            console.log("All geolocation services failed");
+            console.log("All geolocation services failed, using default...");
           }
         }
 

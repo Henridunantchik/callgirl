@@ -61,17 +61,66 @@ app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Rate limiting
-const limiter = rateLimit({
+// Rate limiting strategy for high traffic
+// Endpoints sensibles (auth, uploads) - Limites strictes
+const sensitiveLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 2000, // 2,000 requests per 15 minutes
+  message: {
+    success: false,
+    message: "Rate limit exceeded, please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use("/api/", limiter);
+
+// Endpoints privés - Limites modérées
+const privateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5000, // 5,000 requests per 15 minutes
+  message: {
+    success: false,
+    message: "Too many requests, please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Endpoints publics - Très haute capacité
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 15000, // 15,000 requests per 15 minutes
+  message: {
+    success: false,
+    message: "Service temporarily unavailable, please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting based on endpoint type
+// Sensitive endpoints (auth, uploads)
+app.use("/api/auth", sensitiveLimiter);
+app.use("/api/message", sensitiveLimiter);
+app.use("/api/upgrade-request", sensitiveLimiter);
+
+// Private endpoints (user data, bookings)
+app.use("/api/user", privateLimiter);
+app.use("/api/booking", privateLimiter);
+app.use("/api/review", privateLimiter);
+app.use("/api/favorite", privateLimiter);
+app.use("/api/admin", privateLimiter);
+
+// Public endpoints (escorts, stats, categories) - High capacity
+app.use("/api/escort", publicLimiter);
+app.use("/api/stats", publicLimiter);
+app.use("/api/category", publicLimiter);
+app.use("/api/blog", publicLimiter);
 
 // Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Health check endpoint
+// Health check endpoints - NO RATE LIMITING
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -79,6 +128,26 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     environment: config.NODE_ENV,
     port: config.PORT,
+  });
+});
+
+// API status endpoint - NO RATE LIMITING
+app.get("/api/status", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "API is operational",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+  });
+});
+
+// Ping endpoint - NO RATE LIMITING
+app.get("/ping", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "pong",
+    timestamp: new Date().toISOString(),
   });
 });
 

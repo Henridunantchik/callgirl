@@ -61,7 +61,10 @@ const Topbar = () => {
 
   // Fetch unread messages count
   const fetchUnreadMessagesCount = async () => {
-    if (!user?.user?._id) return;
+    if (!user?.user?._id) {
+      console.log("No user ID, skipping unread messages fetch");
+      return;
+    }
 
     try {
       const response = await messageAPI.getUserConversations();
@@ -73,6 +76,10 @@ const Topbar = () => {
       }
     } catch (error) {
       console.error("Failed to fetch unread messages count:", error);
+      // Don't show error for unauthenticated users
+      if (error.response?.status !== 401) {
+        console.error("Error details:", error.response?.data);
+      }
     }
   };
 
