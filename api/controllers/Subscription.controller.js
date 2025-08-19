@@ -23,8 +23,8 @@ export const getSubscriptionPricing = asyncHandler(async (req, res, next) => {
           paymentMethods,
           country,
           tiers: {
-            free: {
-              name: "Free Tier",
+            basic: {
+              name: "Basic Tier",
               price: 0,
               features: [
                 "Age verification",
@@ -187,12 +187,14 @@ export const getCurrentSubscription = asyncHandler(async (req, res, next) => {
         new ApiResponse(
           200,
           {
-            tier: "free",
+            tier: "basic",
             status: "active",
-            benefits: Subscription.prototype.getBenefits.call({ tier: "free" }),
+            benefits: Subscription.prototype.getBenefits.call({
+              tier: "basic",
+            }),
             limits: { photos: 10, videos: 5 },
           },
-          "User has free tier subscription"
+          "User has basic tier subscription"
         )
       );
     }
@@ -281,8 +283,8 @@ export const checkMediaLimit = asyncHandler(async (req, res, next) => {
     });
 
     let canUpload = true;
-    let limit = 10; // Default free tier limit
-    let tier = "free";
+    let limit = 10; // Default basic tier limit
+    let tier = "basic";
 
     if (subscription && subscription.isActive) {
       tier = subscription.tier;
@@ -295,7 +297,7 @@ export const checkMediaLimit = asyncHandler(async (req, res, next) => {
         parseInt(currentCount)
       );
     } else {
-      // Free tier limits
+      // Basic tier limits
       limit = mediaType === "photo" ? 10 : 5;
       canUpload = parseInt(currentCount) < limit;
     }
@@ -336,13 +338,13 @@ export const getSubscriptionBenefits = asyncHandler(async (req, res, next) => {
 
     const benefits = subscription
       ? subscription.getBenefits()
-      : Subscription.prototype.getBenefits.call({ tier: "free" });
+      : Subscription.prototype.getBenefits.call({ tier: "basic" });
 
     return res.status(200).json(
       new ApiResponse(
         200,
         {
-          tier: subscription ? subscription.tier : "free",
+          tier: subscription ? subscription.tier : "basic",
           benefits,
           isActive: subscription ? subscription.isActive : true,
         },

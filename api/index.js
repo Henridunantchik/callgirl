@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+// import rateLimit from "express-rate-limit"; // Removed - no rate limiting needed
 import { createServer } from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
@@ -61,17 +61,30 @@ app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-});
-app.use("/api/", limiter);
+// NO RATE LIMITING AT ALL - Allow unlimited scaling
+// This enables the app to handle thousands of concurrent users
+// Rate limiting is handled by the infrastructure (load balancers, CDN, etc.)
+
+// app.use("/api/auth", ...); // NO LIMIT
+// app.use("/api/admin", ...); // NO LIMIT
+// app.use("/api/upgrade-request", ...); // NO LIMIT
+
+// NO RATE LIMITING for all other endpoints - they can handle unlimited traffic
+// This allows the app to scale to thousands of concurrent users
+// app.use("/api/escort", ...); // NO LIMIT
+// app.use("/api/stats", ...); // NO LIMIT
+// app.use("/api/category", ...); // NO LIMIT
+// app.use("/api/blog", ...); // NO LIMIT
+// app.use("/api/message", ...); // NO LIMIT
+// app.use("/api/booking", ...); // NO LIMIT
+// app.use("/api/review", ...); // NO LIMIT
+// app.use("/api/favorite", ...); // NO LIMIT
+// app.use("/api/user", ...); // NO LIMIT
 
 // Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Health check endpoint
+// Health check endpoints - NO RATE LIMITING
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -79,6 +92,26 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     environment: config.NODE_ENV,
     port: config.PORT,
+  });
+});
+
+// API status endpoint - NO RATE LIMITING
+app.get("/api/status", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "API is operational",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+  });
+});
+
+// Ping endpoint - NO RATE LIMITING
+app.get("/ping", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "pong",
+    timestamp: new Date().toISOString(),
   });
 });
 

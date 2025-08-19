@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { escortAPI, bookingAPI, upgradeAPI } from "../../services/api";
 import Loading from "../../components/Loading";
+import { useRealTimeStats } from "../../hooks/useRealTimeStats";
 import { showToast } from "../../helpers/showToast";
 import UpgradeCard from "../../components/UpgradeCard";
 import UpgradeNotification from "../../components/UpgradeNotification";
@@ -61,6 +62,18 @@ const EscortDashboard = () => {
     handleUpgrade: handleNotificationUpgrade,
     shouldShowNotifications,
   } = useUpgradeNotifications();
+
+  // Real-time stats hook
+  const { updateStats } = useRealTimeStats(user?.user?._id, (updatedStats) => {
+    setStats(prev => ({
+      ...prev,
+      favorites: updatedStats.favorites,
+      reviews: updatedStats.reviews,
+      rating: updatedStats.rating,
+      bookings: updatedStats.bookings,
+      earnings: updatedStats.earnings,
+    }));
+  });
 
   // Fetch escort data and stats
   useEffect(() => {

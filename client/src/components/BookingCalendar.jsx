@@ -100,6 +100,17 @@ const BookingCalendar = ({
 
     onBookingSubmit?.(booking);
     
+    // Trigger global event for real-time stats updates
+    window.dispatchEvent(new CustomEvent("bookingCreated", {
+      detail: { 
+        escortId,
+        booking: {
+          ...booking,
+          id: Date.now() // Temporary ID for the event
+        }
+      }
+    }));
+    
     // Reset form
     setSelectedDate(null);
     setSelectedTime('');

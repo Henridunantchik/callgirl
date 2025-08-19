@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { showToast } from "../../helpers/showToast";
 import { RouteSignIn } from "../../helpers/RouteName";
-import { upgradeAPI, messageAPI } from "../../services/api";
+import { upgradeAPI, messageAPI, userAPI } from "../../services/api";
 import UpgradeCard from "../../components/UpgradeCard";
 import UpgradeModal from "../../components/UpgradeModal";
 import UpgradeNotification from "../../components/UpgradeNotification";
@@ -159,10 +159,12 @@ const UpgradeProfile = () => {
     try {
       setLoading(true);
 
+      // Get main admin dynamically
+      const adminResponse = await userAPI.getMainAdmin();
+      const adminId = adminResponse.data.data.admin._id;
+
       // Navigate to messages page with admin conversation
-      navigate(
-        `/${countryCode}/escort/messages?admin=67bb7464ac51a7a6674dca42`
-      );
+      navigate(`/${countryCode}/escort/messages?admin=${adminId}`);
 
       showToast("success", "Opening messaging system...");
     } catch (error) {

@@ -1,4 +1,6 @@
 import Review from "../models/review.model.js";
+import User from "../models/user.model.js";
+import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -33,6 +35,42 @@ const createReview = asyncHandler(async (req, res) => {
   const populatedReview = await Review.findById(review._id)
     .populate("client", "name alias")
     .populate("escort", "name alias");
+
+  // Update escort stats in real-time
+  try {
+    // Get updated review count and average rating
+    const [reviewCount, ratingStats] = await Promise.all([
+      Review.countDocuments({ escort: escortId }),
+      Review.aggregate([
+        {
+          $match: { escort: new mongoose.Types.ObjectId(escortId) },
+        },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+          },
+        },
+      ]),
+    ]);
+
+    const averageRating = ratingStats[0]?.averageRating || 0;
+
+    // Update escort stats
+    await User.findByIdAndUpdate(escortId, {
+      $set: {
+        "stats.reviews": reviewCount,
+        "stats.rating": Math.round(averageRating * 10) / 10,
+        "stats.lastUpdated": new Date(),
+      },
+    });
+
+    console.log(
+      `✅ Updated escort ${escortId} reviews count to ${reviewCount}, rating to ${averageRating}`
+    );
+  } catch (error) {
+    console.error("❌ Failed to update escort stats:", error);
+  }
 
   return res
     .status(201)
@@ -120,6 +158,7 @@ const updateReview = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You can only update your own reviews");
   }
 
+  const escortId = review.escort;
   const updatedReview = await Review.findByIdAndUpdate(
     reviewId,
     {
@@ -131,6 +170,42 @@ const updateReview = asyncHandler(async (req, res) => {
   )
     .populate("client", "name alias")
     .populate("escort", "name alias");
+
+  // Update escort stats in real-time
+  try {
+    // Get updated review count and average rating
+    const [reviewCount, ratingStats] = await Promise.all([
+      Review.countDocuments({ escort: escortId }),
+      Review.aggregate([
+        {
+          $match: { escort: new mongoose.Types.ObjectId(escortId) },
+        },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+          },
+        },
+      ]),
+    ]);
+
+    const averageRating = ratingStats[0]?.averageRating || 0;
+
+    // Update escort stats
+    await User.findByIdAndUpdate(escortId, {
+      $set: {
+        "stats.reviews": reviewCount,
+        "stats.rating": Math.round(averageRating * 10) / 10,
+        "stats.lastUpdated": new Date(),
+      },
+    });
+
+    console.log(
+      `✅ Updated escort ${escortId} reviews count to ${reviewCount}, rating to ${averageRating}`
+    );
+  } catch (error) {
+    console.error("❌ Failed to update escort stats:", error);
+  }
 
   return res
     .status(200)
@@ -152,7 +227,44 @@ const deleteReview = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You can only delete your own reviews");
   }
 
+  const escortId = review.escort;
   await Review.findByIdAndDelete(reviewId);
+
+  // Update escort stats in real-time
+  try {
+    // Get updated review count and average rating
+    const [reviewCount, ratingStats] = await Promise.all([
+      Review.countDocuments({ escort: escortId }),
+      Review.aggregate([
+        {
+          $match: { escort: new mongoose.Types.ObjectId(escortId) },
+        },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+          },
+        },
+      ]),
+    ]);
+
+    const averageRating = ratingStats[0]?.averageRating || 0;
+
+    // Update escort stats
+    await User.findByIdAndUpdate(escortId, {
+      $set: {
+        "stats.reviews": reviewCount,
+        "stats.rating": Math.round(averageRating * 10) / 10,
+        "stats.lastUpdated": new Date(),
+      },
+    });
+
+    console.log(
+      `✅ Updated escort ${escortId} reviews count to ${reviewCount}, rating to ${averageRating}`
+    );
+  } catch (error) {
+    console.error("❌ Failed to update escort stats:", error);
+  }
 
   return res
     .status(200)

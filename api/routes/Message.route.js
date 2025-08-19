@@ -6,6 +6,7 @@ import {
   getConversation, 
   getUserConversations, 
   markAsRead, 
+  markConversationAsRead,
   deleteMessage, 
   uploadMessageImage 
 } from "../controllers/Message.controller.js";
@@ -25,6 +26,7 @@ router.get(
   getUserConversations
 );
 router.put("/mark-read/:messageId", authenticate, markAsRead);
+router.put("/mark-conversation-read/:escortId", authenticate, markConversationAsRead);
 router.delete(
   "/delete/:messageId",
   authenticate,

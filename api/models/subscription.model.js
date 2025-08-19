@@ -12,8 +12,8 @@ const subscriptionSchema = new mongoose.Schema(
     // Subscription tier
     tier: {
       type: String,
-      enum: ["free", "verified", "premium", "elite"],
-      default: "free",
+      enum: ["basic", "featured", "premium"],
+      default: "basic",
       required: true,
     },
 
@@ -249,7 +249,7 @@ subscriptionSchema.methods.canUploadMedia = function (mediaType, currentCount) {
 // Method to get subscription benefits
 subscriptionSchema.methods.getBenefits = function () {
   const benefits = {
-    free: {
+    basic: {
       photos: 10,
       videos: 5,
       features: ["Basic Profile", "Standard Search", "Basic Messaging"],
@@ -291,7 +291,7 @@ subscriptionSchema.methods.getBenefits = function () {
     },
   };
 
-  return benefits[this.tier] || benefits.free;
+  return benefits[this.tier] || benefits.basic;
 };
 
 // Static method to get pricing for different countries

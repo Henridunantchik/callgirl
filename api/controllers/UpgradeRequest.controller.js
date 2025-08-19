@@ -118,7 +118,7 @@ const getAllUpgradeRequests = asyncHandler(async (req, res) => {
 
 // Send payment instructions (admin)
 const sendPaymentInstructions = asyncHandler(async (req, res) => {
-  const { requestId } = req.params;
+  const { id } = req.params;
   const { paymentInstructions, paymentMethod } = req.body;
 
   // Vérifier que l'utilisateur est admin
@@ -126,7 +126,7 @@ const sendPaymentInstructions = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Accès non autorisé");
   }
 
-  const upgradeRequest = await UpgradeRequest.findById(requestId);
+  const upgradeRequest = await UpgradeRequest.findById(id);
 
   if (!upgradeRequest) {
     throw new ApiError(404, "Demande d'upgrade non trouvée");
@@ -159,10 +159,10 @@ const sendPaymentInstructions = asyncHandler(async (req, res) => {
 
 // Submit payment proof (escort)
 const submitPaymentProof = asyncHandler(async (req, res) => {
-  const { requestId } = req.params;
+  const { id } = req.params;
   const { paymentProof } = req.body;
 
-  const upgradeRequest = await UpgradeRequest.findById(requestId);
+  const upgradeRequest = await UpgradeRequest.findById(id);
 
   if (!upgradeRequest) {
     throw new ApiError(404, "Demande d'upgrade non trouvée");
@@ -201,7 +201,7 @@ const submitPaymentProof = asyncHandler(async (req, res) => {
 
 // Approuver une demande (admin) - after payment confirmation
 const approveUpgradeRequest = asyncHandler(async (req, res) => {
-  const { requestId } = req.params;
+  const { id } = req.params;
   const { adminNotes } = req.body;
 
   // Vérifier que l'utilisateur est admin
@@ -209,7 +209,7 @@ const approveUpgradeRequest = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Accès non autorisé");
   }
 
-  const upgradeRequest = await UpgradeRequest.findById(requestId).populate(
+  const upgradeRequest = await UpgradeRequest.findById(id).populate(
     "escort",
     "name subscriptionTier"
   );
@@ -288,7 +288,7 @@ const approveUpgradeRequest = asyncHandler(async (req, res) => {
 
 // Confirmer le paiement manuellement (admin) - when admin verifies payment proof
 const confirmPayment = asyncHandler(async (req, res) => {
-  const { requestId } = req.params;
+  const { id } = req.params;
   const { adminNotes } = req.body;
 
   // Vérifier que l'utilisateur est admin
@@ -296,7 +296,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Accès non autorisé");
   }
 
-  const upgradeRequest = await UpgradeRequest.findById(requestId);
+  const upgradeRequest = await UpgradeRequest.findById(id);
 
   if (!upgradeRequest) {
     throw new ApiError(404, "Demande d'upgrade non trouvée");
@@ -324,7 +324,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
 
 // Rejeter une demande (admin)
 const rejectUpgradeRequest = asyncHandler(async (req, res) => {
-  const { requestId } = req.params;
+  const { id } = req.params;
   const { adminNotes } = req.body;
 
   // Vérifier que l'utilisateur est admin
@@ -332,7 +332,7 @@ const rejectUpgradeRequest = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Accès non autorisé");
   }
 
-  const upgradeRequest = await UpgradeRequest.findById(requestId);
+  const upgradeRequest = await UpgradeRequest.findById(id);
 
   if (!upgradeRequest) {
     throw new ApiError(404, "Demande d'upgrade non trouvée");
@@ -441,6 +441,11 @@ const checkExpiredSubscriptions = asyncHandler(async () => {
   console.log(`Processed ${expiredUsers.length} expired premium subscriptions`);
 });
 
+// Get subscription status (alias for getUserSubscriptionStatus)
+const getSubscriptionStatus = asyncHandler(async (req, res) => {
+  return getUserSubscriptionStatus(req, res);
+});
+
 // Get user subscription status and remaining time
 const getUserSubscriptionStatus = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -497,4 +502,5 @@ export {
   expirePaymentRequests,
   checkExpiredSubscriptions,
   getUserSubscriptionStatus,
+  getSubscriptionStatus,
 };

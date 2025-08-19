@@ -571,7 +571,8 @@ const EscortRegistration = () => {
       // Test API connection first
       try {
         console.log("🧪 Testing API connection...");
-        const testResponse = await fetch("/api/health");
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+        const testResponse = await fetch(`${apiUrl}/health`);
         console.log("✅ API Health Check:", testResponse.status);
 
         if (!testResponse.ok) {

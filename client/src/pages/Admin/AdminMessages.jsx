@@ -228,27 +228,22 @@ const AdminMessages = () => {
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
 
-        // Mark messages as read when conversation is opened
-        const unreadMessages =
-          response.data.data.messages?.filter(
-            (msg) =>
-              !msg.isRead &&
-              (msg.sender === escortId ||
-                (msg.sender && msg.sender._id === escortId))
-          ) || [];
-
-        if (unreadMessages.length > 0) {
-          // Mark messages as read
-          unreadMessages.forEach((msg) => {
-            messageAPI.markAsRead(msg._id);
-          });
-
+        // Mark all messages as read using the new API
+        try {
+          await messageAPI.markConversationAsRead(escortId);
+          console.log("📨 Messages marked as read for conversation:", escortId);
+          
           // Update conversation unread count
           setConversations((prev) =>
             prev.map((conv) =>
               conv.user._id === escortId ? { ...conv, unreadCount: 0 } : conv
             )
           );
+
+          // Trigger notification update
+          window.dispatchEvent(new CustomEvent("messagesRead"));
+        } catch (error) {
+          console.error("Failed to mark messages as read:", error);
         }
       }
     } catch (error) {

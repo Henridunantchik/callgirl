@@ -90,10 +90,20 @@ const ReviewSystem = ({ escortId, onReviewUpdate }) => {
         // Update existing review
         await reviewAPI.updateReview(userReview._id, reviewData);
         showToast("success", "Review updated successfully");
+        
+        // Trigger global event for real-time stats updates
+        window.dispatchEvent(new CustomEvent("reviewUpdated", {
+          detail: { escortId, reviewId: userReview._id }
+        }));
       } else {
         // Create new review
         await reviewAPI.createReview(reviewData);
         showToast("success", "Review submitted successfully");
+        
+        // Trigger global event for real-time stats updates
+        window.dispatchEvent(new CustomEvent("reviewCreated", {
+          detail: { escortId }
+        }));
       }
 
       // Reset form

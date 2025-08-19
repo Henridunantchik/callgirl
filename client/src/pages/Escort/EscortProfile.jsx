@@ -12,7 +12,6 @@ import PremiumAvatar from "../../components/PremiumAvatar";
 import {
   MapPin,
   Phone,
-  Mail,
   Calendar,
   DollarSign,
   Shield,
@@ -31,6 +30,7 @@ import {
 } from "lucide-react";
 import { escortAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
+import { useRealTimeStats } from "../../hooks/useRealTimeStats";
 import { useAuth } from "../../contexts/AuthContext";
 import { RouteSignIn } from "../../helpers/RouteName";
 import RealTimeMessenger from "../../components/RealTimeMessenger";
@@ -62,6 +62,19 @@ const EscortProfile = () => {
   const [activeTab, setActiveTab] = useState("photos");
   const [isMessengerOpen, setIsMessengerOpen] = useState(false);
   const [selectedEscort, setSelectedEscort] = useState(null);
+
+  // Real-time stats hook
+  const { updateStats } = useRealTimeStats(escort?._id, (updatedStats) => {
+    setEscort(prev => ({
+      ...prev,
+      stats: {
+        ...prev.stats,
+        favorites: updatedStats.favorites,
+        reviews: updatedStats.reviews,
+        rating: updatedStats.rating,
+      },
+    }));
+  });
 
   useEffect(() => {
     fetchEscortProfile();
@@ -1050,21 +1063,7 @@ const EscortProfile = () => {
                 </div>
               )}
 
-              {escort.email && (
-                <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-105">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-blue-500 p-2 rounded-full shadow-md">
-                      <Mail className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">Email</p>
-                      <p className="text-gray-900 font-semibold">
-                        {escort.email}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               <Button
                 onClick={handleContact}

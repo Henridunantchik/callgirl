@@ -56,8 +56,11 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -81,7 +84,8 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
   // Fetch conversations on mount and when messenger opens
   useEffect(() => {
-    if (isOpen && user && user._id) {
+    const userId = user?._id || user?.user?._id || user?.id || user?.user?.id;
+    if (isOpen && user && userId) {
       console.log("🔄 Fetching conversations...");
       fetchConversations();
     }
@@ -89,36 +93,45 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
   // Fetch messages when selected chat changes
   useEffect(() => {
-    if (selectedChat && user && user._id) {
+    const userId = user?._id || user?.user?._id || user?.id || user?.user?.id;
+    if (selectedChat && user && userId) {
       fetchMessages(selectedChat.user._id);
     }
   }, [selectedChat, user]);
 
   // Socket event listeners
   useEffect(() => {
-    if (!socket || !user || !user._id) return;
+    const userId = user?._id || user?.user?._id || user?.id || user?.user?.id;
+    if (!socket || !user || !userId) return;
 
     // Listen for new messages
     const handleNewMessage = (data) => {
       const { message } = data;
 
-             // Add to messages if it's for the current chat
-       if (
-         selectedChat &&
-         (message.sender === selectedChat.user._id ||
-           (message.sender && message.sender._id === selectedChat.user._id) ||
-           message.recipient === selectedChat.user._id ||
-           (message.recipient && message.recipient._id === selectedChat.user._id))
-       ) {
+      // Add to messages if it's for the current chat
+      if (
+        selectedChat &&
+        (message.sender === selectedChat.user._id ||
+          (message.sender && message.sender._id === selectedChat.user._id) ||
+          message.recipient === selectedChat.user._id ||
+          (message.recipient &&
+            message.recipient._id === selectedChat.user._id))
+      ) {
         setMessages((prev) => {
-                     // Check if this is a response to our temporary message
-           const tempMessageIndex = prev.findIndex(
-             (msg) =>
-               msg.isTemp &&
-               msg.content === message.content &&
-               (msg.sender === message.sender || (msg.sender && message.sender && msg.sender._id === message.sender._id)) &&
-               (msg.recipient === message.recipient || (msg.recipient && message.recipient && msg.recipient._id === message.recipient._id))
-           );
+          // Check if this is a response to our temporary message
+          const tempMessageIndex = prev.findIndex(
+            (msg) =>
+              msg.isTemp &&
+              msg.content === message.content &&
+              (msg.sender === message.sender ||
+                (msg.sender &&
+                  message.sender &&
+                  msg.sender._id === message.sender._id)) &&
+              (msg.recipient === message.recipient ||
+                (msg.recipient &&
+                  message.recipient &&
+                  msg.recipient._id === message.recipient._id))
+          );
 
           if (tempMessageIndex !== -1) {
             // Replace temporary message with real message
@@ -131,30 +144,34 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
           }
         });
 
-                 // Mark as read if we're the recipient
-         if (message.recipient === user._id || (message.recipient && message.recipient._id === user._id)) {
-           markMessageAsRead(message._id);
-         }
+        // Mark as read if we're the recipient
+        if (
+          message.recipient === user._id ||
+          (message.recipient && message.recipient._id === user._id)
+        ) {
+          markMessageAsRead(message._id);
+        }
       }
 
-             // Update conversation list (always update, not just for current chat)
-       setConversations((prev) =>
-         prev.map((conv) =>
-           conv.user._id === message.sender ||
-           (message.sender && message.sender._id === conv.user._id) ||
-           conv.user._id === message.recipient ||
-           (message.recipient && message.recipient._id === conv.user._id)
-             ? {
-                 ...conv,
-                 lastMessage: message,
-                 unreadCount:
-                   message.recipient === user._id || (message.recipient && message.recipient._id === user._id)
-                     ? conv.unreadCount + 1
-                     : conv.unreadCount,
-               }
-             : conv
-         )
-       );
+      // Update conversation list (always update, not just for current chat)
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.user._id === message.sender ||
+          (message.sender && message.sender._id === conv.user._id) ||
+          conv.user._id === message.recipient ||
+          (message.recipient && message.recipient._id === conv.user._id)
+            ? {
+                ...conv,
+                lastMessage: message,
+                unreadCount:
+                  message.recipient === user._id ||
+                  (message.recipient && message.recipient._id === user._id)
+                    ? conv.unreadCount + 1
+                    : conv.unreadCount,
+              }
+            : conv
+        )
+      );
     };
 
     // Listen for message read receipts
@@ -210,7 +227,8 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
   const fetchMessages = async (escortId) => {
     // Don't fetch if user is not authenticated
-    if (!user || !user._id) {
+    const userId = user?._id || user?.user?._id || user?.id || user?.user?.id;
+    if (!user || !userId) {
       console.log("Skipping fetchMessages - user not authenticated");
       return;
     }
@@ -221,15 +239,16 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
 
-                 // Mark messages as read
-         const unreadMessages =
-           response.data.data.messages?.filter(
-             (msg) => !msg.isRead && (msg.sender === escortId || (msg.sender && msg.sender._id === escortId))
-           ) || [];
+        // Mark all messages as read using the new API
+        try {
+          await messageAPI.markConversationAsRead(escortId);
+          console.log("📨 Messages marked as read for conversation:", escortId);
 
-        unreadMessages.forEach((msg) => {
-          markMessageAsRead(msg._id);
-        });
+          // Trigger notification update
+          window.dispatchEvent(new CustomEvent("messagesRead"));
+        } catch (error) {
+          console.error("Failed to mark messages as read:", error);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
@@ -238,8 +257,32 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !selectedChat || sending || !user || !user._id)
+    // Get user ID from multiple possible sources
+    const userId = user?._id || user?.user?._id || user?.id || user?.user?.id;
+
+    if (
+      (!message.trim() && !selectedImage) ||
+      !selectedChat ||
+      sending ||
+      !user ||
+      !userId
+    ) {
+      console.log("Cannot send message - missing data:", {
+        message: !!message.trim(),
+        selectedImage: !!selectedImage,
+        selectedChat: !!selectedChat,
+        sending,
+        user: !!user,
+        userId,
+      });
       return;
+    }
+
+    // If there's a selected image, send it first
+    if (selectedImage) {
+      await handleSendImage();
+      return;
+    }
 
     const messageContent = message.trim();
     const recipientId = selectedChat.user._id;
@@ -247,13 +290,13 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     console.log("📤 Sending message:", {
       content: messageContent,
       recipientId,
-      senderId: user._id,
+      senderId: userId,
     });
 
     // Create temporary message for instant feedback
     const tempMessage = {
       _id: `temp_${Date.now()}_${Math.random()}`,
-      sender: user._id,
+      sender: userId,
       recipient: recipientId,
       content: messageContent,
       type: "text",
@@ -292,10 +335,16 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
       console.log("📤 Sending via API...");
       // Also send via API for persistence (non-blocking)
-      messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
-        console.error("API send failed:", error);
-        // Don't show error to user if socket worked
-      });
+      messageAPI
+        .sendMessage({
+          escortId: recipientId,
+          content: messageContent,
+          type: "text",
+        })
+        .catch((error) => {
+          console.error("API send failed:", error);
+          // Don't show error to user if socket worked
+        });
     } catch (error) {
       console.error("Failed to send message:", error);
       // Mark message as failed
@@ -395,19 +444,108 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
       });
 
       // Send via API
-      messageAPI.sendMessage(recipientId, messageContent).catch((error) => {
-        console.error("Retry API send failed:", error);
-      });
+      messageAPI
+        .sendMessage({
+          escortId: recipientId,
+          content: messageContent,
+          type: "text",
+        })
+        .catch((error) => {
+          console.error("Retry API send failed:", error);
+        });
     } catch (error) {
       console.error("Retry failed:", error);
       showToast("error", "Failed to retry message");
     }
   };
 
-     const getMessageStatus = (message) => {
-     if (!user || !user._id) return null;
- 
-     if (message.sender === user._id || (message.sender && message.sender._id === user._id)) {
+  const handleImageSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        showToast("error", "Image size must be less than 5MB");
+        return;
+      }
+      setSelectedImage(file);
+    }
+  };
+
+  const handleSendImage = async () => {
+    if (!selectedImage || !selectedChat || uploadingImage) return;
+
+    const userId = user?._id || user?.user?._id || user?.id || user?.user?.id;
+    const recipientId = selectedChat.user._id;
+
+    setUploadingImage(true);
+
+    try {
+      // Upload image first
+      const formData = new FormData();
+      formData.append("image", selectedImage);
+
+      const uploadResponse = await fetch(
+        `${
+          import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+        }/message/upload-image`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        throw new Error("Image upload failed");
+      }
+
+      const uploadData = await uploadResponse.json();
+      const imageUrl = uploadData.data?.url || uploadData.url;
+
+      // Create temporary message
+      const tempMessage = {
+        _id: `temp_${Date.now()}_${Math.random()}`,
+        sender: userId,
+        recipient: recipientId,
+        content: imageUrl,
+        type: "image",
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        isTemp: true,
+      };
+
+      // Update UI immediately
+      setMessages((prev) => [...prev, tempMessage]);
+      setSelectedImage(null);
+
+      // Send via API
+      await messageAPI.sendMessage({
+        escortId: recipientId,
+        content: imageUrl,
+        type: "image",
+      });
+
+      // Send via socket
+      sendMessage(recipientId, imageUrl).catch((error) => {
+        console.error("Socket send failed:", error);
+      });
+    } catch (error) {
+      console.error("Failed to send image:", error);
+      showToast("error", "Failed to send image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const getMessageStatus = (message) => {
+    if (!user || !user._id) return null;
+
+    if (
+      message.sender === user._id ||
+      (message.sender && message.sender._id === user._id)
+    ) {
       if (message.isFailed) {
         return <X className="w-3 h-3 text-red-500" />;
       } else if (message.isRead) {
@@ -544,7 +682,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                             <div className="relative">
                               <PremiumAvatar
                                 src={conversation.user.avatar}
-                                alt={conversation.user.alias || conversation.user.name}
+                                alt={
+                                  conversation.user.alias ||
+                                  conversation.user.name
+                                }
                                 size="w-10 h-10"
                                 showBadge={false}
                                 user={conversation.user}
@@ -595,7 +736,9 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       <div className="relative">
                         <PremiumAvatar
                           src={selectedChat.user.avatar}
-                          alt={selectedChat.user.alias || selectedChat.user.name}
+                          alt={
+                            selectedChat.user.alias || selectedChat.user.name
+                          }
                           size="w-8 h-8"
                           showBadge={false}
                           user={selectedChat.user}
@@ -650,30 +793,67 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       <div
                         key={msg._id}
                         className={`flex ${
-                          user && user._id && (msg.sender === user._id || (msg.sender && msg.sender._id === user._id))
+                          user &&
+                          user._id &&
+                          (msg.sender === user._id ||
+                            (msg.sender && msg.sender._id === user._id))
                             ? "justify-end"
                             : "justify-start"
                         } mb-3`}
                       >
                         <div
                           className={`max-w-xs ${
-                            user && user._id && (msg.sender === user._id || (msg.sender && msg.sender._id === user._id))
+                            user &&
+                            user._id &&
+                            (msg.sender === user._id ||
+                              (msg.sender && msg.sender._id === user._id))
                               ? "ml-auto"
                               : "mr-auto"
                           }`}
                         >
                           <div
                             className={`px-3 py-2 rounded-2xl shadow-sm message-bubble ${
-                              user && user._id && (msg.sender === user._id || (msg.sender && msg.sender._id === user._id))
+                              user &&
+                              user._id &&
+                              (msg.sender === user._id ||
+                                (msg.sender && msg.sender._id === user._id))
                                 ? msg.isFailed
                                   ? "bg-gradient-to-r from-red-500 to-red-600 text-white rounded-br-md"
                                   : "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
                                 : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
                             }`}
                           >
-                            <p className="text-sm leading-relaxed">
-                              {msg.content}
-                            </p>
+                            {/* Check if content is an image URL */}
+                            {msg.content &&
+                            msg.content.startsWith("http") &&
+                            (msg.content.includes("cloudinary.com") ||
+                              msg.content.includes(".jpg") ||
+                              msg.content.includes(".jpeg") ||
+                              msg.content.includes(".png") ||
+                              msg.content.includes(".gif") ||
+                              msg.content.includes(".webp")) ? (
+                              <div className="space-y-2">
+                                <img
+                                  src={msg.content}
+                                  alt="Message image"
+                                  className="max-w-full max-h-48 rounded-lg object-cover"
+                                  onError={(e) => {
+                                    // If image fails to load, show as text
+                                    e.target.style.display = "none";
+                                    const textDiv =
+                                      document.createElement("div");
+                                    textDiv.className =
+                                      "text-sm leading-relaxed";
+                                    textDiv.textContent = msg.content;
+                                    e.target.parentNode.appendChild(textDiv);
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <p className="text-sm leading-relaxed">
+                                {msg.content}
+                              </p>
+                            )}
                             <div className="flex items-center justify-end space-x-1 mt-1">
                               <span className="text-xs opacity-70">
                                 {formatTime(msg.createdAt)}
@@ -700,20 +880,54 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
                 {/* Message Input */}
                 <div className="p-3 border-t bg-gray-50 flex-shrink-0">
+                  {/* Selected Image Preview */}
+                  {selectedImage && (
+                    <div className="mb-2 p-2 bg-blue-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <img
+                            src={URL.createObjectURL(selectedImage)}
+                            alt="Preview"
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                          <span className="text-sm text-gray-600">
+                            {selectedImage.name}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-red-500 hover:bg-red-100"
+                          onClick={() => setSelectedImage(null)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center space-x-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageSelect}
+                      accept="image/*"
+                      className="hidden"
+                    />
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 hover:bg-gray-200"
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      <Paperclip className="w-4 h-4 text-gray-600" />
+                      <ImageIcon className="w-4 h-4 text-gray-600" />
                     </Button>
                     <Input
                       placeholder="Type a message..."
                       value={message}
                       onChange={handleTyping}
                       onKeyPress={handleKeyPress}
-                      disabled={sending}
+                      disabled={sending || uploadingImage}
                       className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                     <Button
@@ -721,9 +935,13 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       size="sm"
                       className="h-8 w-8 p-0 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
                       onClick={handleSendMessage}
-                      disabled={!message.trim() || sending}
+                      disabled={
+                        (!message.trim() && !selectedImage) ||
+                        sending ||
+                        uploadingImage
+                      }
                     >
-                      {sending ? (
+                      {sending || uploadingImage ? (
                         <Clock className="w-4 h-4 animate-spin" />
                       ) : (
                         <Send className="w-4 h-4" />

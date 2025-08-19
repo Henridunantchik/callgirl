@@ -31,6 +31,24 @@ const addToFavorites = asyncHandler(async (req, res) => {
     .populate("client", "name alias avatar")
     .populate("escort", "name alias avatar age location rates");
 
+  // Update escort stats in real-time
+  try {
+    // Get updated favorite count
+    const favoriteCount = await Favorite.countDocuments({ escort: escortId });
+    
+    // Update escort stats
+    await User.findByIdAndUpdate(escortId, {
+      $set: {
+        "stats.favorites": favoriteCount,
+        "stats.lastUpdated": new Date()
+      }
+    });
+    
+    console.log(`✅ Updated escort ${escortId} favorites count to ${favoriteCount}`);
+  } catch (error) {
+    console.error("❌ Failed to update escort stats:", error);
+  }
+
   return res.status(201).json(
     new ApiResponse(201, populatedFavorite, "Added to favorites successfully")
   );
@@ -48,6 +66,24 @@ const removeFromFavorites = asyncHandler(async (req, res) => {
 
   if (!favorite) {
     throw new ApiError(404, "Favorite not found");
+  }
+
+  // Update escort stats in real-time
+  try {
+    // Get updated favorite count
+    const favoriteCount = await Favorite.countDocuments({ escort: escortId });
+    
+    // Update escort stats
+    await User.findByIdAndUpdate(escortId, {
+      $set: {
+        "stats.favorites": favoriteCount,
+        "stats.lastUpdated": new Date()
+      }
+    });
+    
+    console.log(`✅ Updated escort ${escortId} favorites count to ${favoriteCount}`);
+  } catch (error) {
+    console.error("❌ Failed to update escort stats:", error);
   }
 
   return res.status(200).json(

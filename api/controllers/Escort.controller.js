@@ -208,7 +208,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
         ...escort.toObject(),
         services,
         benefits,
-        subscriptionTier: escort.subscriptionTier || "free",
+        subscriptionTier: escort.subscriptionTier || "basic",
         isOnline,
       };
     });
@@ -240,6 +240,8 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    console.log("🔍 getEscortById called with id:", id);
+
     // Validate ID parameter
     if (!id || id === "undefined") {
       throw new ApiError(400, "Invalid escort identifier");
@@ -259,12 +261,62 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
 
     // If not found by ObjectId or id is not a valid ObjectId, try by alias or name
     if (!escort) {
+      // Decode URL-encoded string
+      const decodedId = decodeURIComponent(id);
+      console.log("🔍 Decoded ID:", decodedId);
+
+      // Try exact match first
       escort = await User.findOne({
         $or: [
-          { alias: id, role: "escort", isActive: true },
-          { name: id, role: "escort", isActive: true },
+          { alias: decodedId, role: "escort", isActive: true },
+          { name: decodedId, role: "escort", isActive: true },
         ],
       }).select("-password");
+
+      console.log("🔍 Exact match result:", escort ? "Found" : "Not found");
+
+      // If still not found, try case-insensitive search
+      if (!escort) {
+        escort = await User.findOne({
+          $or: [
+            {
+              alias: { $regex: new RegExp(`^${decodedId}$`, "i") },
+              role: "escort",
+              isActive: true,
+            },
+            {
+              name: { $regex: new RegExp(`^${decodedId}$`, "i") },
+              role: "escort",
+              isActive: true,
+            },
+          ],
+        }).select("-password");
+
+        console.log(
+          "🔍 Case-insensitive match result:",
+          escort ? "Found" : "Not found"
+        );
+      }
+
+      // If still not found, try partial match (for backward compatibility)
+      if (!escort) {
+        escort = await User.findOne({
+          $or: [
+            {
+              alias: { $regex: decodedId, $options: "i" },
+              role: "escort",
+              isActive: true,
+            },
+            {
+              name: { $regex: decodedId, $options: "i" },
+              role: "escort",
+              isActive: true,
+            },
+          ],
+        }).select("-password");
+
+        console.log("🔍 Partial match result:", escort ? "Found" : "Not found");
+      }
     }
 
     if (!escort) {
@@ -285,7 +337,7 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
           escort: {
             ...escort.toObject(),
             benefits,
-            subscriptionTier: escort.subscriptionTier || "free",
+            subscriptionTier: escort.subscriptionTier || "basic",
           },
         },
         "Escort retrieved successfully"
@@ -630,7 +682,7 @@ export const getEscortSubscription = asyncHandler(async (req, res, next) => {
       new ApiResponse(
         200,
         {
-          subscriptionTier: escort.subscriptionTier || "free",
+          subscriptionTier: escort.subscriptionTier || "basic",
           subscriptionStatus: escort.subscriptionStatus || "active",
           benefits,
           subscription: subscription || null,
@@ -804,7 +856,7 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
       return {
         ...escort.toObject(),
         benefits,
-        subscriptionTier: escort.subscriptionTier || "free",
+        subscriptionTier: escort.subscriptionTier || "basic",
       };
     });
 
@@ -841,6 +893,11 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
  */
 export const createEscortProfile = asyncHandler(async (req, res, next) => {
   try {
+    console.log("=== CREATE ESCORT PROFILE DEBUG ===");
+    console.log("req.body:", req.body);
+    console.log("req.files:", req.files);
+    console.log("req.user:", req.user);
+
     const userId = req.user._id;
 
     // Only clients can convert to escort
@@ -978,7 +1035,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
         gallery,
         idDocument: idDocumentUrl,
         isAgeVerified: !!idDocumentUrl, // Set to true if ID document is uploaded
-        subscriptionTier: "free",
+        subscriptionTier: "basic",
         subscriptionStatus: "active",
         isActive: true,
         isAvailable: true,
@@ -1079,15 +1136,16 @@ export const updateEscortFeaturedStatus = asyncHandler(
  */
 export const getEscortStats = asyncHandler(async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { escortId, id } = req.params;
+    const finalId = escortId || id;
 
     // Validate ID parameter
-    if (!id || id === "undefined") {
+    if (!finalId || finalId === "undefined") {
       throw new ApiError(400, "Invalid escort ID");
     }
 
     // Check if escort exists
-    const escort = await User.findOne({ _id: id, role: "escort" });
+    const escort = await User.findOne({ _id: finalId, role: "escort" });
     if (!escort) {
       throw new ApiError(404, "Escort not found");
     }
@@ -1107,22 +1165,22 @@ export const getEscortStats = asyncHandler(async (req, res, next) => {
       averageRating,
     ] = await Promise.all([
       // Total messages received
-      Message.countDocuments({ recipient: id }),
+      Message.countDocuments({ recipient: finalId }),
 
       // Total bookings
-      Booking.countDocuments({ escortId: id }),
+      Booking.countDocuments({ escortId: finalId }),
 
       // Total reviews
-      Review.countDocuments({ escort: id }),
+      Review.countDocuments({ escort: finalId }),
 
       // Total favorites
-      Favorite.countDocuments({ escort: id }),
+      Favorite.countDocuments({ escort: finalId }),
 
       // Monthly earnings (from completed bookings)
       Booking.aggregate([
         {
           $match: {
-            escortId: new mongoose.Types.ObjectId(id),
+            escortId: new mongoose.Types.ObjectId(finalId),
             status: "completed",
             createdAt: { $gte: startOfMonth, $lte: endOfMonth },
           },
@@ -1138,7 +1196,7 @@ export const getEscortStats = asyncHandler(async (req, res, next) => {
       // Average rating
       Review.aggregate([
         {
-          $match: { escort: new mongoose.Types.ObjectId(id) },
+          $match: { escort: new mongoose.Types.ObjectId(finalId) },
         },
         {
           $group: {

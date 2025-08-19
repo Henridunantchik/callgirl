@@ -43,6 +43,7 @@ import { useSelector } from "react-redux";
 import { getCitiesByCountry, getCountryByCode } from "@/helpers/countries";
 import { useState, useEffect } from "react";
 import { messageAPI, bookingAPI, reviewAPI } from "@/services/api";
+
 import { Badge } from "@/components/ui/badge";
 
 const AppSidebar = () => {
@@ -183,11 +184,36 @@ const AppSidebar = () => {
 
     fetchNotificationCounts();
 
-    // Refresh counts every 30 seconds
-    const interval = setInterval(fetchNotificationCounts, 30000);
-
-    return () => clearInterval(interval);
+    // No auto-refresh interval - let events handle updates
   }, [user]);
+
+  // Listen for conversation opened events
+  useEffect(() => {
+    const handleConversationOpened = () => {
+      // Don't refresh notification counts when conversation is opened
+      // Let the messagesRead event handle it
+      console.log("📨 Sidebar - Conversation opened event received");
+    };
+
+    const handleMessagesRead = () => {
+      // Reset message notifications when messages are read
+      setNotificationCounts((prev) => ({
+        ...prev,
+        messages: 0,
+      }));
+      console.log("📨 Sidebar - Messages read, notifications reset to 0");
+    };
+
+    window.addEventListener("conversationOpened", handleConversationOpened);
+    window.addEventListener("messagesRead", handleMessagesRead);
+    return () => {
+      window.removeEventListener(
+        "conversationOpened",
+        handleConversationOpened
+      );
+      window.removeEventListener("messagesRead", handleMessagesRead);
+    };
+  }, []);
 
   return (
     <Sidebar>
@@ -232,21 +258,20 @@ const AppSidebar = () => {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton>
+                      <SidebarMenuButton
+                        disabled
+                        className="opacity-50 cursor-not-allowed"
+                      >
                         <FaCalendarAlt />
-                        <Link to={`/${countryCode}/client/bookings`}>
+                        <span className="flex items-center gap-2">
                           My Bookings
-                        </Link>
-                        {notificationCounts.bookings > 0 && (
                           <Badge
-                            variant="destructive"
-                            className="ml-auto text-xs px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                            variant="secondary"
+                            className="text-xs bg-orange-100 text-orange-700"
                           >
-                            {notificationCounts.bookings > 99
-                              ? "99+"
-                              : notificationCounts.bookings}
+                            Coming Soon
                           </Badge>
-                        )}
+                        </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -282,21 +307,20 @@ const AppSidebar = () => {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton>
+                      <SidebarMenuButton
+                        disabled
+                        className="opacity-50 cursor-not-allowed"
+                      >
                         <FaCalendarAlt />
-                        <Link to={`/${countryCode}/escort/bookings`}>
+                        <span className="flex items-center gap-2">
                           Bookings
-                        </Link>
-                        {notificationCounts.bookings > 0 && (
                           <Badge
-                            variant="destructive"
-                            className="ml-auto text-xs px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                            variant="secondary"
+                            className="text-xs bg-orange-100 text-orange-700"
                           >
-                            {notificationCounts.bookings > 99
-                              ? "99+"
-                              : notificationCounts.bookings}
+                            Coming Soon
                           </Badge>
-                        )}
+                        </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -387,6 +411,13 @@ const AppSidebar = () => {
                         <Link to={`/${countryCode}/admin/messages`}>
                           Messages Admin
                         </Link>
+                        {notificationCounts.messages > 0 && (
+                          <Badge className="ml-2 text-xs">
+                            {notificationCounts.messages > 99
+                              ? "99+"
+                              : notificationCounts.messages}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

@@ -230,3 +230,29 @@ export const markOffline = asyncHandler(async (req, res) => {
     new ApiResponse(200, { isOnline: false }, "Marked as offline")
   );
 });
+
+// Get main admin for support
+export const getMainAdmin = asyncHandler(async (req, res) => {
+  try {
+    // Find the first admin user (or create one if none exists)
+    let admin = await User.findOne({ role: "admin" }).select("_id name email avatar");
+    
+    if (!admin) {
+      // Create a default admin if none exists
+      admin = await User.create({
+        name: "Support Team",
+        email: "support@callgirls.com",
+        role: "admin",
+        isActive: true,
+        avatar: "https://via.placeholder.com/150/3B82F6/FFFFFF?text=Support"
+      });
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, { admin }, "Main admin retrieved")
+    );
+  } catch (error) {
+    console.error("Error getting main admin:", error);
+    throw new ApiError(500, "Failed to get admin information");
+  }
+});

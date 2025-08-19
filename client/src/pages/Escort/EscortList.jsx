@@ -825,12 +825,15 @@ const EscortList = () => {
                       )}
 
                       {/* Contact Buttons */}
-                      <div className="flex gap-2 mt-3">
+                      <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="outline"
                           size="sm"
                           className="flex-1"
-                          onClick={() => handleContact(escort, "message")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleContact(escort, "message");
+                          }}
                         >
                           <MessageCircle className="w-4 h-4 mr-1" />
                           Message
@@ -840,7 +843,10 @@ const EscortList = () => {
                             variant="default"
                             size="sm"
                             className="flex-1"
-                            onClick={() => handleContact(escort, "call")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleContact(escort, "call");
+                            }}
                           >
                             <Phone className="w-4 h-4 mr-1" />
                             Call

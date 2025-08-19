@@ -6,7 +6,8 @@ import {
   deleteUser,
   updateOnlineStatus,
   getOnlineStatus,
-  markOffline
+  markOffline,
+  getMainAdmin
 } from "../controllers/User.controller.js";
 
 const router = express.Router();
@@ -20,5 +21,8 @@ router.delete("/account", authenticate, deleteUser);
 router.put("/online-status", authenticate, updateOnlineStatus);
 router.get("/online-status/:userId", getOnlineStatus);
 router.put("/offline", authenticate, markOffline);
+
+// Admin routes
+router.get("/main-admin", getMainAdmin);
 
 export default router;
