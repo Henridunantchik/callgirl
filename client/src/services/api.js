@@ -164,6 +164,9 @@ export const bookingAPI = {
   // Get user bookings (client or escort)
   getUserBookings: (params = {}) => api.get("/booking/user", { params }),
 
+  // Get escort bookings (escort only)
+  getEscortBookings: (params = {}) => api.get("/booking/escort", { params }),
+
   // Get booking by ID
   getBooking: (id) => api.get(`/booking/${id}`),
 

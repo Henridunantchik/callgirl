@@ -42,7 +42,7 @@ import { AiOutlineMenu } from "react-icons/ai";
 import { useSidebar } from "./ui/sidebar";
 import { Badge } from "./ui/badge";
 import CountrySelector from "./CountrySelector";
-import { messageAPI } from "@/services/api";
+import { messageAPI, authAPI } from "@/services/api";
 
 const Topbar = () => {
   const { toggleSidebar } = useSidebar();
@@ -88,26 +88,23 @@ const Topbar = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch(
-        `${getEvn("VITE_API_BASE_URL")}/auth/logout`,
-        {
-          method: "get",
-          credentials: "include",
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        return showToast("error", data.message);
-      }
+      await authAPI.logout();
+      
       // Clear localStorage for AuthContext
       localStorage.removeItem("token");
       localStorage.removeItem("user");
 
       dispath(removeUser());
       navigate(RouteIndex);
-      showToast("success", data.message);
+      showToast("success", "Logout successful");
     } catch (error) {
-      showToast("error", error.message);
+      console.error("Logout error:", error);
+      // Still clear local data even if API call fails
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      dispath(removeUser());
+      navigate(RouteIndex);
+      showToast("success", "Logged out successfully");
     }
   };
 

@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
+import { upload } from "../config/multer.js";
 import { 
   sendMessage, 
   getConversation, 
@@ -32,6 +33,7 @@ router.delete(
 router.post(
   "/upload-image",
   authenticate,
+  upload.single("image"),
   uploadMessageImage
 );
 
