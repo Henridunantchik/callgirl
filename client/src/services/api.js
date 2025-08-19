@@ -236,7 +236,8 @@ export const messageAPI = {
   markAsRead: (messageId) => api.put(`/message/mark-read/${messageId}`),
 
   // Mark conversation as read
-  markConversationAsRead: (escortId) => api.put(`/message/mark-conversation-read/${escortId}`),
+  markConversationAsRead: (escortId) =>
+    api.put(`/message/mark-conversation-read/${escortId}`),
 
   // Delete message
   deleteMessage: (messageId) => api.delete(`/message/delete/${messageId}`),
@@ -401,7 +402,8 @@ export const blogAPI = {
   deleteBlog: (blogId) => api.delete(`/blog/${blogId}`),
 
   // Add comment
-  addComment: (blogId, content) => api.post(`/blog/${blogId}/comment`, { content }),
+  addComment: (blogId, content) =>
+    api.post(`/blog/${blogId}/comment`, { content }),
 
   // Like blog
   likeBlog: (blogId) => api.post(`/blog/${blogId}/like`),

@@ -54,6 +54,7 @@ const UpgradeRequests = () => {
     rejectedRequests: 0,
     totalRevenue: 0,
   });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
@@ -87,7 +88,7 @@ const UpgradeRequests = () => {
       }
     } catch (error) {
       console.error("Error fetching upgrade requests:", error);
-      showToast("error", "Erreur lors du chargement des demandes");
+      showToast("error", "Error loading requests");
     } finally {
       setLoading(false);
     }
@@ -96,8 +97,35 @@ const UpgradeRequests = () => {
   const fetchStats = async () => {
     try {
       const response = await upgradeAPI.getStats();
+
       if (response.data?.data) {
-        setStats(response.data.data);
+        const apiData = response.data.data;
+
+        // Extract data from stats array if individual fields are missing
+        let processedStats = {
+          totalRequests: apiData.totalRequests || 0,
+          pendingRequests: apiData.pendingRequests || 0,
+          approvedRequests: apiData.approvedRequests || 0,
+          rejectedRequests: apiData.rejectedRequests || 0,
+          totalRevenue: apiData.totalRevenue || 0,
+        };
+
+        // If individual fields are missing, extract from stats array
+        if (apiData.stats && Array.isArray(apiData.stats)) {
+          const approvedStats = apiData.stats.find((s) => s._id === "approved");
+          const rejectedStats = apiData.stats.find((s) => s._id === "rejected");
+
+          if (approvedStats && !processedStats.approvedRequests) {
+            processedStats.approvedRequests = approvedStats.count;
+            processedStats.totalRevenue = approvedStats.totalAmount;
+          }
+
+          if (rejectedStats && !processedStats.rejectedRequests) {
+            processedStats.rejectedRequests = rejectedStats.count;
+          }
+        }
+
+        setStats(processedStats);
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -111,20 +139,20 @@ const UpgradeRequests = () => {
 
   const handleApprove = async () => {
     if (!selectedRequest || !adminNotes.trim()) {
-      showToast("error", "Veuillez ajouter des notes avant d'approuver");
+      showToast("error", "Please add notes before approving");
       return;
     }
 
     try {
       setProcessing(true);
       await upgradeAPI.approveRequest(selectedRequest._id, adminNotes);
-      showToast("success", "Demande approuvée avec succès");
+      showToast("success", "Request approved successfully");
       setShowModal(false);
       fetchUpgradeRequests();
       fetchStats();
     } catch (error) {
       console.error("Error approving request:", error);
-      showToast("error", "Erreur lors de l'approbation");
+      showToast("error", "Error during approval");
     } finally {
       setProcessing(false);
     }
@@ -132,7 +160,7 @@ const UpgradeRequests = () => {
 
   const handleSendPaymentInstructions = async () => {
     if (!selectedRequest || !paymentInstructions.trim()) {
-      showToast("error", "Veuillez ajouter les instructions de paiement");
+      showToast("error", "Please add payment instructions");
       return;
     }
 
@@ -172,14 +200,14 @@ Admin Team`;
         type: "text",
       });
 
-      showToast("success", "Instructions de paiement envoyées");
+      showToast("success", "Payment instructions sent");
       setShowModal(false);
       setPaymentInstructions("");
       fetchUpgradeRequests();
       fetchStats();
     } catch (error) {
       console.error("Error sending payment instructions:", error);
-      showToast("error", "Erreur lors de l'envoi des instructions");
+      showToast("error", "Error sending instructions");
     } finally {
       setProcessing(false);
     }
@@ -225,7 +253,7 @@ Admin Team`;
           quickNotes
         );
         console.log("Approve response:", response);
-        showToast("success", "Demande approuvée");
+        showToast("success", "Request approved");
       } else if (quickAction === "confirm_payment") {
         console.log("Calling confirmPayment API...");
         const response = await upgradeAPI.confirmPayment(
@@ -233,7 +261,7 @@ Admin Team`;
           quickNotes
         );
         console.log("Confirm payment response:", response);
-        showToast("success", "Paiement confirmé");
+        showToast("success", "Payment confirmed");
       } else if (quickAction === "reject") {
         console.log("Calling rejectRequest API...");
         const response = await upgradeAPI.rejectRequest(
@@ -241,7 +269,7 @@ Admin Team`;
           quickNotes
         );
         console.log("Reject response:", response);
-        showToast("success", "Demande rejetée");
+        showToast("success", "Request rejected");
       }
 
       setShowQuickModal(false);
@@ -253,7 +281,7 @@ Admin Team`;
       console.error("Error details:", error.response?.data);
       showToast(
         "error",
-        `Erreur lors du traitement: ${
+        `Error processing request: ${
           error.response?.data?.message || error.message
         }`
       );
@@ -264,20 +292,20 @@ Admin Team`;
 
   const handleReject = async () => {
     if (!selectedRequest || !adminNotes.trim()) {
-      showToast("error", "Veuillez ajouter des notes avant de rejeter");
+      showToast("error", "Please add notes before rejecting");
       return;
     }
 
     try {
       setProcessing(true);
       await upgradeAPI.rejectRequest(selectedRequest._id, adminNotes);
-      showToast("success", "Demande rejetée");
+      showToast("success", "Request rejected");
       setShowModal(false);
       fetchUpgradeRequests();
       fetchStats();
     } catch (error) {
       console.error("Error rejecting request:", error);
-      showToast("error", "Erreur lors du rejet");
+      showToast("error", "Error during rejection");
     } finally {
       setProcessing(false);
     }
@@ -303,6 +331,20 @@ Admin Team`;
     );
   };
 
+  // Calculate correct payment amount based on plan and period
+  const getPaymentAmount = (request) => {
+    if (request.requestedPlan === "featured") {
+      return 12; // $12 one-time for featured
+    } else if (request.requestedPlan === "premium") {
+      if (request.subscriptionPeriod === "annual") {
+        return 60; // $60/year for premium annual
+      } else {
+        return 5; // $5/month for premium monthly
+      }
+    }
+    return request.paymentAmount; // fallback to stored amount
+  };
+
   const filteredRequests = requests.filter((request) => {
     const matchesSearch =
       request.escortName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -322,20 +364,17 @@ Admin Team`;
   return (
     <>
       <Helmet>
-        <title>Gestion des Demandes d'Upgrade - Admin</title>
-        <meta
-          name="description"
-          content="Gérer les demandes d'upgrade des escorts"
-        />
+        <title>Upgrade Requests Management - Admin</title>
+        <meta name="description" content="Manage escort upgrade requests" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Gestion des Demandes d'Upgrade
+            Upgrade Requests Management
           </h1>
           <p className="text-gray-600">
-            Approuvez ou rejetez les demandes d'upgrade des escorts
+            Approve or reject escort upgrade requests
           </p>
         </div>
 
@@ -345,35 +384,35 @@ Admin Team`;
             <CardContent className="p-4 text-center">
               <TrendingUp className="w-6 h-6 mx-auto mb-2 text-blue-500" />
               <div className="text-2xl font-bold">{stats.totalRequests}</div>
-              <div className="text-sm text-gray-600">Total Demandes</div>
+              <div className="text-sm text-gray-600">Total Requests</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Clock className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
               <div className="text-2xl font-bold">{stats.pendingRequests}</div>
-              <div className="text-sm text-gray-600">En Attente</div>
+              <div className="text-sm text-gray-600">Pending</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <CheckCircle className="w-6 h-6 mx-auto mb-2 text-green-500" />
               <div className="text-2xl font-bold">{stats.approvedRequests}</div>
-              <div className="text-sm text-gray-600">Approuvées</div>
+              <div className="text-sm text-gray-600">Approved</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <XCircle className="w-6 h-6 mx-auto mb-2 text-red-500" />
               <div className="text-2xl font-bold">{stats.rejectedRequests}</div>
-              <div className="text-sm text-gray-600">Rejetées</div>
+              <div className="text-sm text-gray-600">Rejected</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <DollarSign className="w-6 h-6 mx-auto mb-2 text-green-500" />
               <div className="text-2xl font-bold">${stats.totalRevenue}</div>
-              <div className="text-sm text-gray-600">Revenus</div>
+              <div className="text-sm text-gray-600">Revenue</div>
             </CardContent>
           </Card>
         </div>
@@ -385,40 +424,40 @@ Admin Team`;
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Rechercher
+                    Search
                   </label>
                   <Input
-                    placeholder="Nom, email, téléphone..."
+                    placeholder="Name, email, phone..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Statut
+                    Status
                   </label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous</SelectItem>
-                      <SelectItem value="pending">En attente</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="payment_required">
-                        Paiement requis
+                        Payment Required
                       </SelectItem>
                       <SelectItem value="payment_confirmed">
-                        Paiement confirmé
+                        Payment Confirmed
                       </SelectItem>
-                      <SelectItem value="approved">Approuvées</SelectItem>
-                      <SelectItem value="rejected">Rejetées</SelectItem>
-                      <SelectItem value="expired">Expirées</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Pays
+                    Country
                   </label>
                   <Select
                     value={countryFilter}
@@ -428,7 +467,7 @@ Admin Team`;
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="ug">Uganda</SelectItem>
                       <SelectItem value="ke">Kenya</SelectItem>
                       <SelectItem value="tz">Tanzania</SelectItem>
@@ -446,7 +485,7 @@ Admin Team`;
                     variant="outline"
                     className="w-full"
                   >
-                    Réinitialiser
+                    Reset
                   </Button>
                 </div>
               </div>
@@ -457,15 +496,13 @@ Admin Team`;
         {/* Requests List */}
         <Card>
           <CardHeader>
-            <CardTitle>
-              Demandes d'Upgrade ({filteredRequests.length})
-            </CardTitle>
+            <CardTitle>Upgrade Requests ({filteredRequests.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredRequests.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Aucune demande trouvée</p>
+                <p>No requests found</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -477,9 +514,28 @@ Admin Team`;
                     {/* Header Row */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                          {request.escortName?.charAt(0).toUpperCase() || "E"}
+                        <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center">
+                          {request.escort?.avatar ? (
+                            <img
+                              src={request.escort.avatar}
+                              alt={request.escortName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to initial if image fails to load
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className={`w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ${
+                              request.escort?.avatar ? "hidden" : ""
+                            }`}
+                          >
+                            {request.escortName?.charAt(0).toUpperCase() || "E"}
+                          </div>
                         </div>
+
                         <div>
                           <h3 className="text-lg font-bold text-gray-900">
                             {request.escortName}
@@ -492,7 +548,7 @@ Admin Team`;
 
                       <div className="text-right">
                         <div className="text-2xl font-bold text-green-600">
-                          ${request.paymentAmount}
+                          ${getPaymentAmount(request)}
                         </div>
                         <div className="text-sm text-gray-500">
                           {new Date(request.createdAt).toLocaleDateString()}
@@ -510,6 +566,12 @@ Admin Team`;
                           <span className="text-gray-400">→</span>
                           <span className="text-sm font-medium text-blue-600">
                             {request.requestedPlan}
+                            {request.requestedPlan === "premium" &&
+                              request.subscriptionPeriod && (
+                                <span className="text-xs text-gray-500 ml-1">
+                                  ({request.subscriptionPeriod})
+                                </span>
+                              )}
                           </span>
                         </div>
                         {getContactMethodIcon(request.contactMethod)}
@@ -608,7 +670,7 @@ Admin Team`;
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Détails de la Demande</h2>
+              <h2 className="text-xl font-bold">Request Details</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -622,7 +684,7 @@ Admin Team`;
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Nom
+                    Name
                   </label>
                   <p className="text-gray-900">{selectedRequest.escortName}</p>
                 </div>
@@ -634,13 +696,13 @@ Admin Team`;
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Téléphone
+                    Phone
                   </label>
                   <p className="text-gray-900">{selectedRequest.escortPhone}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Pays
+                    Country
                   </label>
                   <p className="text-gray-900">
                     {selectedRequest.countryCode?.toUpperCase()}
@@ -648,29 +710,35 @@ Admin Team`;
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Plan Actuel
+                    Current Plan
                   </label>
                   <p className="text-gray-900">{selectedRequest.currentPlan}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Plan Demandé
+                    Requested Plan
                   </label>
                   <p className="text-gray-900">
                     {selectedRequest.requestedPlan}
+                    {selectedRequest.requestedPlan === "premium" &&
+                      selectedRequest.subscriptionPeriod && (
+                        <span className="text-sm text-gray-500 ml-1">
+                          ({selectedRequest.subscriptionPeriod})
+                        </span>
+                      )}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Montant
+                    Amount
                   </label>
                   <p className="text-gray-900">
-                    ${selectedRequest.paymentAmount}
+                    ${getPaymentAmount(selectedRequest)}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Méthode de Contact
+                    Contact Method
                   </label>
                   <p className="text-gray-900 flex items-center gap-1">
                     {getContactMethodIcon(selectedRequest.contactMethod)}
@@ -682,7 +750,7 @@ Admin Team`;
               {selectedRequest.paymentProof && (
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Preuve de Paiement
+                    Payment Proof
                   </label>
                   <p className="text-gray-900 text-sm">
                     {selectedRequest.paymentProof}
@@ -693,17 +761,17 @@ Admin Team`;
               {selectedRequest.paymentInstructions && (
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    Instructions de Paiement
+                    Payment Instructions
                   </label>
                   <p className="text-gray-900 text-sm">
                     {selectedRequest.paymentInstructions}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Méthode: {selectedRequest.paymentMethod}
+                    Method: {selectedRequest.paymentMethod}
                   </p>
                   {selectedRequest.paymentDeadline && (
                     <p className="text-xs text-gray-500">
-                      Échéance:{" "}
+                      Deadline:{" "}
                       {new Date(
                         selectedRequest.paymentDeadline
                       ).toLocaleString()}
@@ -717,18 +785,18 @@ Admin Team`;
                 <>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Instructions de Paiement *
+                      Payment Instructions *
                     </label>
                     <Textarea
                       value={paymentInstructions}
                       onChange={(e) => setPaymentInstructions(e.target.value)}
-                      placeholder="Entrez les instructions de paiement (méthode, numéro, etc.)..."
+                      placeholder="Enter payment instructions (method, number, etc.)..."
                       rows={3}
                     />
                   </div>
                   <div className="mb-4">
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Méthode de Paiement
+                      Payment Method
                     </label>
                     <Select
                       value={paymentMethod}
@@ -742,9 +810,9 @@ Admin Team`;
                           Mobile Money
                         </SelectItem>
                         <SelectItem value="bank_transfer">
-                          Virement Bancaire
+                          Bank Transfer
                         </SelectItem>
-                        <SelectItem value="cash">Espèces</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -759,7 +827,7 @@ Admin Team`;
                       ) : (
                         <MessageCircle className="w-4 h-4 mr-2" />
                       )}
-                      Envoyer Instructions
+                      Send Instructions
                     </Button>
                     <Button
                       onClick={handleReject}
@@ -772,14 +840,14 @@ Admin Team`;
                       ) : (
                         <XCircle className="w-4 h-4 mr-2" />
                       )}
-                      Rejeter
+                      Reject
                     </Button>
                     <Button
                       onClick={() => setShowModal(false)}
                       variant="outline"
                       disabled={processing}
                     >
-                      Annuler
+                      Cancel
                     </Button>
                   </div>
                 </>
@@ -789,12 +857,12 @@ Admin Team`;
                 <>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Notes Admin *
+                      Admin Notes *
                     </label>
                     <Textarea
                       value={adminNotes}
                       onChange={(e) => setAdminNotes(e.target.value)}
-                      placeholder="Ajoutez vos notes pour cette demande..."
+                      placeholder="Add your notes for this request..."
                       rows={3}
                     />
                   </div>
@@ -809,7 +877,7 @@ Admin Team`;
                       ) : (
                         <CheckCircle className="w-4 h-4 mr-2" />
                       )}
-                      Approuver
+                      Approve
                     </Button>
                     <Button
                       onClick={handleReject}
@@ -822,14 +890,14 @@ Admin Team`;
                       ) : (
                         <XCircle className="w-4 h-4 mr-2" />
                       )}
-                      Rejeter
+                      Reject
                     </Button>
                     <Button
                       onClick={() => setShowModal(false)}
                       variant="outline"
                       disabled={processing}
                     >
-                      Annuler
+                      Cancel
                     </Button>
                   </div>
                 </>
@@ -844,7 +912,7 @@ Admin Team`;
                     variant="outline"
                     className="flex-1"
                   >
-                    Fermer
+                    Close
                   </Button>
                 </div>
               )}
@@ -877,14 +945,42 @@ Admin Team`;
 
             <div className="space-y-4">
               <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700 mb-1">
-                  Escort: {quickRequest.escortName}
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center">
+                    {quickRequest.escort?.avatar ? (
+                      <img
+                        src={quickRequest.escort.avatar}
+                        alt={quickRequest.escortName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          e.target.nextSibling.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={`w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm ${
+                        quickRequest.escort?.avatar ? "hidden" : ""
+                      }`}
+                    >
+                      {quickRequest.escortName?.charAt(0).toUpperCase() || "E"}
+                    </div>
+                  </div>
+                  <div className="text-sm font-medium text-gray-700">
+                    {quickRequest.escortName}
+                  </div>
                 </div>
                 <div className="text-sm text-gray-600">
                   {quickRequest.currentPlan} → {quickRequest.requestedPlan}
+                  {quickRequest.requestedPlan === "premium" &&
+                    quickRequest.subscriptionPeriod && (
+                      <span className="text-xs text-gray-500 ml-1">
+                        ({quickRequest.subscriptionPeriod})
+                      </span>
+                    )}
                 </div>
                 <div className="text-sm text-gray-600">
-                  Amount: ${quickRequest.paymentAmount}
+                  Amount: ${getPaymentAmount(quickRequest)}
                 </div>
               </div>
 

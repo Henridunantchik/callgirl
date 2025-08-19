@@ -62,7 +62,9 @@ Name: ${formData.escortName}
 Phone: ${formData.escortPhone}
 Email: ${formData.escortEmail}
 Current plan: ${currentPlan}
-Requested plan: ${selectedPlan}
+Requested plan: ${selectedPlan}${
+      selectedPlan === "premium" ? `(${subscriptionPeriod})` : ""
+    }
 Price: ${planData.price}`;
 
     // Open WhatsApp with pre-filled message
@@ -76,13 +78,17 @@ Price: ${planData.price}`;
 
   const handleMessenger = async () => {
     try {
-      const messageContent = `Hello! I want to upgrade to ${planData.title} plan.
+      const messageContent = `Hello! I want to upgrade to ${
+        planData.title
+      } plan.
 
 Name: ${formData.escortName}
 Phone: ${formData.escortPhone}
 Email: ${formData.escortEmail}
 Current plan: ${currentPlan}
-Requested plan: ${selectedPlan}
+Requested plan: ${selectedPlan}${
+        selectedPlan === "premium" ? `(${subscriptionPeriod})` : ""
+      }
 Price: ${planData.price}`;
 
       // Create upgrade request in the system
@@ -92,8 +98,15 @@ Price: ${planData.price}`;
         escortEmail: formData.escortEmail,
         currentPlan: currentPlan,
         requestedPlan: selectedPlan,
+        subscriptionPeriod:
+          selectedPlan === "premium" ? subscriptionPeriod : undefined,
         contactMethod: "messenger",
-        paymentAmount: selectedPlan === "premium" ? "5" : "12",
+        paymentAmount:
+          selectedPlan === "premium"
+            ? subscriptionPeriod === "annual"
+              ? "60"
+              : "5"
+            : "12",
         countryCode: "ug",
       });
 
@@ -166,11 +179,6 @@ Price: ${planData.price}`;
                   <div>
                     <div className="text-2xl font-bold text-gray-900">
                       {planData.price}
-                      {selectedPlan === "premium" && (
-                        <span className="text-sm font-normal text-gray-500">
-                          /month
-                        </span>
-                      )}
                     </div>
                     <p className="text-sm text-gray-600">
                       {planData.description}
@@ -230,7 +238,9 @@ Price: ${planData.price}`;
                               <Crown className="h-6 w-6 mb-2 text-purple-500" />
                               <span className="font-semibold">Premium</span>
                               <span className="text-sm text-gray-600">
-                                $5/month
+                                {subscriptionPeriod === "annual"
+                                  ? "$60/year"
+                                  : "$5/month"}
                               </span>
                             </Button>
                           </>

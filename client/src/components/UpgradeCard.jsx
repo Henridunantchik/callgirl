@@ -4,12 +4,12 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Check, Crown, Star, Zap } from "lucide-react";
 
-const UpgradeCard = ({ 
-  plan, 
-  currentPlan, 
-  onUpgrade, 
+const UpgradeCard = ({
+  plan,
+  currentPlan,
+  onUpgrade,
   loading = false,
-  isCurrent = false 
+  isCurrent = false,
 }) => {
   const plans = {
     basic: {
@@ -39,7 +39,7 @@ const UpgradeCard = ({
     },
     premium: {
       title: "Premium",
-      price: "$5/month",
+      price: "$5/month or $60/year",
       icon: <Crown className="h-6 w-6" />,
       color: "bg-gradient-to-r from-purple-500 to-pink-500",
       features: [
@@ -56,26 +56,25 @@ const UpgradeCard = ({
   const planData = plans[plan];
 
   return (
-    <Card className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg ${
-      isCurrent ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:scale-105'
-    }`}>
+    <Card
+      className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg ${
+        isCurrent ? "ring-2 ring-blue-500 bg-blue-50" : "hover:scale-105"
+      }`}
+    >
       {isCurrent && (
         <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-xs font-medium rounded-bl-lg">
           Current Plan
         </div>
       )}
-      
+
       <CardHeader className="text-center pb-4">
-        <div className={`mx-auto w-16 h-16 rounded-full ${planData.color} text-white flex items-center justify-center mb-4`}>
+        <div
+          className={`mx-auto w-16 h-16 rounded-full ${planData.color} text-white flex items-center justify-center mb-4`}
+        >
           {planData.icon}
         </div>
         <CardTitle className="text-2xl font-bold">{planData.title}</CardTitle>
-        <div className="text-3xl font-bold text-gray-900">
-          {planData.price}
-          {plan === "premium" && (
-            <span className="text-sm font-normal text-gray-500">/mois</span>
-          )}
-        </div>
+        <div className="text-3xl font-bold text-gray-900">{planData.price}</div>
       </CardHeader>
 
       <CardContent className="pt-0">

@@ -16,6 +16,11 @@ const createUpgradeRequest = asyncHandler(async (req, res) => {
     countryCode,
   } = req.body;
 
+  console.log("🔍 DEBUG - Request body received:");
+  console.log("requestedPlan:", requestedPlan);
+  console.log("subscriptionPeriod:", req.body.subscriptionPeriod);
+  console.log("Full body:", req.body);
+
   const userId = req.user._id;
 
   // Vérifier que l'utilisateur est un escort
@@ -37,10 +42,28 @@ const createUpgradeRequest = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Vous avez déjà une demande d'upgrade en attente");
   }
 
-  // Calculer le montant selon le plan demandé
-  const paymentAmount = requestedPlan === "featured" ? 12 : 5; // $5/month for premium
+  // Calculate amount based on requested plan and period
+  console.log("🔍 Creating upgrade request:");
+  console.log("Requested Plan:", requestedPlan);
+  console.log("Subscription Period from body:", req.body.subscriptionPeriod);
+  console.log("Full request body:", req.body);
 
-  // Créer la demande
+  let paymentAmount;
+  if (requestedPlan === "featured") {
+    paymentAmount = 12; // $12 one-time for featured
+  } else if (requestedPlan === "premium") {
+    const subscriptionPeriod = req.body.subscriptionPeriod || "monthly";
+    console.log("🔍 Premium subscription period:", subscriptionPeriod);
+    if (subscriptionPeriod === "annual") {
+      paymentAmount = 60; // $60/year for premium annual
+      console.log("💰 Annual premium: $60");
+    } else {
+      paymentAmount = 5; // $5/month for premium monthly
+      console.log("💰 Monthly premium: $5");
+    }
+  }
+
+  // Create the request
   const upgradeRequest = await UpgradeRequest.create({
     escort: userId,
     escortName,
@@ -51,6 +74,7 @@ const createUpgradeRequest = asyncHandler(async (req, res) => {
     contactMethod,
     paymentProof,
     paymentAmount,
+    subscriptionPeriod: req.body.subscriptionPeriod || "monthly",
     countryCode,
   });
 
@@ -60,7 +84,7 @@ const createUpgradeRequest = asyncHandler(async (req, res) => {
       new ApiResponse(
         201,
         upgradeRequest,
-        "Demande d'upgrade créée avec succès"
+        "Upgrade request created successfully"
       )
     );
 });
@@ -94,7 +118,7 @@ const getAllUpgradeRequests = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const requests = await UpgradeRequest.find(filter)
-    .populate("escort", "name alias email phone")
+    .populate("escort", "name alias email phone avatar")
     .populate("processedBy", "name email")
     .sort({ createdAt: -1 })
     .skip(skip)
@@ -262,7 +286,10 @@ const approveUpgradeRequest = asyncHandler(async (req, res) => {
   escort.subscriptionTier = upgradeRequest.requestedPlan;
 
   // Set featured status based on subscription tier
-  if (upgradeRequest.requestedPlan === "featured" || upgradeRequest.requestedPlan === "premium") {
+  if (
+    upgradeRequest.requestedPlan === "featured" ||
+    upgradeRequest.requestedPlan === "premium"
+  ) {
     escort.isFeatured = true;
   }
 
@@ -358,11 +385,11 @@ const rejectUpgradeRequest = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, upgradeRequest, "Demande d'upgrade rejetée"));
 });
 
-// Obtenir les statistiques des demandes (admin)
+// Get upgrade request statistics (admin)
 const getUpgradeStats = asyncHandler(async (req, res) => {
-  // Vérifier que l'utilisateur est admin
+  // Check if user is admin
   if (req.user.role !== "admin") {
-    throw new ApiError(403, "Accès non autorisé");
+    throw new ApiError(403, "Unauthorized access");
   }
 
   const stats = await UpgradeRequest.aggregate([
@@ -379,18 +406,51 @@ const getUpgradeStats = asyncHandler(async (req, res) => {
   const pendingRequests = await UpgradeRequest.countDocuments({
     status: "pending",
   });
+  const approvedRequestsCount = await UpgradeRequest.countDocuments({
+    status: "approved",
+  });
+  const rejectedRequests = await UpgradeRequest.countDocuments({
+    status: "rejected",
+  });
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        stats,
-        totalRequests,
-        pendingRequests,
-      },
-      "Statistiques des demandes d'upgrade"
-    )
-  );
+  // Extract values from stats array for easier frontend consumption
+  const approvedStats = stats.find((s) => s._id === "approved");
+  const rejectedStats = stats.find((s) => s._id === "rejected");
+  const pendingStats = stats.find((s) => s._id === "pending");
+
+  // Calculate total revenue from approved requests with correct pricing
+  const approvedRequests = await UpgradeRequest.find({ status: "approved" });
+
+  let totalRevenue = 0;
+  approvedRequests.forEach((request) => {
+    if (request.requestedPlan === "featured") {
+      totalRevenue += 12; // $12 for featured
+    } else if (request.requestedPlan === "premium") {
+      if (request.subscriptionPeriod === "annual") {
+        totalRevenue += 60; // $60 for premium annual
+      } else {
+        totalRevenue += 5; // $5 for premium monthly
+      }
+    }
+  });
+
+  const responseData = {
+    stats,
+    totalRequests,
+    pendingRequests,
+    approvedRequests: approvedRequestsCount,
+    rejectedRequests,
+    totalRevenue,
+    // Also include the extracted values for easier frontend consumption
+    approvedCount: approvedStats ? approvedStats.count : 0,
+    rejectedCount: rejectedStats ? rejectedStats.count : 0,
+    approvedAmount: approvedStats ? approvedStats.totalAmount : 0,
+    rejectedAmount: rejectedStats ? rejectedStats.totalAmount : 0,
+  };
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, responseData, "Upgrade request statistics"));
 });
 
 // Auto-expire payment required requests after 48 hours
