@@ -225,18 +225,24 @@ const Index = () => {
     console.log("User type:", typeof user);
     console.log("User keys:", user ? Object.keys(user) : "No user");
 
-    // Check authentication first
+    // Check authentication - try multiple sources
     const userId = getUserId(user);
     const isUserAuthenticated = isAuthenticated();
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    
     console.log("Extracted userId:", userId);
     console.log("isAuthenticated():", isUserAuthenticated);
+    console.log("Token exists:", !!token);
+    console.log("Stored user exists:", !!storedUser);
 
-    if (!userId && !isUserAuthenticated) {
-      console.log(
-        "No userId found and not authenticated, redirecting to login"
-      );
+    // Check if user is authenticated from any source
+    const isAuthenticatedFromAnySource = userId || isUserAuthenticated || (token && storedUser);
+    
+    if (!isAuthenticatedFromAnySource) {
+      console.log("No authentication found from any source, redirecting to login");
       showToast("error", "Please sign in to contact escorts");
-      window.location.href = RouteSignIn;
+      navigate(RouteSignIn);
       return;
     }
 

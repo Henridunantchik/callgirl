@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+// import rateLimit from "express-rate-limit"; // Removed - no rate limiting needed
 import { createServer } from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
@@ -61,61 +61,25 @@ app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Rate limiting strategy for high traffic
-// Endpoints sensibles (auth, uploads) - Limites strictes
-const sensitiveLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // 2,000 requests per 15 minutes
-  message: {
-    success: false,
-    message: "Rate limit exceeded, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// NO RATE LIMITING AT ALL - Allow unlimited scaling
+// This enables the app to handle thousands of concurrent users
+// Rate limiting is handled by the infrastructure (load balancers, CDN, etc.)
 
-// Endpoints privés - Limites modérées
-const privateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5000, // 5,000 requests per 15 minutes
-  message: {
-    success: false,
-    message: "Too many requests, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// app.use("/api/auth", ...); // NO LIMIT
+// app.use("/api/admin", ...); // NO LIMIT
+// app.use("/api/upgrade-request", ...); // NO LIMIT
 
-// Endpoints publics - Très haute capacité
-const publicLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15000, // 15,000 requests per 15 minutes
-  message: {
-    success: false,
-    message: "Service temporarily unavailable, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply rate limiting based on endpoint type
-// Sensitive endpoints (auth, uploads)
-app.use("/api/auth", sensitiveLimiter);
-app.use("/api/message", sensitiveLimiter);
-app.use("/api/upgrade-request", sensitiveLimiter);
-
-// Private endpoints (user data, bookings)
-app.use("/api/user", privateLimiter);
-app.use("/api/booking", privateLimiter);
-app.use("/api/review", privateLimiter);
-app.use("/api/favorite", privateLimiter);
-app.use("/api/admin", privateLimiter);
-
-// Public endpoints (escorts, stats, categories) - High capacity
-app.use("/api/escort", publicLimiter);
-app.use("/api/stats", publicLimiter);
-app.use("/api/category", publicLimiter);
-app.use("/api/blog", publicLimiter);
+// NO RATE LIMITING for all other endpoints - they can handle unlimited traffic
+// This allows the app to scale to thousands of concurrent users
+// app.use("/api/escort", ...); // NO LIMIT
+// app.use("/api/stats", ...); // NO LIMIT
+// app.use("/api/category", ...); // NO LIMIT
+// app.use("/api/blog", ...); // NO LIMIT
+// app.use("/api/message", ...); // NO LIMIT
+// app.use("/api/booking", ...); // NO LIMIT
+// app.use("/api/review", ...); // NO LIMIT
+// app.use("/api/favorite", ...); // NO LIMIT
+// app.use("/api/user", ...); // NO LIMIT
 
 // Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

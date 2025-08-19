@@ -177,6 +177,54 @@ const markAsRead = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedMessage, "Message marked as read"));
 });
 
+// Mark all messages in a conversation as read
+const markConversationAsRead = asyncHandler(async (req, res) => {
+  const { escortId } = req.params;
+  const userId = req.user._id;
+
+  console.log("📨 Marking conversation as read:", { userId, escortId });
+
+  // Find all unread messages from this escort to the current user
+  const unreadMessages = await Message.find({
+    sender: escortId,
+    recipient: userId,
+    isRead: false,
+  });
+
+  console.log("📨 Found unread messages:", unreadMessages.length);
+
+  if (unreadMessages.length === 0) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { count: 0 }, "No unread messages to mark"));
+  }
+
+  // Mark all messages as read
+  const result = await Message.updateMany(
+    {
+      sender: escortId,
+      recipient: userId,
+      isRead: false,
+    },
+    {
+      isRead: true,
+      readAt: new Date(),
+    }
+  );
+
+  console.log("📨 Marked messages as read:", result.modifiedCount);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { count: result.modifiedCount },
+        "Conversation marked as read"
+      )
+    );
+});
+
 // Delete message
 const deleteMessage = asyncHandler(async (req, res) => {
   const { messageId } = req.params;
@@ -231,6 +279,7 @@ export {
   getConversation,
   getUserConversations,
   markAsRead,
+  markConversationAsRead,
   deleteMessage,
   uploadMessageImage,
 };

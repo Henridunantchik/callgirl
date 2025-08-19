@@ -106,7 +106,7 @@ export const escortWithActiveSubscription = asyncHandler(
       // This should run after onlyEscort middleware
       const user = req.user;
 
-      if (user.subscriptionTier === "free") {
+      if (user.subscriptionTier === "basic") {
         throw new ApiError(
           403,
           "Active subscription required. Please upgrade your subscription to access this feature"

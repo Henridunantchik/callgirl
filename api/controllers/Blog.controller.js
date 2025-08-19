@@ -45,12 +45,16 @@ const createBlog = asyncHandler(async (req, res) => {
     seo,
   });
 
-  const populatedBlog = await Blog.findById(blog._id)
-    .populate("author", "name alias avatar");
-
-  return res.status(201).json(
-    new ApiResponse(201, populatedBlog, "Blog post created successfully")
+  const populatedBlog = await Blog.findById(blog._id).populate(
+    "author",
+    "name alias avatar"
   );
+
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(201, populatedBlog, "Blog post created successfully")
+    );
 });
 
 // Get all published blog posts
@@ -94,12 +98,16 @@ const getAllBlogs = asyncHandler(async (req, res) => {
   const total = await Blog.countDocuments(filter);
 
   return res.status(200).json(
-    new ApiResponse(200, {
-      blogs,
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit),
-    }, "Blog posts retrieved successfully")
+    new ApiResponse(
+      200,
+      {
+        blogs,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      "Blog posts retrieved successfully"
+    )
   );
 });
 
@@ -115,9 +123,11 @@ const getFeaturedBlogs = asyncHandler(async (req, res) => {
     .sort({ publishedAt: -1 })
     .limit(parseInt(limit));
 
-  return res.status(200).json(
-    new ApiResponse(200, blogs, "Featured blog posts retrieved successfully")
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, blogs, "Featured blog posts retrieved successfully")
+    );
 });
 
 // Get blog post by slug
@@ -135,9 +145,9 @@ const getBlogBySlug = asyncHandler(async (req, res) => {
   // Increment views
   await blog.incrementViews();
 
-  return res.status(200).json(
-    new ApiResponse(200, blog, "Blog post retrieved successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, blog, "Blog post retrieved successfully"));
 });
 
 // Get blog post by ID (for editing)
@@ -145,8 +155,10 @@ const getBlogById = asyncHandler(async (req, res) => {
   const { blogId } = req.params;
   const userId = req.user._id;
 
-  const blog = await Blog.findById(blogId)
-    .populate("author", "name alias avatar");
+  const blog = await Blog.findById(blogId).populate(
+    "author",
+    "name alias avatar"
+  );
 
   if (!blog) {
     throw new ApiError(404, "Blog post not found");
@@ -161,9 +173,9 @@ const getBlogById = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Access denied");
   }
 
-  return res.status(200).json(
-    new ApiResponse(200, blog, "Blog post retrieved successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, blog, "Blog post retrieved successfully"));
 });
 
 // Update blog post
@@ -179,23 +191,18 @@ const updateBlog = asyncHandler(async (req, res) => {
 
   // Check if user is authorized to update this blog
   const user = await User.findById(userId);
-  if (
-    blog.author.toString() !== userId.toString() &&
-    user.role !== "admin"
-  ) {
+  if (blog.author.toString() !== userId.toString() && user.role !== "admin") {
     throw new ApiError(403, "Access denied");
   }
 
   // Update blog
-  const updatedBlog = await Blog.findByIdAndUpdate(
-    blogId,
-    updateData,
-    { new: true }
-  ).populate("author", "name alias avatar");
+  const updatedBlog = await Blog.findByIdAndUpdate(blogId, updateData, {
+    new: true,
+  }).populate("author", "name alias avatar");
 
-  return res.status(200).json(
-    new ApiResponse(200, updatedBlog, "Blog post updated successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedBlog, "Blog post updated successfully"));
 });
 
 // Delete blog post
@@ -210,18 +217,15 @@ const deleteBlog = asyncHandler(async (req, res) => {
 
   // Check if user is authorized to delete this blog
   const user = await User.findById(userId);
-  if (
-    blog.author.toString() !== userId.toString() &&
-    user.role !== "admin"
-  ) {
+  if (blog.author.toString() !== userId.toString() && user.role !== "admin") {
     throw new ApiError(403, "Access denied");
   }
 
   await Blog.findByIdAndDelete(blogId);
 
-  return res.status(200).json(
-    new ApiResponse(200, {}, "Blog post deleted successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Blog post deleted successfully"));
 });
 
 // Add comment to blog post
@@ -252,9 +256,9 @@ const addComment = asyncHandler(async (req, res) => {
     .populate("author", "name alias avatar")
     .populate("comments.user", "name alias avatar");
 
-  return res.status(200).json(
-    new ApiResponse(200, updatedBlog, "Comment added successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedBlog, "Comment added successfully"));
 });
 
 // Approve comment (admin only)
@@ -280,9 +284,9 @@ const approveComment = asyncHandler(async (req, res) => {
   comment.isApproved = true;
   await blog.save();
 
-  return res.status(200).json(
-    new ApiResponse(200, {}, "Comment approved successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Comment approved successfully"));
 });
 
 // Like blog post
@@ -297,9 +301,15 @@ const likeBlog = asyncHandler(async (req, res) => {
 
   await blog.incrementLikes();
 
-  return res.status(200).json(
-    new ApiResponse(200, { likes: blog.likes + 1 }, "Blog post liked successfully")
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { likes: blog.likes + 1 },
+        "Blog post liked successfully"
+      )
+    );
 });
 
 // Get blog categories
@@ -316,9 +326,11 @@ const getBlogCategories = asyncHandler(async (req, res) => {
     "events",
   ];
 
-  return res.status(200).json(
-    new ApiResponse(200, categories, "Blog categories retrieved successfully")
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, categories, "Blog categories retrieved successfully")
+    );
 });
 
 // Get blog statistics (admin only)
@@ -348,9 +360,11 @@ const getBlogStats = asyncHandler(async (req, res) => {
     totalLikes: totalLikes[0]?.totalLikes || 0,
   };
 
-  return res.status(200).json(
-    new ApiResponse(200, stats, "Blog statistics retrieved successfully")
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, stats, "Blog statistics retrieved successfully")
+    );
 });
 
 export {

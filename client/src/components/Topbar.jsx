@@ -53,16 +53,10 @@ const Topbar = () => {
   const { countryCode } = useParams();
   const user = useSelector((state) => state.user);
 
-  // Debug user state
-  React.useEffect(() => {
-    console.log("🔍 Topbar - User state:", user);
-    console.log("🔍 Topbar - User role:", user?.user?.role);
-  }, [user]);
-
   // Fetch unread messages count
   const fetchUnreadMessagesCount = async () => {
     if (!user?.user?._id) {
-      console.log("No user ID, skipping unread messages fetch");
+      setUnreadMessagesCount(0);
       return;
     }
 
@@ -73,30 +67,53 @@ const Topbar = () => {
           return total + (conv.unreadCount || 0);
         }, 0);
         setUnreadMessagesCount(totalUnread);
+        console.log("📨 Topbar - Updated unread count:", totalUnread);
       }
     } catch (error) {
       console.error("Failed to fetch unread messages count:", error);
-      // Don't show error for unauthenticated users
-      if (error.response?.status !== 401) {
-        console.error("Error details:", error.response?.data);
-      }
     }
   };
 
-  // Fetch unread count when user changes
-  useEffect(() => {
+  // Debug user state and fetch notifications
+  React.useEffect(() => {
+    console.log("🔍 Topbar - User state:", user);
+    console.log("🔍 Topbar - User role:", user?.user?.role);
+
     if (user?.user?._id) {
       fetchUnreadMessagesCount();
-      // Refresh every 30 seconds
-      const interval = setInterval(fetchUnreadMessagesCount, 30000);
-      return () => clearInterval(interval);
+      // No auto-refresh interval - let events handle updates
     }
   }, [user?.user?._id]);
+
+  // Listen for conversation opened events
+  React.useEffect(() => {
+    const handleConversationOpened = () => {
+      // Don't refresh unread count when conversation is opened
+      // Let the messagesRead event handle it
+      console.log("📨 Topbar - Conversation opened event received");
+    };
+
+    const handleMessagesRead = () => {
+      // Reset unread count when messages are read
+      setUnreadMessagesCount(0);
+      console.log("📨 Topbar - Messages read, count reset to 0");
+    };
+
+    window.addEventListener("conversationOpened", handleConversationOpened);
+    window.addEventListener("messagesRead", handleMessagesRead);
+    return () => {
+      window.removeEventListener(
+        "conversationOpened",
+        handleConversationOpened
+      );
+      window.removeEventListener("messagesRead", handleMessagesRead);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
       await authAPI.logout();
-      
+
       // Clear localStorage for AuthContext
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -290,6 +307,7 @@ const Topbar = () => {
                   to={`/${countryCode}/${
                     user?.user?.role || "client"
                   }/messages`}
+                  onClick={() => setUnreadMessagesCount(0)}
                 >
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center">

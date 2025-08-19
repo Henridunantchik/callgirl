@@ -8,14 +8,14 @@ import mongoose from "mongoose";
 const getGlobalStats = asyncHandler(async (req, res) => {
   try {
     const { countryCode } = req.params || req.query;
-    
+
     // Check if MongoDB is connected
     if (mongoose.connection.readyState !== 1) {
       // Return demo data if database is not connected
       return res.status(200).json(
         new ApiResponse(
           200,
-          { 
+          {
             stats: {
               totalEscorts: 0,
               verifiedEscorts: 0,
@@ -24,8 +24,8 @@ const getGlobalStats = asyncHandler(async (req, res) => {
               premiumEscorts: 0,
               citiesCovered: 0,
               topCities: [],
-              countryCode: countryCode || "ug"
-            }
+              countryCode: countryCode || "ug",
+            },
           },
           "Demo statistics (database not connected)"
         )
@@ -78,7 +78,10 @@ const getGlobalStats = asyncHandler(async (req, res) => {
         isActive: true,
         isDeleted: { $ne: true },
         "location.country": { $in: [countryName, countryCode] },
-        lastSeen: { $gte: fiveMinutesAgo },
+        $or: [
+          { lastSeen: { $gte: fiveMinutesAgo } },
+          { lastActive: { $gte: fiveMinutesAgo } }
+        ],
       }),
 
       // Featured escorts
@@ -87,7 +90,10 @@ const getGlobalStats = asyncHandler(async (req, res) => {
         isActive: true,
         isDeleted: { $ne: true },
         "location.country": { $in: [countryName, countryCode] },
-        isFeatured: true,
+        $or: [
+          { isFeatured: true },
+          { subscriptionTier: "featured" }
+        ],
       }),
 
       // Premium escorts
@@ -96,7 +102,7 @@ const getGlobalStats = asyncHandler(async (req, res) => {
         isActive: true,
         isDeleted: { $ne: true },
         "location.country": { $in: [countryName, countryCode] },
-        isPremium: true,
+        subscriptionTier: "premium",
       }),
 
       // Cities covered (unique cities where escorts are located)

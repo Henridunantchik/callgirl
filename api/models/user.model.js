@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema(
     },
     isAgeVerified: {
       type: Boolean,
-      default: false,
+      default: true, // Default to true for escorts
     },
     subscriptionTier: {
       type: String,
@@ -279,7 +279,7 @@ const userSchema = new mongoose.Schema(
     verification: {
       isVerified: {
         type: Boolean,
-        default: false,
+        default: true, // Default to true for escorts
       },
       documents: [
         {
@@ -444,7 +444,7 @@ userSchema.methods.canUploadMedia = function (mediaType, currentCount) {
 
 userSchema.methods.getSubscriptionBenefits = function () {
   const benefits = {
-    free: {
+    basic: {
       photos: 10,
       videos: 5,
       features: ["Basic Profile", "Standard Search", "Basic Messaging"],
@@ -486,7 +486,7 @@ userSchema.methods.getSubscriptionBenefits = function () {
     },
   };
 
-  return benefits[this.subscriptionTier] || benefits.free;
+  return benefits[this.subscriptionTier] || benefits.basic;
 };
 
 // Pre-save middleware to update lastSeen and profile completion
@@ -494,6 +494,18 @@ userSchema.pre("save", function (next) {
   if (this.role === "escort") {
     this.lastSeen = new Date();
     this.profileCompletion = this.getProfileCompletionPercentage();
+
+    // Set default values for escorts
+    if (this.isNew || this.isModified("role")) {
+      this.isAgeVerified = true;
+      this.isAvailable = true;
+
+      // Set verification defaults for escorts
+      if (!this.verification) {
+        this.verification = {};
+      }
+      this.verification.isVerified = true;
+    }
   }
   next();
 });

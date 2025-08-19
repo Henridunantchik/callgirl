@@ -15,6 +15,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ageVerified, setAgeVerified] = useState(false);
+  
+  // Import Redux store to sync with AuthContext
+  const reduxStore = window.__REDUX_STORE__;
 
   // Check if user is authenticated on app load
   useEffect(() => {
@@ -112,6 +115,22 @@ export const AuthProvider = ({ children }) => {
           console.log("Token exists:", !!token);
           console.log("Stored user exists:", !!storedUser);
           console.log("Redux user exists:", !!reduxUser);
+          
+          // Check Redux store as final fallback
+          if (reduxStore) {
+            const reduxState = reduxStore.getState();
+            const reduxUser = reduxState.user;
+            console.log("🔍 Redux store state:", reduxState);
+            console.log("🔍 Redux user:", reduxUser);
+            
+            if (reduxUser && reduxUser.isLoggedIn && reduxUser.user) {
+              console.log("✅ Using Redux user as fallback");
+              setUser(reduxUser.user);
+              localStorage.setItem("user", JSON.stringify(reduxUser.user));
+              return;
+            }
+          }
+          
           setUser(null);
         }
       } catch (error) {
@@ -130,6 +149,33 @@ export const AuthProvider = ({ children }) => {
     const verified = localStorage.getItem("ageVerified") === "true";
     setAgeVerified(verified);
   }, []);
+
+  // Sync with Redux store changes
+  useEffect(() => {
+    if (!reduxStore) return;
+
+    const unsubscribe = reduxStore.subscribe(() => {
+      const reduxState = reduxStore.getState();
+      const reduxUser = reduxState.user;
+      
+      if (reduxUser && reduxUser.isLoggedIn && reduxUser.user) {
+        // Update AuthContext if Redux has user but AuthContext doesn't
+        if (!user || user._id !== reduxUser.user._id) {
+          console.log("🔄 Syncing AuthContext with Redux user");
+          setUser(reduxUser.user);
+          localStorage.setItem("user", JSON.stringify(reduxUser.user));
+        }
+      } else if (reduxUser && !reduxUser.isLoggedIn && user) {
+        // Clear AuthContext if Redux user is logged out
+        console.log("🔄 Clearing AuthContext - Redux user logged out");
+        setUser(null);
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      }
+    });
+
+    return unsubscribe;
+  }, [reduxStore, user]);
 
   const login = async (credentials) => {
     try {

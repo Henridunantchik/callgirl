@@ -233,10 +233,13 @@ export const messageAPI = {
   getUserConversations: () => api.get("/message/conversations"),
 
   // Mark message as read
-  markAsRead: (messageId) => api.put(`/message/read/${messageId}`),
+  markAsRead: (messageId) => api.put(`/message/mark-read/${messageId}`),
+
+  // Mark conversation as read
+  markConversationAsRead: (escortId) => api.put(`/message/mark-conversation-read/${escortId}`),
 
   // Delete message
-  deleteMessage: (messageId) => api.delete(`/message/${messageId}`),
+  deleteMessage: (messageId) => api.delete(`/message/delete/${messageId}`),
 };
 
 // Payment API
@@ -308,12 +311,15 @@ export const userAPI = {
   updateOnlineStatus: () => api.put("/user/online-status"),
   getOnlineStatus: (userId) => api.get(`/user/online-status/${userId}`),
   markOffline: () => api.put("/user/offline"),
+
+  // Get main admin for support
+  getMainAdmin: () => api.get("/user/main-admin"),
 };
 
 // Stats API
 export const statsAPI = {
   // Get global platform statistics
-  getGlobalStats: (countryCode) => api.get(`/stats/global`),
+  getGlobalStats: (countryCode) => api.get(`/stats/global/${countryCode}`),
 };
 
 // Upgrade Request API

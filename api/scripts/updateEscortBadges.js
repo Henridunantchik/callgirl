@@ -53,7 +53,7 @@ const updateEscortBadges = async () => {
         isAvailable: true,
         isVerified: true, // Document verification for becoming escort
         isAgeVerified: true,
-        subscriptionTier: "free",
+        subscriptionTier: "basic",
         isFeatured: true,
       }
     );
@@ -69,7 +69,7 @@ const updateEscortBadges = async () => {
         isAvailable: true,
         isVerified: true, // All escorts should be verified (uploaded documents)
         isAgeVerified: true, // All escorts should have age verification
-        subscriptionTier: "free",
+        subscriptionTier: "basic",
         isFeatured: false,
       }
     );

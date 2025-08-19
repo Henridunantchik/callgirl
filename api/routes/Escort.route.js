@@ -1,14 +1,15 @@
 import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { onlyEscort } from "../middleware/onlyEscort.js";
-import { 
-  getAllEscorts, 
-  getEscortById, 
-  searchEscorts, 
-  createEscortProfile, 
-  updateEscortProfile, 
-  getEscortStats, 
-  getIndividualEscortStats 
+import upload from "../config/multer.js";
+import {
+  getAllEscorts,
+  getEscortById,
+  searchEscorts,
+  createEscortProfile,
+  updateEscortProfile,
+  getEscortStats,
+  getIndividualEscortStats,
 } from "../controllers/Escort.controller.js";
 
 const router = express.Router();
@@ -20,15 +21,13 @@ router.get("/search", searchEscorts);
 router.post(
   "/create",
   authenticate,
-  onlyEscort,
+  upload.fields([
+    { name: "gallery", maxCount: 10 },
+    { name: "idDocument", maxCount: 1 },
+  ]),
   createEscortProfile
 );
-router.put(
-  "/update",
-  authenticate,
-  onlyEscort,
-  updateEscortProfile
-);
+router.put("/update", authenticate, onlyEscort, updateEscortProfile);
 router.get("/stats", authenticate, onlyEscort, getEscortStats);
 router.get(
   "/individual-stats/:escortId",

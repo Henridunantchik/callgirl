@@ -15,8 +15,8 @@ const router = express.Router();
 router.post("/create", authenticate, createReview);
 router.get("/escort/:escortId", getEscortReviews);
 router.get("/user", authenticate, getUserReviews);
-router.put("/:id", authenticate, updateReview);
-router.delete("/:id", authenticate, deleteReview);
+router.put("/:reviewId", authenticate, updateReview);
+router.delete("/:reviewId", authenticate, deleteReview);
 router.post("/report/:id", authenticate, reportReview);
 
 export default router;

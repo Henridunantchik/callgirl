@@ -56,11 +56,20 @@ const FavoriteButton = ({
         setIsFavorited(true);
         showToast("success", "Added to favorites");
       }
-      
+
       // Call the callback to update escort stats
       if (onFavoriteToggle) {
         onFavoriteToggle();
       }
+      
+      // Trigger global event for real-time stats updates
+      window.dispatchEvent(new CustomEvent("favoriteToggled", {
+        detail: { 
+          escortId, 
+          isFavorited,
+          action: isFavorited ? "added" : "removed"
+        }
+      }));
     } catch (error) {
       console.error("Error toggling favorite:", error);
       showToast(

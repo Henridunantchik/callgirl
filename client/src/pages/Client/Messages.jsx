@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { showToast } from "../../helpers/showToast";
-import { messageAPI } from "../../services/api";
+import { messageAPI, userAPI } from "../../services/api";
 import { useSocket } from "../../contexts/SocketContext";
 
 const Messages = () => {
@@ -65,6 +65,7 @@ const Messages = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const messagesEndRef = useRef(null);
+
   const typingTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -103,12 +104,39 @@ const Messages = () => {
 
     if (adminId && conversations.length > 0) {
       // Find admin conversation
-      const adminConversation = conversations.find(
+      let adminConversation = conversations.find(
         (conv) => conv.user._id === adminId
       );
+      
       if (adminConversation) {
         setSelectedChat(adminConversation);
         fetchMessages(adminId);
+      } else {
+        // Create a virtual admin conversation if it doesn't exist
+        const createAdminConversation = async () => {
+          try {
+            // Get admin details
+            const adminResponse = await userAPI.getMainAdmin();
+            const admin = adminResponse.data.data.admin;
+            
+            // Create virtual conversation object
+            const virtualAdminConversation = {
+              user: admin,
+              lastMessage: null,
+              unreadCount: 0,
+              _id: `admin_${adminId}`,
+              isVirtual: true
+            };
+            
+            setSelectedChat(virtualAdminConversation);
+            setMessages([]); // Start with empty messages
+          } catch (error) {
+            console.error("Error creating admin conversation:", error);
+            showToast("error", "Failed to open admin conversation");
+          }
+        };
+        
+        createAdminConversation();
       }
     }
   }, [conversations, location.search]);
@@ -119,6 +147,8 @@ const Messages = () => {
       fetchMessages(selectedChat.user._id);
     }
   }, [selectedChat]);
+
+
 
   // Socket event listeners for real-time messaging
   useEffect(() => {
@@ -226,25 +256,14 @@ const Messages = () => {
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
 
-        // Mark messages as read when conversation is opened
-        const unreadMessages =
-          response.data.data.messages?.filter(
-            (msg) =>
-              !msg.isRead &&
-              (msg.sender === escortId ||
-                (msg.sender && msg.sender._id === escortId))
-          ) || [];
+        // Mark all messages as read when conversation is opened
+        await markAllMessagesAsRead(escortId);
 
-        // Mark each unread message as read
-        unreadMessages.forEach((msg) => {
-          markMessageAsRead(msg._id);
-        });
-
-        // Update conversation unread count locally
-        setConversations((prev) =>
-          prev.map((conv) =>
-            conv.user._id === escortId ? { ...conv, unreadCount: 0 } : conv
-          )
+        // Trigger notification update for Topbar and Sidebar
+        window.dispatchEvent(
+          new CustomEvent("conversationOpened", {
+            detail: { escortId },
+          })
         );
       }
     } catch (error) {
@@ -442,6 +461,46 @@ const Messages = () => {
       );
     } catch (error) {
       console.error("Failed to mark message as read:", error);
+    }
+  };
+
+  // Function to mark all messages as read for a conversation
+  const markAllMessagesAsRead = async (escortId) => {
+    try {
+      console.log("📨 Marking conversation as read for escort:", escortId);
+      
+      // Use the new API to mark all messages in conversation as read
+      const response = await messageAPI.markConversationAsRead(escortId);
+      
+      if (response.data && response.data.success) {
+        console.log("📨 Conversation marked as read:", response.data.data.count, "messages");
+        
+        // Update messages locally
+        setMessages((prev) =>
+          prev.map((msg) =>
+            !msg.isRead &&
+            (msg.sender === escortId ||
+              (msg.sender && msg.sender._id === escortId))
+              ? { ...msg, isRead: true }
+              : msg
+          )
+        );
+
+        // Update conversation unread count locally
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.user._id === escortId ? { ...conv, unreadCount: 0 } : conv
+          )
+        );
+
+        // Trigger notification update
+        console.log("📨 Dispatching messagesRead event");
+        window.dispatchEvent(new CustomEvent("messagesRead"));
+      } else {
+        console.log("📨 No unread messages to mark");
+      }
+    } catch (error) {
+      console.error("📨 Failed to mark conversation as read:", error);
     }
   };
 
@@ -786,21 +845,34 @@ const Messages = () => {
                                       : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
                                   }`}
                                 >
-                                  {msg.type === "image" ? (
+                                  {/* Check if content is an image URL or if type is image */}
+                                  {msg.type === "image" ||
+                                  (msg.content &&
+                                    msg.content.startsWith("http") &&
+                                    (msg.content.includes("cloudinary.com") ||
+                                      msg.content.includes(".jpg") ||
+                                      msg.content.includes(".jpeg") ||
+                                      msg.content.includes(".png") ||
+                                      msg.content.includes(".gif") ||
+                                      msg.content.includes(".webp"))) ? (
                                     <div className="space-y-2">
                                       <img
                                         src={msg.content}
                                         alt="Message image"
-                                        className="max-w-full max-h-64 rounded-lg"
+                                        className="max-w-full max-h-64 rounded-lg object-cover"
                                         onError={(e) => {
+                                          // If image fails to load, show as text
                                           e.target.style.display = "none";
-                                          e.target.nextSibling.style.display =
-                                            "block";
+                                          const textDiv =
+                                            document.createElement("div");
+                                          textDiv.className =
+                                            "text-sm leading-relaxed";
+                                          textDiv.textContent = msg.content;
+                                          e.target.parentNode.appendChild(
+                                            textDiv
+                                          );
                                         }}
                                       />
-                                      <div className="hidden text-xs text-gray-500">
-                                        Image failed to load
-                                      </div>
                                     </div>
                                   ) : (
                                     <p className="text-sm leading-relaxed">

@@ -7,6 +7,7 @@ import SearchRedirect from "./components/SearchRedirect";
 import Layout from "./Layout/Layout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SocketProvider } from "./contexts/SocketContext";
+
 import { useGeolocation } from "./hooks/useGeolocation";
 import { isValidCountryCode } from "./helpers/countries";
 import {
@@ -56,6 +57,7 @@ import ClientDashboard from "./pages/Client/ClientDashboard";
 import Favorites from "./pages/Client/Favorites";
 import Bookings from "./pages/Client/Bookings";
 import Messages from "./pages/Client/Messages";
+import ComingSoonPage from "./pages/ComingSoonPage";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import UserManagement from "./pages/Admin/UserManagement";
 import ContentModeration from "./pages/Admin/ContentModeration";
@@ -113,7 +115,7 @@ const App = () => {
                     element={<ClientDashboard />}
                   />
                   <Route path="client/favorites" element={<Favorites />} />
-                  <Route path="client/bookings" element={<Bookings />} />
+                  <Route path="client/bookings" element={<ComingSoonPage />} />
                   <Route path="client/messages" element={<Messages />} />
                   <Route
                     path="escort/registration"
@@ -131,9 +133,10 @@ const App = () => {
                     path="escort/profile"
                     element={<EscortProfileEdit />}
                   />
-                  <Route path="escort/messages" element={<Messages />} />
-                  <Route path="escort/reviews" element={<EscortReviews />} />
-                  <Route path="escort/upgrade" element={<UpgradeProfile />} />
+                                     <Route path="escort/messages" element={<Messages />} />
+                   <Route path="escort/bookings" element={<ComingSoonPage />} />
+                   <Route path="escort/reviews" element={<EscortReviews />} />
+                   <Route path="escort/upgrade" element={<UpgradeProfile />} />
                   <Route path="victime/add" element={<AddBlog />} />
                   <Route path="victimes" element={<BlogDetails />} />
                   <Route path="victime/edit/:blogid" element={<EditBlog />} />
@@ -170,7 +173,10 @@ const App = () => {
                 />
                 <Route path="admin/payments" element={<PaymentManagement />} />
                 <Route path="admin/analytics" element={<Analytics />} />
-                <Route path="admin/upgrade-requests" element={<UpgradeRequests />} />
+                <Route
+                  path="admin/upgrade-requests"
+                  element={<UpgradeRequests />}
+                />
                 <Route path="admin/messages" element={<AdminMessages />} />
                 <Route path="sexe/add" element={<AddCategory />} />
                 <Route path="sexe" element={<CategoryDetails />} />
