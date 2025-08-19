@@ -13,8 +13,20 @@ import { fileURLToPath } from "url";
 // Import configuration
 import config from "./config/env.js";
 
-// Import consolidated routes
-import consolidatedRoutes from "./routes/consolidated.js";
+// Import individual routes
+import authRoutes from "./routes/Auth.route.js";
+import userRoutes from "./routes/User.route.js";
+import escortRoutes from "./routes/Escort.route.js";
+import messageRoutes from "./routes/Message.route.js";
+import statsRoutes from "./routes/Stats.route.js";
+import upgradeRequestRoutes from "./routes/UpgradeRequest.route.js";
+import reviewRoutes from "./routes/Review.route.js";
+import favoriteRoutes from "./routes/Favorite.route.js";
+import categoryRoutes from "./routes/Category.route.js";
+import adminRoutes from "./routes/Admin.route.js";
+import transportRoutes from "./routes/Transport.route.js";
+import bookingRoutes from "./routes/Booking.route.js";
+import blogRoutes from "./routes/Blog.route.js";
 
 // Import middleware (not needed in consolidated routes)
 
@@ -70,8 +82,20 @@ app.get("/health", (req, res) => {
   });
 });
 
-// API routes (consolidated)
-app.use("/api", consolidatedRoutes);
+// API routes (individual)
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/escort", escortRoutes);
+app.use("/api/message", messageRoutes);
+app.use("/api/stats", statsRoutes);
+app.use("/api/upgrade-request", upgradeRequestRoutes);
+app.use("/api/review", reviewRoutes);
+app.use("/api/favorite", favoriteRoutes);
+app.use("/api/category", categoryRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/transport", transportRoutes);
+app.use("/api/booking", bookingRoutes);
+app.use("/api/blog", blogRoutes);
 
 // Socket.io connection handling
 io.on("connection", (socket) => {

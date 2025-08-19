@@ -161,25 +161,22 @@ export const bookingAPI = {
   // Create booking
   createBooking: (bookingData) => api.post("/booking/create", bookingData),
 
-  // Get user bookings
-  getUserBookings: () => api.get("/booking/user"),
-
-  // Get escort bookings
-  getEscortBookings: () => api.get("/booking/escort"),
+  // Get user bookings (client or escort)
+  getUserBookings: (params = {}) => api.get("/booking/user", { params }),
 
   // Get booking by ID
   getBooking: (id) => api.get(`/booking/${id}`),
 
-  // Update booking status
-  updateBookingStatus: (id, status) =>
-    api.put(`/booking/status/${id}`, { status }),
+  // Update booking status (escort only)
+  updateBookingStatus: (id, status, notes) =>
+    api.put(`/booking/${id}/status`, { status, notes }),
 
   // Cancel booking
-  cancelBooking: (id) => api.put(`/booking/cancel/${id}`),
+  cancelBooking: (id, reason) => api.put(`/booking/${id}/cancel`, { reason }),
 
-  // Get availability
-  getAvailability: (escortId, date) =>
-    api.get(`/booking/availability/${escortId}`, { params: { date } }),
+  // Get escort availability
+  getEscortAvailability: (escortId, date) =>
+    api.get(`/booking/escort/${escortId}/availability`, { params: { date } }),
 };
 
 // Review API
@@ -369,6 +366,46 @@ export const adminAPI = {
 
   // Get analytics
   getAnalytics: (params = {}) => api.get("/admin/analytics", { params }),
+};
+
+// Blog API
+export const blogAPI = {
+  // Create blog post
+  createBlog: (blogData) => api.post("/blog/create", blogData),
+
+  // Get all published blogs
+  getAllBlogs: (params = {}) => api.get("/blog/all", { params }),
+
+  // Get featured blogs
+  getFeaturedBlogs: (params = {}) => api.get("/blog/featured", { params }),
+
+  // Get blog by slug
+  getBlogBySlug: (slug) => api.get(`/blog/slug/${slug}`),
+
+  // Get blog by ID (for editing)
+  getBlogById: (blogId) => api.get(`/blog/${blogId}`),
+
+  // Update blog
+  updateBlog: (blogId, blogData) => api.put(`/blog/${blogId}`, blogData),
+
+  // Delete blog
+  deleteBlog: (blogId) => api.delete(`/blog/${blogId}`),
+
+  // Add comment
+  addComment: (blogId, content) => api.post(`/blog/${blogId}/comment`, { content }),
+
+  // Like blog
+  likeBlog: (blogId) => api.post(`/blog/${blogId}/like`),
+
+  // Get blog categories
+  getBlogCategories: () => api.get("/blog/categories"),
+
+  // Get blog stats (admin only)
+  getBlogStats: () => api.get("/blog/stats"),
+
+  // Approve comment (admin only)
+  approveComment: (blogId, commentId) =>
+    api.put(`/blog/${blogId}/comment/${commentId}/approve`),
 };
 
 export default api;
