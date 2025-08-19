@@ -35,5 +35,6 @@ router.get(
   authenticate,
   getIndividualEscortStats
 );
+router.get("/public-stats/:escortId", getEscortStats);
 
 export default router;
