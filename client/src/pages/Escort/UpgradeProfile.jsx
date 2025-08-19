@@ -689,7 +689,7 @@ const UpgradeProfile = () => {
                 onClick={() => handleUpgrade("premium")}
                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
               >
-                Become Premium - $5/month
+                Become Premium - $5/month or $60/year
               </Button>
             </div>
           </div>
@@ -771,8 +771,9 @@ const UpgradeProfile = () => {
               <CardContent>
                 <p className="text-gray-600">
                   Featured ($12): Visible contact, more visibility, 3x more
-                  clients. Premium ($5/month): Everything from Featured +
-                  verified badge, maximum visibility, 5x more clients.
+                  clients. Premium ($5/month or $60/year): Everything from
+                  Featured + verified badge, maximum visibility, 5x more
+                  clients.
                 </p>
               </CardContent>
             </Card>
