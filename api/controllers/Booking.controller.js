@@ -274,6 +274,46 @@ const getEscortAvailability = asyncHandler(async (req, res) => {
   );
 });
 
+// Get escort's bookings (for escort dashboard)
+const getEscortBookings = asyncHandler(async (req, res) => {
+  const escortId = req.user._id;
+  const { status, page = 1, limit = 10 } = req.query;
+
+  // Verify user is an escort
+  if (req.user.role !== "escort") {
+    throw new ApiError(403, "Access denied - escort only");
+  }
+
+  const filter = { escort: escortId };
+
+  if (status) {
+    filter.status = status;
+  }
+
+  const skip = (page - 1) * limit;
+
+  const bookings = await Booking.find(filter)
+    .populate("client", "name alias avatar phone")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+  const total = await Booking.countDocuments(filter);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        bookings,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      "Escort bookings retrieved successfully"
+    )
+  );
+});
+
 export {
   createBooking,
   getUserBookings,
@@ -281,4 +321,5 @@ export {
   updateBookingStatus,
   cancelBooking,
   getEscortAvailability,
+  getEscortBookings,
 };
