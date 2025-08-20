@@ -421,17 +421,14 @@ const Profile = () => {
           } else {
             // Retry with direct fetch
             console.log(`Retry ${retryCount}: Using direct fetch...`);
-            const fetchResponse = await fetch(
-              "/api/user/update",
-              {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-                body: JSON.stringify(dataToSend),
-              }
-            );
+            const fetchResponse = await fetch("/api/user/update", {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify(dataToSend),
+            });
 
             if (!fetchResponse.ok) {
               const errorText = await fetchResponse.text();
@@ -594,16 +591,13 @@ const Profile = () => {
         console.log(`Starting upload of ${files.length} images...`);
         const startTime = Date.now();
 
-        const response = await fetch(
-          "/api/escort/gallery/" + user?._id,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: formData,
-          }
-        );
+        const response = await fetch("/api/escort/gallery/" + user?._id, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        });
 
         const uploadTime = Date.now() - startTime;
         console.log(`Upload completed in ${uploadTime}ms`);
@@ -613,14 +607,11 @@ const Profile = () => {
           showToast("Gallery photos uploaded successfully!", "success");
 
           // Refresh user data to show new gallery
-          const userResponse = await fetch(
-            "/api/auth/me",
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            }
-          );
+          const userResponse = await fetch("/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
 
           if (userResponse.ok) {
             const userData = await userResponse.json();
@@ -648,37 +639,42 @@ const Profile = () => {
 
         // Add all video files to form data
         files.forEach((file, index) => {
-          formData.append("videos", file);
+          formData.append("video", file);
         });
 
-        const response = await fetch(
-          "/api/escort/video/" + user?._id,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: formData,
-          }
-        );
+        console.log("Uploading videos to:", "/api/escort/video/" + user?._id);
+        console.log("FormData entries:", Array.from(formData.entries()));
+
+        const response = await fetch("/api/escort/video/" + user?._id, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        });
+
+        console.log("Response status:", response.status);
+        console.log("Response ok:", response.ok);
 
         if (response.ok) {
           const data = await response.json();
+          console.log("Video upload response:", data);
           showToast("Videos uploaded successfully!", "success");
 
           // Refresh user data to show new videos
-          const userResponse = await fetch(
-            "/api/auth/me",
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            }
-          );
+          const userResponse = await fetch("/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
 
           if (userResponse.ok) {
             const userData = await userResponse.json();
+            console.log("User data after video upload:", userData);
             setUserData({ success: true, user: userData.user });
+
+            // Force re-render by updating user in Redux as well
+            dispatch(setUser(userData.user));
           }
         } else {
           const errorData = await response.json();
@@ -738,6 +734,9 @@ const Profile = () => {
           const userData = await userResponse.json();
           setUserData({ success: true, user: userData.user });
           showToast("Image deleted successfully!", "success");
+
+          // Force re-render by updating user in Redux as well
+          dispatch(setUser(userData.user));
         } else {
           console.error("Failed to refresh user data:", userResponse.status);
           showToast("Image deleted but failed to refresh data", "warning");
@@ -789,6 +788,9 @@ const Profile = () => {
           const userData = await userResponse.json();
           setUserData({ success: true, user: userData.user });
           showToast("Video deleted successfully!", "success");
+
+          // Force re-render by updating user in Redux as well
+          dispatch(setUser(userData.user));
         }
       } else {
         showToast("Failed to delete video", "error");
@@ -950,9 +952,7 @@ const Profile = () => {
                         <div className="relative group cursor-pointer">
                           <PremiumAvatar
                             src={
-                              filePreview
-                                ? filePreview
-                                : userData?.user?.avatar
+                              filePreview ? filePreview : userData?.user?.avatar
                             }
                             alt={userData?.user?.name || "Profile"}
                             size="w-24 h-24"

@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { onlyAdmin } from "../middleware/onlyadmin.js";
-import * as AdminController from "../controllers/admin.controller.js";
+import * as AdminController from "../controllers/Admin.controller.js";
 
 const router = express.Router();
 
@@ -15,5 +15,11 @@ router.put(
 );
 router.get("/stats", authenticate, onlyAdmin, AdminController.getPlatformStats);
 router.get("/analytics", authenticate, onlyAdmin, AdminController.getAnalytics);
+router.post(
+  "/fix-video-ids",
+  authenticate,
+  onlyAdmin,
+  AdminController.fixVideoIds
+);
 
 export default router;

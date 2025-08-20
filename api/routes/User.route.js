@@ -1,20 +1,21 @@
 import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
-import { 
-  getUser, 
-  updateUser, 
+import upload from "../config/multer.js";
+import {
+  getUser,
+  updateUser,
   deleteUser,
   updateOnlineStatus,
   getOnlineStatus,
   markOffline,
-  getMainAdmin
+  getMainAdmin,
 } from "../controllers/User.controller.js";
 
 const router = express.Router();
 
 // ===== USER ROUTES =====
 router.get("/profile", authenticate, getUser);
-router.put("/profile", authenticate, updateUser);
+router.put("/profile", authenticate, upload.single("avatar"), updateUser);
 router.delete("/account", authenticate, deleteUser);
 
 // Online status routes
