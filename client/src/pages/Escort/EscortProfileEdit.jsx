@@ -528,39 +528,21 @@ const EscortProfileEdit = () => {
       const file = files[0];
 
       const formData = new FormData();
-      formData.append("file", file);
-
-      console.log("=== AVATAR UPLOAD DEBUG ===");
-      console.log("File to upload:", file.name);
-      console.log("File size:", file.size);
+      formData.append("avatar", file);
 
       const response = await userAPI.uploadAvatar(formData);
-      console.log("Avatar upload response:", response.data);
-
       if (response.data.success) {
-        console.log("=== AVATAR UPLOAD SUCCESS DEBUG ===");
-        console.log("Full response:", response.data);
-        console.log("User from response:", response.data.user);
-        console.log("Avatar URL from response:", response.data.user?.avatar);
-        console.log("Current user state:", user);
-
         // Update the user state with new avatar
         const updatedUser = { ...user, avatar: response.data.user.avatar };
-        console.log("Updated user object:", updatedUser);
 
         dispatch(setUser(updatedUser));
 
         // Force avatar re-render
         setAvatarKey((prev) => prev + 1);
 
-        console.log("✅ Avatar uploaded successfully");
-        console.log("New avatar URL:", response.data.user.avatar);
-        console.log("Updated user state:", updatedUser);
-
         showToast("Profile picture updated successfully!", "success");
       } else {
         showToast("Failed to upload profile picture", "error");
-        console.log("❌ Avatar upload failed");
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
@@ -581,20 +563,24 @@ const EscortProfileEdit = () => {
         formData.append("gallery", file);
       });
 
-      console.log("=== GALLERY UPLOAD DEBUG ===");
-      console.log("User ID:", user._id);
-      console.log("Files to upload:", files.length);
+      console.log("Uploading gallery to:", user._id);
+      console.log("FormData entries:", Array.from(formData.entries()));
 
       const response = await escortAPI.uploadGallery(user._id, formData);
-      console.log("Gallery upload response:", response.data);
+      console.log("Gallery upload response:", response);
 
       if (response.data.success) {
-        dispatch(setUser({ ...user, gallery: response.data.escort.gallery }));
+        console.log(
+          "Gallery upload success, updating Redux with:",
+          response.data.data.escort.gallery
+        );
+        dispatch(
+          setUser({ ...user, gallery: response.data.data.escort.gallery })
+        );
         showToast("Gallery updated successfully!", "success");
-        console.log("✅ Gallery uploaded successfully");
       } else {
+        console.error("Gallery upload failed:", response.data);
         showToast("Failed to upload gallery", "error");
-        console.log("❌ Gallery upload failed");
       }
     } catch (error) {
       console.error("Error uploading gallery:", error);
@@ -616,9 +602,8 @@ const EscortProfileEdit = () => {
         formData.append("video", file);
       });
 
-      console.log("=== VIDEO UPLOAD DEBUG ===");
-      console.log("User ID:", user._id);
-      console.log("Files to upload:", files.length);
+      console.log("Uploading videos to:", user._id);
+      console.log("FormData entries:", Array.from(formData.entries()));
 
       // Use axios with progress tracking
       const response = await escortAPI.uploadVideo(user._id, formData, {
@@ -628,21 +613,24 @@ const EscortProfileEdit = () => {
               (progressEvent.loaded * 100) / progressEvent.total
             );
             setVideoUploadProgress(progress);
-            console.log(`Upload progress: ${progress}%`);
           }
         },
       });
+
       console.log("Video upload response:", response);
 
       if (response.data.success) {
+        console.log(
+          "Video upload success, updating Redux with:",
+          response.data.data.escort.videos
+        );
         dispatch(
           setUser({ ...user, videos: response.data.data.escort.videos })
         );
         showToast("Videos updated successfully!", "success");
-        console.log("✅ Videos uploaded successfully");
       } else {
+        console.error("Video upload failed:", response.data);
         showToast("Failed to upload videos", "error");
-        console.log("❌ Video upload failed");
       }
     } catch (error) {
       console.error("Error uploading videos:", error);
@@ -673,24 +661,16 @@ const EscortProfileEdit = () => {
       setSaving(true);
       showToast("Deleting photo...", "info");
 
-      console.log("=== DELETE GALLERY IMAGE DEBUG ===");
-      console.log("User ID:", user._id);
-      console.log("Image ID:", imageId);
-
       const response = await escortAPI.deleteGalleryImage(user._id, imageId);
-      console.log("Delete response:", response.data);
 
       if (response.data.success) {
-        // Update user state by removing the deleted image
-        const updatedGallery = user.gallery.filter(
-          (img) => img._id !== imageId
+        // Update user state with the updated gallery from response
+        dispatch(
+          setUser({ ...user, gallery: response.data.data.escort.gallery })
         );
-        dispatch(setUser({ ...user, gallery: updatedGallery }));
         showToast("Photo deleted successfully!", "success");
-        console.log("✅ Photo deleted successfully");
       } else {
         showToast("Failed to delete photo", "error");
-        console.log("❌ Photo deletion failed");
       }
     } catch (error) {
       console.error("Error deleting gallery image:", error);
@@ -720,22 +700,16 @@ const EscortProfileEdit = () => {
       setDeletingVideo(videoId);
       showToast("Deleting video...", "info");
 
-      console.log("=== DELETE VIDEO DEBUG ===");
-      console.log("User ID:", user._id);
-      console.log("Video ID:", videoId);
-
       const response = await escortAPI.deleteVideo(user._id, videoId);
-      console.log("Delete response:", response.data);
 
       if (response.data.success) {
-        // Update user state by removing the deleted video
-        const updatedVideos = user.videos.filter((vid) => vid._id !== videoId);
-        dispatch(setUser({ ...user, videos: updatedVideos }));
+        // Update user state with the updated videos from response
+        dispatch(
+          setUser({ ...user, videos: response.data.data.escort.videos })
+        );
         showToast("Video deleted successfully!", "success");
-        console.log("✅ Video deleted successfully");
       } else {
         showToast("Failed to delete video", "error");
-        console.log("❌ Video deletion failed");
       }
     } catch (error) {
       console.error("Error deleting video:", error);
@@ -1811,15 +1785,32 @@ const EscortProfileEdit = () => {
                           </div>
                           <button
                             type="button"
-                            onClick={() => deleteVideo(video._id || index)}
-                            disabled={deletingVideo === (video._id || index)}
+                            onClick={() =>
+                              deleteVideo(
+                                video._id
+                                  ? video._id.toString()
+                                  : index.toString()
+                              )
+                            }
+                            disabled={
+                              deletingVideo ===
+                              (video._id
+                                ? video._id.toString()
+                                : index.toString())
+                            }
                             className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
-                              deletingVideo === (video._id || index)
+                              deletingVideo ===
+                              (video._id
+                                ? video._id.toString()
+                                : index.toString())
                                 ? "bg-gray-400 cursor-not-allowed"
                                 : "bg-red-500 cursor-pointer hover:bg-red-600"
                             }`}
                           >
-                            {deletingVideo === (video._id || index) ? (
+                            {deletingVideo ===
+                            (video._id
+                              ? video._id.toString()
+                              : index.toString()) ? (
                               <div className="flex items-center gap-1">
                                 <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                 <span>Deleting...</span>

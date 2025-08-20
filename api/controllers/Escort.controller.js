@@ -609,11 +609,17 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
 
     for (const file of req.files) {
       try {
+        console.log("Attempting to upload file:", file.originalname);
+        console.log("File path:", file.path);
+        console.log("File size:", file.size);
+
         // Upload to Cloudinary
         const result = await cloudinary.uploader.upload(file.path, {
           folder: "escort-videos",
           resource_type: "video",
         });
+
+        console.log("Cloudinary upload successful:", result.public_id);
 
         // Add to videos
         const mediaItem = {
@@ -635,8 +641,17 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
           file.originalname,
           uploadError
         );
+        // Clean up local file even if upload fails
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
         // Continue with other files even if one fails
       }
+    }
+
+    // Check if any files were successfully uploaded
+    if (uploadedFiles.length === 0) {
+      throw new ApiError(500, "Failed to upload any videos. Please try again.");
     }
 
     await escort.save();
@@ -1362,6 +1377,133 @@ export const getIndividualEscortStats = asyncHandler(async (req, res, next) => {
           "Individual escort statistics retrieved successfully"
         )
       );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Delete gallery image for escort
+ * DELETE /api/escort/gallery/:id/:imageId
+ */
+export const deleteGalleryImage = asyncHandler(async (req, res, next) => {
+  try {
+    const { id, imageId } = req.params;
+    const userId = req.user._id;
+
+    if (id !== userId) {
+      throw new ApiError(403, "You can only delete from your own profile");
+    }
+
+    const escort = await User.findById(userId);
+    if (!escort || escort.role !== "escort") {
+      throw new ApiError(404, "Escort not found");
+    }
+
+    // Find the image in gallery
+    const imageIndex = escort.gallery.findIndex(
+      (img) => img._id.toString() === imageId
+    );
+
+    if (imageIndex === -1) {
+      throw new ApiError(404, "Image not found in gallery");
+    }
+
+    const image = escort.gallery[imageIndex];
+
+    // Delete from Cloudinary if publicId exists
+    if (image.publicId) {
+      try {
+        await cloudinary.uploader.destroy(image.publicId);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary delete error:", cloudinaryError);
+        // Continue even if Cloudinary delete fails
+      }
+    }
+
+    // Remove from gallery array
+    escort.gallery.splice(imageIndex, 1);
+
+    // Reorder remaining images
+    escort.gallery.forEach((img, index) => {
+      img.order = index;
+    });
+
+    await escort.save();
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          escort: { gallery: escort.gallery },
+          deletedImage: image,
+        },
+        "Gallery image deleted successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Delete video for escort
+ * DELETE /api/escort/video/:id/:videoId
+ */
+export const deleteVideo = asyncHandler(async (req, res, next) => {
+  try {
+    const { id, videoId } = req.params;
+    const userId = req.user._id;
+
+    if (id !== userId) {
+      throw new ApiError(403, "You can only delete from your own profile");
+    }
+
+    const escort = await User.findById(userId);
+    if (!escort || escort.role !== "escort") {
+      throw new ApiError(404, "Escort not found");
+    }
+
+    // Find the video in videos array
+    const videoIndex = escort.videos.findIndex(
+      (video) =>
+        (video._id && video._id.toString() === videoId) ||
+        videoId === escort.videos.indexOf(video).toString()
+    );
+
+    if (videoIndex === -1) {
+      throw new ApiError(404, "Video not found");
+    }
+
+    const video = escort.videos[videoIndex];
+
+    // Delete from Cloudinary if publicId exists
+    if (video.publicId) {
+      try {
+        await cloudinary.uploader.destroy(video.publicId, {
+          resource_type: "video",
+        });
+      } catch (cloudinaryError) {
+        console.error("Cloudinary delete error:", cloudinaryError);
+        // Continue even if Cloudinary delete fails
+      }
+    }
+
+    // Remove from videos array
+    escort.videos.splice(videoIndex, 1);
+
+    await escort.save();
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          escort: { videos: escort.videos },
+          deletedVideo: video,
+        },
+        "Video deleted successfully"
+      )
+    );
   } catch (error) {
     next(error);
   }

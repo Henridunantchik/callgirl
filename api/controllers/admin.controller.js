@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import mongoose from "mongoose";
 
 // Make Lola Lala Premium
 const makeLolaPremium = asyncHandler(async (req, res) => {
@@ -99,7 +100,7 @@ const updateUserStatus = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "User status updated successfully"));
+    .json(new ApiResponse(200, { user }, "User status updated successfully"));
 });
 
 // Get platform stats (admin)
@@ -107,12 +108,6 @@ const getPlatformStats = asyncHandler(async (req, res) => {
   const totalUsers = await User.countDocuments();
   const totalEscorts = await User.countDocuments({ role: "escort" });
   const totalClients = await User.countDocuments({ role: "client" });
-  const premiumUsers = await User.countDocuments({
-    subscriptionTier: "premium",
-  });
-  const featuredUsers = await User.countDocuments({
-    subscriptionTier: "featured",
-  });
 
   return res.status(200).json(
     new ApiResponse(
@@ -121,8 +116,6 @@ const getPlatformStats = asyncHandler(async (req, res) => {
         totalUsers,
         totalEscorts,
         totalClients,
-        premiumUsers,
-        featuredUsers,
       },
       "Platform stats retrieved successfully"
     )
@@ -162,10 +155,68 @@ const getAnalytics = asyncHandler(async (req, res) => {
   );
 });
 
-export {
-  makeLolaPremium,
-  getAllUsers,
-  updateUserStatus,
-  getPlatformStats,
-  getAnalytics,
-};
+/**
+ * Fix missing video IDs
+ * POST /api/admin/fix-video-ids
+ */
+const fixVideoIds = asyncHandler(async (req, res, next) => {
+  try {
+    console.log("Starting video ID fix...");
+
+    // Find all users with videos
+    const users = await User.find({ "videos.0": { $exists: true } });
+    console.log(`Found ${users.length} users with videos`);
+
+    let updatedCount = 0;
+    let totalVideosFixed = 0;
+
+    for (const user of users) {
+      let needsUpdate = false;
+
+      // Check if any video doesn't have _id
+      if (user.videos && user.videos.length > 0) {
+        for (let i = 0; i < user.videos.length; i++) {
+          if (!user.videos[i]._id) {
+            // Add _id to this video
+            user.videos[i]._id = new mongoose.Types.ObjectId();
+            needsUpdate = true;
+            totalVideosFixed++;
+            console.log(`Adding _id to video ${i} for user: ${user.name}`);
+          }
+        }
+      }
+
+      if (needsUpdate) {
+        await user.save();
+        updatedCount++;
+        console.log(`Updated user: ${user.name} (${user._id})`);
+      }
+    }
+
+    console.log(
+      `Fix complete! Updated ${updatedCount} users, fixed ${totalVideosFixed} videos`
+    );
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          usersUpdated: updatedCount,
+          videosFixed: totalVideosFixed,
+          totalUsersWithVideos: users.length,
+        },
+        `Successfully fixed ${totalVideosFixed} videos across ${updatedCount} users`
+      )
+    );
+  } catch (error) {
+    console.error("Fix error:", error);
+    next(error);
+  }
+});
+
+export { makeLolaPremium };
+export { getAllUsers };
+export { updateUserStatus };
+export { getPlatformStats };
+export { getAnalytics };
+export { fixVideoIds };

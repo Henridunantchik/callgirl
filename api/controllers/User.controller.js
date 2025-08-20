@@ -8,19 +8,11 @@ import { ApiError } from "../utils/ApiError.js";
 
 export const getUser = async (req, res, next) => {
   try {
-    console.log("=== GET USER DEBUG ===");
-    console.log("Request params:", req.params);
-    console.log("Authenticated user:", req.user);
-
     const { userid } = req.params;
     const authenticatedUserId = req.user._id;
 
-    console.log("Requested user ID:", userid);
-    console.log("Authenticated user ID:", authenticatedUserId);
-
     // Check if user is requesting their own data or is admin
     if (userid !== authenticatedUserId && req.user.role !== "admin") {
-      console.log("Access denied - user can only access their own data");
       return res.status(403).json({
         success: false,
         message: "Access denied - you can only access your own profile",
@@ -29,14 +21,11 @@ export const getUser = async (req, res, next) => {
 
     const user = await User.findOne({ _id: userid }).lean().exec();
     if (!user) {
-      console.log("User not found:", userid);
       return res.status(404).json({
         success: false,
         message: "User not found.",
       });
     }
-
-    console.log("User found:", user._id);
     res.status(200).json({
       success: true,
       message: "User data found.",
@@ -50,10 +39,6 @@ export const getUser = async (req, res, next) => {
 
 export const updateUser = async (req, res, next) => {
   try {
-    console.log("=== UPDATE USER DEBUG ===");
-    console.log("Request body:", req.body);
-    console.log("Authenticated user:", req.user);
-
     const data = req.body;
     const authenticatedUserId = req.user._id;
 
@@ -65,9 +50,6 @@ export const updateUser = async (req, res, next) => {
       });
     }
 
-    console.log("Updating user:", user._id);
-    console.log("User role:", user.role);
-
     // Basic fields for all users (only update if provided)
     if (data.name !== undefined) user.name = data.name;
     if (data.email !== undefined) user.email = data.email;
@@ -78,8 +60,6 @@ export const updateUser = async (req, res, next) => {
 
     // Escort-specific fields (only update if provided)
     if (user.role === "escort") {
-      console.log("Updating escort-specific fields");
-
       if (data.alias !== undefined) user.alias = data.alias;
       if (data.age !== undefined) user.age = data.age;
       if (data.gender !== undefined) user.gender = data.gender;
@@ -122,7 +102,6 @@ export const updateUser = async (req, res, next) => {
 
     // Avatar upload (if file provided)
     if (req.file) {
-      console.log("Uploading avatar file");
       const uploadResult = await cloudinary.uploader
         .upload(req.file.path, {
           folder: "tusiwawasahau",
@@ -139,13 +118,10 @@ export const updateUser = async (req, res, next) => {
       user.avatar = uploadResult.secure_url;
     }
 
-    console.log("Saving updated user...");
     await user.save();
 
     const newUser = user.toObject({ getters: true });
     delete newUser.password;
-
-    console.log("User updated successfully");
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
@@ -192,12 +168,12 @@ export const updateOnlineStatus = asyncHandler(async (req, res) => {
   // Update last active time
   await User.findByIdAndUpdate(userId, {
     lastActive: new Date(),
-    isOnline: true
+    isOnline: true,
   });
 
-  return res.status(200).json(
-    new ApiResponse(200, { isOnline: true }, "Online status updated")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { isOnline: true }, "Online status updated"));
 });
 
 // Get user's online status
@@ -213,9 +189,9 @@ export const getOnlineStatus = asyncHandler(async (req, res) => {
   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
   const isOnline = user.lastActive && user.lastActive >= thirtyMinutesAgo;
 
-  return res.status(200).json(
-    new ApiResponse(200, { isOnline }, "Online status retrieved")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { isOnline }, "Online status retrieved"));
 });
 
 // Mark user as offline
@@ -223,20 +199,22 @@ export const markOffline = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   await User.findByIdAndUpdate(userId, {
-    isOnline: false
+    isOnline: false,
   });
 
-  return res.status(200).json(
-    new ApiResponse(200, { isOnline: false }, "Marked as offline")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { isOnline: false }, "Marked as offline"));
 });
 
 // Get main admin for support
 export const getMainAdmin = asyncHandler(async (req, res) => {
   try {
     // Find the first admin user (or create one if none exists)
-    let admin = await User.findOne({ role: "admin" }).select("_id name email avatar");
-    
+    let admin = await User.findOne({ role: "admin" }).select(
+      "_id name email avatar"
+    );
+
     if (!admin) {
       // Create a default admin if none exists
       admin = await User.create({
@@ -244,13 +222,13 @@ export const getMainAdmin = asyncHandler(async (req, res) => {
         email: "support@callgirls.com",
         role: "admin",
         isActive: true,
-        avatar: "https://via.placeholder.com/150/3B82F6/FFFFFF?text=Support"
+        avatar: "https://via.placeholder.com/150/3B82F6/FFFFFF?text=Support",
       });
     }
 
-    return res.status(200).json(
-      new ApiResponse(200, { admin }, "Main admin retrieved")
-    );
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { admin }, "Main admin retrieved"));
   } catch (error) {
     console.error("Error getting main admin:", error);
     throw new ApiError(500, "Failed to get admin information");

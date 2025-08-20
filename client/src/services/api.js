@@ -294,7 +294,7 @@ export const userAPI = {
   getUser: (userId) => api.get(`/user/get-user/${userId}`),
 
   // Update user profile
-  updateUserProfile: (userData) => api.put("/user/update", userData),
+  updateUserProfile: (userData) => api.put("/user/profile", userData),
 
   // Change password
   changePassword: (passwordData) => api.put("/user/password", passwordData),
@@ -304,7 +304,7 @@ export const userAPI = {
 
   // Upload avatar
   uploadAvatar: (formData) =>
-    api.put("/user/update", formData, {
+    api.put("/user/profile", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 

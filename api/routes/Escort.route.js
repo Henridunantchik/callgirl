@@ -10,6 +10,10 @@ import {
   updateEscortProfile,
   getEscortStats,
   getIndividualEscortStats,
+  uploadGallery,
+  uploadVideo,
+  deleteGalleryImage,
+  deleteVideo,
 } from "../controllers/Escort.controller.js";
 
 const router = express.Router();
@@ -35,5 +39,37 @@ router.get(
   getIndividualEscortStats
 );
 router.get("/public-stats/:escortId", getEscortStats);
+
+// Media upload routes
+router.post(
+  "/media/:id",
+  authenticate,
+  onlyEscort,
+  upload.array("gallery", 10),
+  uploadGallery
+);
+
+router.post(
+  "/video/:id",
+  authenticate,
+  onlyEscort,
+  upload.array("video", 5),
+  uploadVideo
+);
+
+// Delete routes
+router.delete(
+  "/gallery/:id/:imageId",
+  authenticate,
+  onlyEscort,
+  deleteGalleryImage
+);
+
+router.delete(
+  "/video/:id/:videoId",
+  authenticate,
+  onlyEscort,
+  deleteVideo
+);
 
 export default router;
