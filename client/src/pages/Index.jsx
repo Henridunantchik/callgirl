@@ -59,122 +59,131 @@ const Index = () => {
   console.log("Loading:", loading);
   console.log("Error:", error);
 
+  // Function to fetch escort data
+  const fetchEscortData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching featured escorts and stats from API...");
+
+      // Fetch escorts and stats in parallel with error handling
+      const [escortsResponse, statsResponse] = await Promise.allSettled([
+        escortAPI.getAllEscorts({
+          featured: "true", // Use string "true" instead of boolean true
+          countryCode: countryCode || "ug", // Add country code filter
+          _t: Date.now(), // Cache busting parameter
+        }),
+        statsAPI.getGlobalStats(countryCode || "ug"),
+      ]);
+
+      // Handle escorts response
+      if (escortsResponse.status === "fulfilled") {
+        console.log("Escorts API response:", escortsResponse.value.data);
+      } else {
+        console.error("Error fetching escorts:", escortsResponse.reason);
+        setError("Failed to load escorts");
+        setLoading(false);
+        return;
+      }
+
+      // Handle stats response
+      if (statsResponse.status === "fulfilled") {
+        console.log("Stats API response:", statsResponse.value.data);
+      } else {
+        console.error("Error fetching stats:", statsResponse.reason);
+        // Don't set error for stats, it's not critical
+      }
+
+      // Filter and sort escort data
+      let escorts =
+        escortsResponse.value.data.data?.escorts ||
+        escortsResponse.value.data.data ||
+        [];
+
+      // Filter: Only Premium/Elite and Featured escorts
+      console.log("All escorts before filtering:", escorts);
+
+      // If no escorts found, try fetching all escorts and filter on frontend
+      if (escorts.length === 0) {
+        console.log(
+          "No escorts found with featured filter, trying to fetch all escorts..."
+        );
+        try {
+          const allEscortsResponse = await escortAPI.getAllEscorts({
+            countryCode: countryCode || "ug",
+            limit: 100, // Get more escorts to filter from
+            _t: Date.now(),
+          });
+          escorts =
+            allEscortsResponse.data.data?.escorts ||
+            allEscortsResponse.data.data ||
+            [];
+          console.log("All escorts fetched:", escorts);
+        } catch (error) {
+          console.error("Error fetching all escorts:", error);
+        }
+      }
+
+      escorts = escorts.filter((escort) => {
+        const accessLevel = getEscortAccessLevel(escort);
+        const isFeatured = escort.isFeatured === true;
+        const hasFeaturedTier =
+          escort.subscriptionTier === "featured" ||
+          escort.subscriptionTier === "premium";
+
+        console.log(
+          `Escort ${escort.name}: subscriptionTier=${escort.subscriptionTier}, isFeatured=${isFeatured}, accessLevel=${accessLevel}`
+        );
+
+        return (
+          accessLevel === "elite" ||
+          accessLevel === "premium" ||
+          accessLevel === "featured" ||
+          isFeatured ||
+          hasFeaturedTier
+        );
+      });
+      console.log("Escorts after filtering:", escorts);
+
+      // Sort: Premium/Elite first, then Featured
+      escorts.sort((a, b) => {
+        const aLevel = getEscortAccessLevel(a);
+        const bLevel = getEscortAccessLevel(b);
+
+        // Priority order: elite > premium > featured
+        const priority = { elite: 3, premium: 2, featured: 1 };
+
+        return priority[bLevel] - priority[aLevel]; // Higher priority first
+      });
+
+      // Set escort data with filtered and sorted results
+      setEscortData({ ...escortsResponse.value.data.data, escorts });
+      setTotalEscorts(escorts.length);
+      setTotalPages(Math.ceil(escorts.length / escortsPerPage));
+
+      // Set stats data
+      if (
+        statsResponse.status === "fulfilled" &&
+        statsResponse.value.data?.data?.stats
+      ) {
+        setStatsData(statsResponse.value.data.data.stats);
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [countryCode]);
+
   // Fetch escorts and stats on component mount
   React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        console.log("Fetching featured escorts and stats from API...");
-
-        // Fetch escorts and stats in parallel with error handling
-        const [escortsResponse, statsResponse] = await Promise.allSettled([
-          escortAPI.getAllEscorts({
-            featured: "true", // Use string "true" instead of boolean true
-            countryCode: countryCode || "ug", // Add country code filter
-            _t: Date.now(), // Cache busting parameter
-          }),
-          statsAPI.getGlobalStats(countryCode || "ug"),
-        ]);
-
-        // Handle escorts response
-        if (escortsResponse.status === "fulfilled") {
-          console.log("Escorts API response:", escortsResponse.value.data);
-        } else {
-          console.error("Error fetching escorts:", escortsResponse.reason);
-          setError("Failed to load escorts");
-          setLoading(false);
-          return;
-        }
-
-        // Handle stats response
-        if (statsResponse.status === "fulfilled") {
-          console.log("Stats API response:", statsResponse.value.data);
-        } else {
-          console.error("Error fetching stats:", statsResponse.reason);
-          // Don't set error for stats, it's not critical
-        }
-
-        // Filter and sort escort data
-        let escorts =
-          escortsResponse.value.data.data?.escorts || escortsResponse.value.data.data || [];
-
-        // Filter: Only Premium/Elite and Featured escorts
-        console.log("All escorts before filtering:", escorts);
-
-        // If no escorts found, try fetching all escorts and filter on frontend
-        if (escorts.length === 0) {
-          console.log(
-            "No escorts found with featured filter, trying to fetch all escorts..."
-          );
-          try {
-            const allEscortsResponse = await escortAPI.getAllEscorts({
-              countryCode: countryCode || "ug",
-              limit: 100, // Get more escorts to filter from
-              _t: Date.now(),
-            });
-            escorts =
-              allEscortsResponse.data.data?.escorts ||
-              allEscortsResponse.data.data ||
-              [];
-            console.log("All escorts fetched:", escorts);
-          } catch (error) {
-            console.error("Error fetching all escorts:", error);
-          }
-        }
-
-        escorts = escorts.filter((escort) => {
-          const accessLevel = getEscortAccessLevel(escort);
-          const isFeatured = escort.isFeatured === true;
-          const hasFeaturedTier =
-            escort.subscriptionTier === "featured" ||
-            escort.subscriptionTier === "premium";
-
-          console.log(
-            `Escort ${escort.name}: subscriptionTier=${escort.subscriptionTier}, isFeatured=${isFeatured}, accessLevel=${accessLevel}`
-          );
-
-          return (
-            accessLevel === "elite" ||
-            accessLevel === "premium" ||
-            accessLevel === "featured" ||
-            isFeatured ||
-            hasFeaturedTier
-          );
-        });
-        console.log("Escorts after filtering:", escorts);
-
-        // Sort: Premium/Elite first, then Featured
-        escorts.sort((a, b) => {
-          const aLevel = getEscortAccessLevel(a);
-          const bLevel = getEscortAccessLevel(b);
-
-          // Priority order: elite > premium > featured
-          const priority = { elite: 3, premium: 2, featured: 1 };
-
-          return priority[bLevel] - priority[aLevel]; // Higher priority first
-        });
-
-        // Set escort data with filtered and sorted results
-        setEscortData({ ...escortsResponse.value.data.data, escorts });
-        setTotalEscorts(escorts.length);
-        setTotalPages(Math.ceil(escorts.length / escortsPerPage));
-
-        // Set stats data
-        if (statsResponse.status === "fulfilled" && statsResponse.value.data?.data?.stats) {
-          setStatsData(statsResponse.value.data.data.stats);
-        }
-
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchEscortData();
   }, [countryCode]);
+
+  // Note: Removed auto-refresh to prevent cards from reloading themselves
+  // Online status will be updated through socket connections and user activity
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -230,17 +239,20 @@ const Index = () => {
     const isUserAuthenticated = isAuthenticated();
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
-    
+
     console.log("Extracted userId:", userId);
     console.log("isAuthenticated():", isUserAuthenticated);
     console.log("Token exists:", !!token);
     console.log("Stored user exists:", !!storedUser);
 
     // Check if user is authenticated from any source
-    const isAuthenticatedFromAnySource = userId || isUserAuthenticated || (token && storedUser);
-    
+    const isAuthenticatedFromAnySource =
+      userId || isUserAuthenticated || (token && storedUser);
+
     if (!isAuthenticatedFromAnySource) {
-      console.log("No authentication found from any source, redirecting to login");
+      console.log(
+        "No authentication found from any source, redirecting to login"
+      );
       showToast("error", "Please sign in to contact escorts");
       navigate(RouteSignIn);
       return;

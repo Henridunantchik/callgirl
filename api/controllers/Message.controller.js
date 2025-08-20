@@ -4,26 +4,38 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import cloudinary from "../config/cloudinary.js";
+import renderStorage from "../services/renderStorage.js";
 
 // Send a message
 const sendMessage = asyncHandler(async (req, res) => {
-  const { escortId, content, type = "text" } = req.body;
+  const { escortId, content, type = "text", mediaUrl } = req.body;
   const userId = req.user._id;
 
-  if (!escortId || !content) {
-    throw new ApiError(400, "Escort ID and content are required");
+  if (!escortId || (!content && !mediaUrl)) {
+    throw new ApiError(400, "Escort ID and content or media are required");
   }
 
-  const message = await Message.create({
+  const messageData = {
     sender: userId,
     recipient: escortId,
-    content,
     type,
-  });
+  };
+
+  // Add content if provided
+  if (content) {
+    messageData.content = content;
+  }
+
+  // Add mediaUrl if provided (for images/files)
+  if (mediaUrl) {
+    messageData.mediaUrl = mediaUrl;
+  }
+
+  const message = await Message.create(messageData);
 
   const populatedMessage = await Message.findById(message._id)
-    .populate("sender", "name alias avatar subscriptionTier isVerified")
-    .populate("recipient", "name alias avatar subscriptionTier isVerified");
+    .populate("sender", "name alias avatar subscriptionTier isVerified isOnline lastActive")
+    .populate("recipient", "name alias avatar subscriptionTier isVerified isOnline lastActive");
 
   return res
     .status(201)
@@ -44,8 +56,8 @@ const getConversation = asyncHandler(async (req, res) => {
       { sender: escortId, recipient: userId },
     ],
   })
-    .populate("sender", "name alias avatar subscriptionTier isVerified")
-    .populate("recipient", "name alias avatar subscriptionTier isVerified")
+    .populate("sender", "name alias avatar subscriptionTier isVerified isOnline lastActive")
+    .populate("recipient", "name alias avatar subscriptionTier isVerified isOnline lastActive")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit));
@@ -133,6 +145,8 @@ const getUserConversations = asyncHandler(async (req, res) => {
           avatar: 1,
           subscriptionTier: 1,
           isVerified: 1,
+          isOnline: 1,
+          lastActive: 1,
         },
         lastMessage: 1,
         unreadCount: 1,
@@ -254,22 +268,20 @@ const uploadMessageImage = asyncHandler(async (req, res) => {
   }
 
   try {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "message-images",
-      resource_type: "image",
-    });
+    // Upload to Render storage instead of Cloudinary
+    const result = await renderStorage.uploadFile(req.file, "message-images");
+
+    if (!result.success) {
+      throw new Error(`Failed to upload file: ${result.error}`);
+    }
 
     return res
       .status(200)
       .json(
-        new ApiResponse(
-          200,
-          { url: result.secure_url },
-          "Image uploaded successfully"
-        )
+        new ApiResponse(200, { url: result.url }, "Image uploaded successfully")
       );
   } catch (error) {
-    console.error("Cloudinary upload error:", error);
+    console.error("Render storage upload error:", error);
     throw new ApiError(500, "Failed to upload image");
   }
 });

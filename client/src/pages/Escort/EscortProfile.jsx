@@ -36,6 +36,7 @@ import { RouteSignIn } from "../../helpers/RouteName";
 import RealTimeMessenger from "../../components/RealTimeMessenger";
 import ReviewSystem from "../../components/ReviewSystem";
 import FavoriteButton from "../../components/FavoriteButton";
+import ImageLightbox from "../../components/ImageLightbox";
 import {
   hasPremiumAccess,
   canShowContactInfo,
@@ -62,10 +63,12 @@ const EscortProfile = () => {
   const [activeTab, setActiveTab] = useState("photos");
   const [isMessengerOpen, setIsMessengerOpen] = useState(false);
   const [selectedEscort, setSelectedEscort] = useState(null);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // Real-time stats hook
   const { updateStats } = useRealTimeStats(escort?._id, (updatedStats) => {
-    setEscort(prev => ({
+    setEscort((prev) => ({
       ...prev,
       stats: {
         ...prev.stats,
@@ -248,6 +251,11 @@ const EscortProfile = () => {
       const username = escort.telegram.replace("@", ""); // Remove @ if present
       window.open(`https://t.me/${username}`, "_blank");
     }
+  };
+
+  const handleImageClick = (index) => {
+    setSelectedImageIndex(index);
+    setIsGalleryOpen(true);
   };
 
   // Get currency symbol based on country
@@ -536,13 +544,14 @@ const EscortProfile = () => {
                         <div
                           key={index}
                           className="relative group cursor-pointer"
+                          onClick={() => handleImageClick(index)}
                         >
                           <img
                             src={photo.url}
                             alt={`${escort.alias || escort.name} - Photo ${
                               index + 1
                             }`}
-                            className="w-full h-48 object-cover rounded-lg"
+                            className="w-full h-48 object-contain rounded-lg bg-gray-50"
                           />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                             <Eye className="h-8 w-8 text-white" />
@@ -575,7 +584,7 @@ const EscortProfile = () => {
                         >
                           <video
                             src={video.url}
-                            className="w-full h-48 object-cover rounded-lg"
+                            className="w-full h-48 object-contain rounded-lg bg-gray-50"
                             poster={video.thumbnail}
                             controls
                           />
@@ -1063,8 +1072,6 @@ const EscortProfile = () => {
                 </div>
               )}
 
-
-
               <Button
                 onClick={handleContact}
                 className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
@@ -1130,6 +1137,16 @@ const EscortProfile = () => {
         onClose={() => setIsMessengerOpen(false)}
         selectedEscort={escort}
       />
+
+      {/* Image Lightbox */}
+      {escort.gallery && escort.gallery.length > 0 && (
+        <ImageLightbox
+          isOpen={isGalleryOpen}
+          onClose={() => setIsGalleryOpen(false)}
+          images={escort.gallery.map((photo) => photo.url)}
+          initialIndex={selectedImageIndex}
+        />
+      )}
     </div>
   );
 };

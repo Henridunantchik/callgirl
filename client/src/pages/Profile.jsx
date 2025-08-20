@@ -1931,7 +1931,7 @@ const Profile = () => {
                                         <img
                                           src={imageUrl}
                                           alt={`Gallery photo ${index + 1}`}
-                                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                                          className="w-full h-32 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
                                           style={{ minHeight: "128px" }}
                                           onError={(e) => {
                                             // Show error placeholder

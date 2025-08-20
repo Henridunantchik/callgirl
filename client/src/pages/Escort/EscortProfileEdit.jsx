@@ -1663,7 +1663,7 @@ const EscortProfileEdit = () => {
                           <img
                             src={photo.url}
                             alt={`Gallery photo ${index + 1}`}
-                            className="w-full h-24 object-cover rounded"
+                            className="w-full h-24 object-contain rounded bg-gray-50"
                           />
                           <Button
                             type="button"
@@ -1776,7 +1776,7 @@ const EscortProfileEdit = () => {
                         <div key={index} className="relative group">
                           <video
                             src={video.url}
-                            className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                            className="w-full h-48 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
                             controls
                             preload="metadata"
                           />

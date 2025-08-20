@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { useAuth } from "./AuthContext";
+import { userAPI } from "../services/api";
 
 const SocketContext = createContext();
 
@@ -137,7 +138,26 @@ export const SocketProvider = ({ children }) => {
   };
 
   const isUserOnline = (userId) => {
-    return onlineUsers.has(userId);
+    // First check socket-based online status (real-time)
+    if (onlineUsers.has(userId)) {
+      return true;
+    }
+
+    // For better online status detection, we'll rely on the API
+    // which calculates online status based on lastActive timestamp
+    // This will be updated by the escort data that includes isOnline field
+    return false;
+  };
+
+  // Function to check user's online status via API
+  const checkUserOnlineStatus = async (userId) => {
+    try {
+      const response = await userAPI.getOnlineStatus(userId);
+      return response.data?.data?.isOnline || false;
+    } catch (error) {
+      console.error("Error checking online status:", error);
+      return false;
+    }
   };
 
   const isUserTyping = (userId) => {
@@ -155,6 +175,7 @@ export const SocketProvider = ({ children }) => {
     markMessageAsRead,
     isUserOnline,
     isUserTyping,
+    checkUserOnlineStatus,
   };
 
   return (

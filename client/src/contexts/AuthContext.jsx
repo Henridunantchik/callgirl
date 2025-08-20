@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { authAPI } from "../services/api";
+import { authAPI, userAPI } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -15,7 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ageVerified, setAgeVerified] = useState(false);
-  
+  const [onlineStatusInterval, setOnlineStatusInterval] = useState(null);
+
   // Import Redux store to sync with AuthContext
   const reduxStore = window.__REDUX_STORE__;
 
@@ -24,8 +25,10 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       try {
         // Check multiple possible key names for token and user
-        const token = localStorage.getItem("token") || localStorage.getItem("auth");
-        const storedUser = localStorage.getItem("user") || localStorage.getItem("authUser");
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("auth");
+        const storedUser =
+          localStorage.getItem("user") || localStorage.getItem("authUser");
 
         console.log("=== AUTH CONTEXT DEBUG ===");
         console.log("Token:", token ? "Present" : "Missing");
@@ -34,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         console.log("Raw stored user value:", storedUser);
         console.log("All localStorage keys:", Object.keys(localStorage));
         console.log("All sessionStorage keys:", Object.keys(sessionStorage));
-        
+
         // Debug: Check what's in the 'auth' key
         const authKey = localStorage.getItem("auth");
         console.log("🔍 'auth' key content:", authKey);
@@ -69,7 +72,9 @@ export const AuthProvider = ({ children }) => {
 
         // If we have a token but no stored user, try to use Redux user
         if (token && !storedUser && reduxUser) {
-          console.log("✅ Using Redux user data since localStorage user is missing");
+          console.log(
+            "✅ Using Redux user data since localStorage user is missing"
+          );
           setUser(reduxUser);
           // Store the user data in localStorage for consistency
           localStorage.setItem("user", JSON.stringify(reduxUser));
@@ -83,7 +88,7 @@ export const AuthProvider = ({ children }) => {
             const parsedUser = JSON.parse(storedUser);
             console.log("✅ Successfully parsed user data:", parsedUser);
             setUser(parsedUser);
-            
+
             // Try to get fresh user data from server (optional)
             try {
               console.log("Attempting to get fresh user data...");
@@ -91,12 +96,17 @@ export const AuthProvider = ({ children }) => {
               console.log("Fresh user data received:", response.data.user);
               setUser(response.data.user);
               localStorage.setItem("user", JSON.stringify(response.data.user));
+
+              // Start online status updates for authenticated users
+              startOnlineStatusUpdates();
             } catch (error) {
               console.error(
                 "Server auth check failed, using stored data:",
                 error
               );
               // Keep using stored data if server check fails
+              // Still start online status updates
+              startOnlineStatusUpdates();
             }
           } catch (parseError) {
             console.error("❌ Error parsing stored user:", parseError);
@@ -115,14 +125,14 @@ export const AuthProvider = ({ children }) => {
           console.log("Token exists:", !!token);
           console.log("Stored user exists:", !!storedUser);
           console.log("Redux user exists:", !!reduxUser);
-          
+
           // Check Redux store as final fallback
           if (reduxStore) {
             const reduxState = reduxStore.getState();
             const reduxUser = reduxState.user;
             console.log("🔍 Redux store state:", reduxState);
             console.log("🔍 Redux user:", reduxUser);
-            
+
             if (reduxUser && reduxUser.isLoggedIn && reduxUser.user) {
               console.log("✅ Using Redux user as fallback");
               setUser(reduxUser.user);
@@ -130,7 +140,7 @@ export const AuthProvider = ({ children }) => {
               return;
             }
           }
-          
+
           setUser(null);
         }
       } catch (error) {
@@ -143,6 +153,47 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth();
   }, []);
+
+  // Function to start online status updates
+  const startOnlineStatusUpdates = () => {
+    console.log("🚀 Starting online status updates...");
+    console.log("Current user:", user);
+    console.log("User role:", user?.role);
+
+    // Clear any existing interval
+    if (onlineStatusInterval) {
+      clearInterval(onlineStatusInterval);
+      console.log("🧹 Cleared existing interval");
+    }
+
+    // Update online status immediately
+    console.log("📡 Updating online status immediately...");
+    updateOnlineStatus();
+
+    // Set up interval to update online status every 30 seconds
+    const interval = setInterval(() => {
+      console.log("⏰ Interval triggered - updating online status...");
+      updateOnlineStatus();
+    }, 30 * 1000);
+    setOnlineStatusInterval(interval);
+
+    console.log(
+      "🟢 Online status updates started - interval set to 30 seconds"
+    );
+  };
+
+  // Function to update online status
+  const updateOnlineStatus = async () => {
+    console.log("🔄 updateOnlineStatus called");
+    try {
+      console.log("📡 Calling userAPI.updateOnlineStatus()...");
+      const response = await userAPI.updateOnlineStatus();
+      console.log("✅ Online status updated successfully:", response);
+    } catch (error) {
+      console.error("❌ Failed to update online status:", error);
+      console.error("Error details:", error.response?.data || error.message);
+    }
+  };
 
   // Check age verification status
   useEffect(() => {
@@ -157,7 +208,7 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = reduxStore.subscribe(() => {
       const reduxState = reduxStore.getState();
       const reduxUser = reduxState.user;
-      
+
       if (reduxUser && reduxUser.isLoggedIn && reduxUser.user) {
         // Update AuthContext if Redux has user but AuthContext doesn't
         if (!user || user._id !== reduxUser.user._id) {
@@ -181,6 +232,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.login(credentials);
       const { token, user } = response.data;
+
+      // Start online status updates after login
+      startOnlineStatusUpdates();
 
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
@@ -219,6 +273,19 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // Clear online status interval
+      if (onlineStatusInterval) {
+        clearInterval(onlineStatusInterval);
+        setOnlineStatusInterval(null);
+      }
+
+      // Mark user as offline
+      try {
+        await userAPI.markOffline();
+      } catch (error) {
+        console.error("Failed to mark user as offline:", error);
+      }
+
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       setUser(null);
@@ -234,9 +301,12 @@ export const AuthProvider = ({ children }) => {
     console.log("userObj.user:", userObj?.user);
     console.log("userObj.user._id:", userObj?.user?._id);
     console.log("userObj.user.id:", userObj?.user?.id);
-    
+
     if (!userObj) return null;
-    const userId = userObj._id || userObj.id || (userObj.user && (userObj.user._id || userObj.user.id));
+    const userId =
+      userObj._id ||
+      userObj.id ||
+      (userObj.user && (userObj.user._id || userObj.user.id));
     console.log("Final userId:", userId);
     return userId;
   };
@@ -317,6 +387,15 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     getUserId,
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (onlineStatusInterval) {
+        clearInterval(onlineStatusInterval);
+      }
+    };
+  }, [onlineStatusInterval]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

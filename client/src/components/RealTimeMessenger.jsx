@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSocket } from "../contexts/SocketContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useParams } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -33,9 +34,29 @@ import {
 } from "lucide-react";
 import { showToast } from "../helpers/showToast";
 import { messageAPI } from "../services/api";
+import { hasPremiumAccess } from "../utils/escortAccess";
 
 const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   const { user } = useAuth();
+  const { countryCode } = useParams();
+
+  // Add safety check for socket context
+  let socketContext = null;
+  try {
+    socketContext = useSocket();
+  } catch (error) {
+    console.warn("Socket context not available:", error.message);
+    // Return null if socket context is not available
+    if (!isOpen) return null;
+    return (
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-red-500 text-white p-4 rounded-lg">
+          Messenger temporarily unavailable
+        </div>
+      </div>
+    );
+  }
+
   const {
     socket,
     isConnected,
@@ -43,9 +64,30 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     startTyping,
     stopTyping,
     markMessageAsRead,
-    isUserOnline,
+    isUserOnline: socketIsUserOnline,
     isUserTyping,
-  } = useSocket();
+  } = socketContext;
+
+  // Helper function to check if user is online using both socket and API data
+  const isUserOnline = (userId) => {
+    // First check socket-based online status (real-time)
+    if (socketIsUserOnline(userId)) {
+      return true;
+    }
+
+    // Then check if the user object has isOnline field from API
+    const conversation = conversations.find((conv) => conv.user._id === userId);
+    if (conversation?.user?.isOnline) {
+      return true;
+    }
+
+    // Also check selectedChat user if it's the same user
+    if (selectedChat?.user?._id === userId && selectedChat?.user?.isOnline) {
+      return true;
+    }
+
+    return false;
+  };
 
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -628,7 +670,7 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                     You need to be signed in to send messages
                   </p>
                   <Button
-                    onClick={() => (window.location.href = "/signin")}
+                    onClick={() => (window.location.href = `/${countryCode}/signin`)}
                     className="w-full"
                   >
                     Sign In
@@ -761,12 +803,56 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       </div>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Phone className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Video className="w-4 h-4" />
-                      </Button>
+                      {/* Only show phone and video call icons for featured/premium escorts */}
+                      {selectedChat?.user?.role === "escort" &&
+                        hasPremiumAccess(selectedChat.user) && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                if (selectedChat.user.phone) {
+                                  window.open(
+                                    `tel:${selectedChat.user.phone}`,
+                                    "_blank"
+                                  );
+                                } else {
+                                  showToast(
+                                    "error",
+                                    "Phone number not available"
+                                  );
+                                }
+                              }}
+                              title="Call escort"
+                            >
+                              <Phone className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                if (selectedChat.user.phone) {
+                                  // Open WhatsApp with video call intent
+                                  const whatsappUrl = `https://wa.me/${selectedChat.user.phone.replace(
+                                    /\D/g,
+                                    ""
+                                  )}?text=Hi, I'd like to video call you`;
+                                  window.open(whatsappUrl, "_blank");
+                                } else {
+                                  showToast(
+                                    "error",
+                                    "Phone number not available"
+                                  );
+                                }
+                              }}
+                              title="Video call via WhatsApp"
+                            >
+                              <Video className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
                       <Button
                         variant="ghost"
                         size="sm"

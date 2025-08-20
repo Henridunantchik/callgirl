@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Play, 
-  Lock, 
+import React, { useState } from "react";
+import { Card, CardContent } from "./ui/card";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Lock,
   Download,
   Share2,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 
 const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -67,17 +67,17 @@ const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
                   src={allMedia[currentIndex]}
                   className="w-full h-full object-cover"
                   controls
-                  poster={images[0] || ''}
+                  poster={images[0] || ""}
                 />
               ) : (
                 <img
                   src={allMedia[currentIndex]}
                   alt={`Gallery image ${currentIndex + 1}`}
-                  className="w-full h-full object-cover cursor-pointer"
+                  className="w-full h-full object-contain cursor-pointer bg-gray-50"
                   onClick={() => openLightbox(currentIndex)}
                 />
               )}
-              
+
               {/* Navigation Arrows */}
               {allMedia.length > 1 && (
                 <>
@@ -134,7 +134,9 @@ const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
               <div
                 key={index}
                 className={`relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer border-2 ${
-                  index === currentIndex ? 'border-blue-500' : 'border-transparent'
+                  index === currentIndex
+                    ? "border-blue-500"
+                    : "border-transparent"
                 }`}
                 onClick={() => setCurrentIndex(index)}
               >
@@ -146,10 +148,10 @@ const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
                   <img
                     src={media}
                     alt={`Thumbnail ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-gray-50"
                   />
                 )}
-                
+
                 {/* Private Badge on Thumbnail */}
                 {isPrivate && (
                   <div className="absolute top-1 right-1">
@@ -163,7 +165,11 @@ const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => openLightbox(currentIndex)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openLightbox(currentIndex)}
+          >
             <Share2 className="w-4 h-4 mr-2" />
             View Full
           </Button>
@@ -225,7 +231,7 @@ const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
                 <img
                   src={allMedia[lightboxIndex]}
                   alt={`Lightbox image ${lightboxIndex + 1}`}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-w-full max-h-full object-contain bg-gray-50"
                 />
               )}
             </div>
@@ -241,4 +247,4 @@ const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
   );
 };
 
-export default GalleryViewer; 
+export default GalleryViewer;

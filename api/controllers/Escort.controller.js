@@ -136,11 +136,12 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       filter.isVerified = true;
     }
 
-    // Online status filter (placeholder - will be implemented later)
+    // Online status filter
     if (online === "true") {
-      // For now, we'll filter by last active time (within last 30 minutes)
+      // Filter by last active time (within last 30 minutes)
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       filter.lastActive = { $gte: thirtyMinutesAgo };
+      console.log("🔍 Online filter applied:", { thirtyMinutesAgo, filter });
     }
 
     // Featured filter - support multiple ways to identify featured escorts
@@ -203,6 +204,14 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       const isOnline =
         escort.lastActive && escort.lastActive >= thirtyMinutesAgo;
+
+      // Debug online status calculation
+      console.log(`🔍 Online status for ${escort.name}:`, {
+        lastActive: escort.lastActive,
+        thirtyMinutesAgo,
+        isOnline,
+        isOnlineField: escort.isOnline,
+      });
 
       return {
         ...escort.toObject(),
