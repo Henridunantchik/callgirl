@@ -65,7 +65,7 @@ const EscortDashboard = () => {
 
   // Real-time stats hook
   const { updateStats } = useRealTimeStats(user?.user?._id, (updatedStats) => {
-    setStats(prev => ({
+    setStats((prev) => ({
       ...prev,
       favorites: updatedStats.favorites,
       reviews: updatedStats.reviews,
