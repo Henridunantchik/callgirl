@@ -81,8 +81,23 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // app.use("/api/favorite", ...); // NO LIMIT
 // app.use("/api/user", ...); // NO LIMIT
 
-// Static files - Render storage
-app.use("/uploads", express.static("/opt/render/project/src/uploads"));
+// Static files - Render storage with CORS headers
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+    next();
+  },
+  express.static("/opt/render/project/src/uploads")
+);
 app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Fallback for local development
 
 // Health check endpoints - NO RATE LIMITING
