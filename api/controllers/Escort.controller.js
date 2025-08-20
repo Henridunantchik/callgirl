@@ -3,7 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
-import cloudinary from "../config/cloudinary.js";
+import renderStorage from "../services/renderStorage.js";
 import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
 import fs from "fs";
@@ -525,16 +525,18 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
 
     for (const file of req.files) {
       try {
-        // Upload to Cloudinary
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "escort-gallery",
-          resource_type: "auto",
-        });
+        // Upload to Render storage
+        const result = await renderStorage.uploadFile(file, "gallery");
+
+        if (!result.success) {
+          throw new Error(`Failed to upload file: ${result.error}`);
+        }
 
         // Add to gallery
         const mediaItem = {
-          url: result.secure_url,
-          publicId: result.public_id,
+          url: result.url,
+          publicId: result.publicId,
+          filePath: result.filePath,
           caption: "",
           isPrivate: false,
           order: escort.gallery.length,
@@ -613,18 +615,20 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
         console.log("File path:", file.path);
         console.log("File size:", file.size);
 
-        // Upload to Cloudinary
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "escort-videos",
-          resource_type: "video",
-        });
+        // Upload to Render storage
+        const result = await renderStorage.uploadFile(file, "video");
 
-        console.log("Cloudinary upload successful:", result.public_id);
+        if (!result.success) {
+          throw new Error(`Failed to upload file: ${result.error}`);
+        }
+
+        console.log("Render storage upload successful:", result.publicId);
 
         // Add to videos
         const mediaItem = {
-          url: result.secure_url,
-          publicId: result.public_id,
+          url: result.url,
+          publicId: result.publicId,
+          filePath: result.filePath,
           caption: "",
           type: "gallery",
           isPrivate: false,
@@ -1411,13 +1415,13 @@ export const deleteGalleryImage = asyncHandler(async (req, res, next) => {
 
     const image = escort.gallery[imageIndex];
 
-    // Delete from Cloudinary if publicId exists
-    if (image.publicId) {
+    // Delete from Render storage if filePath exists
+    if (image.filePath) {
       try {
-        await cloudinary.uploader.destroy(image.publicId);
-      } catch (cloudinaryError) {
-        console.error("Cloudinary delete error:", cloudinaryError);
-        // Continue even if Cloudinary delete fails
+        await renderStorage.deleteFile(image.filePath);
+      } catch (deleteError) {
+        console.error("Render storage delete error:", deleteError);
+        // Continue even if delete fails
       }
     }
 
@@ -1477,15 +1481,13 @@ export const deleteVideo = asyncHandler(async (req, res, next) => {
 
     const video = escort.videos[videoIndex];
 
-    // Delete from Cloudinary if publicId exists
-    if (video.publicId) {
+    // Delete from Render storage if filePath exists
+    if (video.filePath) {
       try {
-        await cloudinary.uploader.destroy(video.publicId, {
-          resource_type: "video",
-        });
-      } catch (cloudinaryError) {
-        console.error("Cloudinary delete error:", cloudinaryError);
-        // Continue even if Cloudinary delete fails
+        await renderStorage.deleteFile(video.filePath);
+      } catch (deleteError) {
+        console.error("Render storage delete error:", deleteError);
+        // Continue even if delete fails
       }
     }
 

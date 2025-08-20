@@ -1,4 +1,4 @@
-import cloudinary from "../config/cloudinary.js";
+import renderStorage from "../services/renderStorage.js";
 import { handleError } from "../helpers/handleError.js";
 import User from "../models/user.model.js";
 import bcryptjs from "bcryptjs";
@@ -102,20 +102,17 @@ export const updateUser = async (req, res, next) => {
 
     // Avatar upload (if file provided)
     if (req.file) {
-      const uploadResult = await cloudinary.uploader
-        .upload(req.file.path, {
-          folder: "tusiwawasahau",
-          resource_type: "auto",
-        })
-        .catch((error) => {
-          console.error("Avatar upload error:", error);
-          return res.status(500).json({
-            success: false,
-            message: "Failed to upload avatar",
-          });
-        });
+      const uploadResult = await renderStorage.uploadFile(req.file, "avatar");
 
-      user.avatar = uploadResult.secure_url;
+      if (!uploadResult.success) {
+        console.error("Avatar upload error:", uploadResult.error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload avatar",
+        });
+      }
+
+      user.avatar = uploadResult.url;
     }
 
     await user.save();

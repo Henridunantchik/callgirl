@@ -81,8 +81,9 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // app.use("/api/favorite", ...); // NO LIMIT
 // app.use("/api/user", ...); // NO LIMIT
 
-// Static files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Static files - Render storage
+app.use("/uploads", express.static("/opt/render/project/src/uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Fallback for local development
 
 // Health check endpoints - NO RATE LIMITING
 app.get("/health", (req, res) => {
