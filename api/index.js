@@ -105,6 +105,9 @@ app.use(
       res.status(200).end();
       return;
     }
+
+    // Remove any authentication requirement for static files
+    delete req.headers.authorization;
     next();
   },
   express.static("/opt/render/project/src/uploads")

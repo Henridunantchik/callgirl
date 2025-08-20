@@ -44,8 +44,8 @@ const getGlobalStats = asyncHandler(async (req, res) => {
 
     const countryName = countryMapping[countryCode] || "Uganda"; // Default to Uganda
 
-    // Get current date for online status (users active in last 5 minutes)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // Get current date for online status (users active in last 30 minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
     // Calculate statistics
     const [
@@ -72,16 +72,13 @@ const getGlobalStats = asyncHandler(async (req, res) => {
         "location.country": { $in: [countryName, countryCode] },
       }),
 
-      // Online escorts (active in last 5 minutes)
+      // Online escorts (active in last 30 minutes)
       User.countDocuments({
         role: "escort",
         isActive: true,
         isDeleted: { $ne: true },
         "location.country": { $in: [countryName, countryCode] },
-        $or: [
-          { lastSeen: { $gte: fiveMinutesAgo } },
-          { lastActive: { $gte: fiveMinutesAgo } }
-        ],
+        lastActive: { $gte: thirtyMinutesAgo },
       }),
 
       // Featured escorts
@@ -90,10 +87,7 @@ const getGlobalStats = asyncHandler(async (req, res) => {
         isActive: true,
         isDeleted: { $ne: true },
         "location.country": { $in: [countryName, countryCode] },
-        $or: [
-          { isFeatured: true },
-          { subscriptionTier: "featured" }
-        ],
+        $or: [{ isFeatured: true }, { subscriptionTier: "featured" }],
       }),
 
       // Premium escorts
@@ -129,6 +123,36 @@ const getGlobalStats = asyncHandler(async (req, res) => {
 
     // Extract cities count from aggregation result
     const citiesCount = citiesCovered[0]?.totalCities || 0;
+
+    // Debug statistics
+    console.log("📊 Global Stats Debug:", {
+      totalEscorts,
+      verifiedEscorts,
+      onlineEscorts,
+      featuredEscorts,
+      premiumEscorts,
+      citiesCount,
+      countryCode,
+      countryName,
+      thirtyMinutesAgo,
+    });
+
+    // Debug: Check a few escorts' lastActive times
+    const sampleEscorts = await User.find({
+      role: "escort",
+      isActive: true,
+      isDeleted: { $ne: true },
+      "location.country": { $in: [countryName, countryCode] },
+    })
+    .select("name lastActive isOnline")
+    .limit(5);
+
+    console.log("🔍 Sample Escorts Debug:", sampleEscorts.map(escort => ({
+      name: escort.name,
+      lastActive: escort.lastActive,
+      isOnline: escort.isOnline,
+      isOnlineCalculated: escort.lastActive && escort.lastActive >= thirtyMinutesAgo
+    })));
 
     // Get cities list for the specific country
     const citiesList = await User.aggregate([

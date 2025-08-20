@@ -338,6 +338,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    lastActive: {
+      type: Date,
+      default: Date.now,
+    },
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
     profileCompletion: {
       type: Number,
       default: 0,
@@ -489,10 +497,11 @@ userSchema.methods.getSubscriptionBenefits = function () {
   return benefits[this.subscriptionTier] || benefits.basic;
 };
 
-// Pre-save middleware to update lastSeen and profile completion
+// Pre-save middleware to update lastSeen, lastActive and profile completion
 userSchema.pre("save", function (next) {
   if (this.role === "escort") {
     this.lastSeen = new Date();
+    this.lastActive = new Date();
     this.profileCompletion = this.getProfileCompletionPercentage();
 
     // Set default values for escorts

@@ -52,9 +52,30 @@ const AdminMessages = () => {
     startTyping,
     stopTyping,
     markMessageAsRead,
-    isUserOnline,
+    isUserOnline: socketIsUserOnline,
     isUserTyping,
   } = useSocket();
+
+  // Helper function to check if user is online using both socket and API data
+  const isUserOnline = (userId) => {
+    // First check socket-based online status (real-time)
+    if (socketIsUserOnline(userId)) {
+      return true;
+    }
+    
+    // Then check if the user object has isOnline field from API
+    const conversation = conversations.find(conv => conv.user._id === userId);
+    if (conversation?.user?.isOnline) {
+      return true;
+    }
+    
+    // Also check selectedChat user if it's the same user
+    if (selectedChat?.user?._id === userId && selectedChat?.user?.isOnline) {
+      return true;
+    }
+    
+    return false;
+  };
 
   const [selectedChat, setSelectedChat] = useState(null);
   const [message, setMessage] = useState("");
