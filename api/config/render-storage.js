@@ -9,27 +9,33 @@ const __dirname = path.dirname(__filename);
 // Render storage configuration
 const renderStorageConfig = {
   // Base upload directory - Use local path for development, Render path for production
-  uploadPath: config.NODE_ENV === 'production'
-    ? (process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads")
-    : path.join(__dirname, "../uploads"),
+  uploadPath:
+    config.NODE_ENV === "production"
+      ? process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads"
+      : path.join(__dirname, "../uploads"),
 
   // Create directories if they don't exist
   directories: {
-    images: config.NODE_ENV === 'production' 
-      ? "/opt/render/project/src/uploads/images"
-      : path.join(__dirname, "../uploads/images"),
-    videos: config.NODE_ENV === 'production'
-      ? "/opt/render/project/src/uploads/videos"
-      : path.join(__dirname, "../uploads/videos"),
-    avatars: config.NODE_ENV === 'production'
-      ? "/opt/render/project/src/uploads/avatars"
-      : path.join(__dirname, "../uploads/avatars"),
-    gallery: config.NODE_ENV === 'production'
-      ? "/opt/render/project/src/uploads/gallery"
-      : path.join(__dirname, "../uploads/gallery"),
-    temp: config.NODE_ENV === 'production'
-      ? "/opt/render/project/src/uploads/temp"
-      : path.join(__dirname, "../uploads/temp"),
+    images:
+      config.NODE_ENV === "production"
+        ? "/opt/render/project/src/uploads/images"
+        : path.join(__dirname, "../uploads/images"),
+    videos:
+      config.NODE_ENV === "production"
+        ? "/opt/render/project/src/uploads/videos"
+        : path.join(__dirname, "../uploads/videos"),
+    avatars:
+      config.NODE_ENV === "production"
+        ? "/opt/render/project/src/uploads/avatars"
+        : path.join(__dirname, "../uploads/avatars"),
+    gallery:
+      config.NODE_ENV === "production"
+        ? "/opt/render/project/src/uploads/gallery"
+        : path.join(__dirname, "../uploads/gallery"),
+    temp:
+      config.NODE_ENV === "production"
+        ? "/opt/render/project/src/uploads/temp"
+        : path.join(__dirname, "../uploads/temp"),
   },
 
   // File size limits
@@ -46,9 +52,10 @@ const renderStorageConfig = {
   },
 
   // URL base for serving files - Use localhost for development, Render URL for production
-  baseUrl: config.NODE_ENV === 'production' 
-    ? config.RENDER_EXTERNAL_URL 
-    : 'http://localhost:5000',
+  baseUrl:
+    config.NODE_ENV === "production"
+      ? "https://callgirls-api.onrender.com"
+      : "http://localhost:5000",
 
   // Initialize storage directories
   init: () => {
