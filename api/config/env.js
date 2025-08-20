@@ -110,6 +110,12 @@ const requiredEnvVars = {
     type: "string",
     default: "+1234567890",
     description: "Twilio phone number"
+  },
+  RENDER_EXTERNAL_URL: {
+    required: false,
+    type: "string",
+    default: "https://srv-d2hke7je5dus738nhqag.onrender.com",
+    description: "Render external URL for file serving"
   }
 };
 
