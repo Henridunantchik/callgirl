@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import UpgradeRequest from "../models/upgradeRequest.model.js";
 import User from "../models/user.model.js";
+import Subscription from "../models/subscription.model.js";
 
 // Créer une nouvelle demande d'upgrade
 const createUpgradeRequest = asyncHandler(async (req, res) => {
@@ -15,11 +16,6 @@ const createUpgradeRequest = asyncHandler(async (req, res) => {
     paymentProof,
     countryCode,
   } = req.body;
-
-  console.log("🔍 DEBUG - Request body received:");
-  console.log("requestedPlan:", requestedPlan);
-  console.log("subscriptionPeriod:", req.body.subscriptionPeriod);
-  console.log("Full body:", req.body);
 
   const userId = req.user._id;
 
@@ -43,23 +39,16 @@ const createUpgradeRequest = asyncHandler(async (req, res) => {
   }
 
   // Calculate amount based on requested plan and period
-  console.log("🔍 Creating upgrade request:");
-  console.log("Requested Plan:", requestedPlan);
-  console.log("Subscription Period from body:", req.body.subscriptionPeriod);
-  console.log("Full request body:", req.body);
 
   let paymentAmount;
   if (requestedPlan === "featured") {
     paymentAmount = 12; // $12 one-time for featured
   } else if (requestedPlan === "premium") {
     const subscriptionPeriod = req.body.subscriptionPeriod || "monthly";
-    console.log("🔍 Premium subscription period:", subscriptionPeriod);
     if (subscriptionPeriod === "annual") {
       paymentAmount = 60; // $60/year for premium annual
-      console.log("💰 Annual premium: $60");
     } else {
       paymentAmount = 5; // $5/month for premium monthly
-      console.log("💰 Monthly premium: $5");
     }
   }
 
@@ -300,6 +289,56 @@ const approveUpgradeRequest = asyncHandler(async (req, res) => {
 
   await escort.save();
 
+  // Create Subscription document for Premium users
+  if (upgradeRequest.requestedPlan === "premium") {
+    // Check if subscription already exists
+    const existingSubscription = await Subscription.findOne({
+      userId: escort._id,
+      status: "active",
+    });
+
+    if (!existingSubscription) {
+      // Create new subscription document
+      const subscription = new Subscription({
+        userId: escort._id,
+        tier: "premium",
+        status: "active",
+        startDate: subscriptionStartDate,
+        endDate: subscriptionEndDate,
+        country: "uganda", // Default, can be updated later
+        autoRenew: false,
+        payment: {
+          method: "mtn_uganda", // Default payment method
+          amount: upgradeRequest.paymentAmount,
+          currency: "USD",
+          transactionId: "UPGRADE_" + upgradeRequest._id,
+          paymentDate: now,
+          nextBillingDate: subscriptionEndDate,
+        },
+        limits: {
+          photos: -1, // Unlimited
+          videos: -1, // Unlimited
+          featuredPlacement: true,
+          prioritySearch: true,
+          analytics: true,
+          directContact: true,
+          customProfile: true,
+          marketingSupport: true,
+        },
+        features: {
+          verifiedBadge: true,
+          premiumBadge: true,
+          homepageFeatured: false,
+          priorityBooking: true,
+          socialMediaIntegration: false,
+          professionalTips: false,
+        },
+      });
+
+      await subscription.save();
+    }
+  }
+
   // Mettre à jour la demande
   upgradeRequest.status = "approved";
   upgradeRequest.adminNotes = adminNotes;
@@ -527,10 +566,23 @@ const getUserSubscriptionStatus = asyncHandler(async (req, res) => {
     period: null,
   };
 
-  if (
+  // First check if there's a separate Subscription document
+  const subscription = await Subscription.findOne({
+    userId: userId,
+    status: "active"
+  });
+
+  if (subscription) {
+    // Use data from Subscription document
+    subscriptionInfo.remainingDays = subscription.daysRemaining;
+    subscriptionInfo.endDate = subscription.endDate;
+    subscriptionInfo.period = subscription.tier === "premium" ? "monthly" : null;
+    subscriptionInfo.isExpired = subscription.daysRemaining <= 0;
+  } else if (
     user.subscriptionTier === "premium" &&
     user.subscriptionDetails?.endDate
   ) {
+    // Fallback to User model data
     const now = new Date();
     const endDate = new Date(user.subscriptionDetails.endDate);
     const remainingMs = endDate.getTime() - now.getTime();
