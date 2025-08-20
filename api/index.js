@@ -50,7 +50,11 @@ const io = new Server(server, {
 });
 
 // Middleware
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 app.use(
   cors({
     origin: config.FRONTEND_URL,
@@ -94,6 +98,13 @@ app.use(
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization"
     );
+    res.header("Access-Control-Allow-Credentials", "true");
+
+    // Handle preflight requests
+    if (req.method === "OPTIONS") {
+      res.status(200).end();
+      return;
+    }
     next();
   },
   express.static("/opt/render/project/src/uploads")
