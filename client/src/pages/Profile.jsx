@@ -33,6 +33,7 @@ import Dropzone from "react-dropzone";
 import { showToast } from "@/helpers/showToast";
 import { getEvn } from "@/helpers/getEnv";
 import { userAPI } from "@/services/api";
+import { fixUserUrls } from "@/utils/urlHelper";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -196,19 +197,23 @@ const Profile = () => {
         if (response.ok) {
           const data = await response.json();
           console.log("Fresh user data received:", data);
-          setUserData({ success: true, user: data.user });
+          // Fix URLs in user data
+          const userWithFixedUrls = fixUserUrls(data.user);
+          setUserData({ success: true, user: userWithFixedUrls });
         } else {
           console.error("Failed to fetch user data");
           // Fallback to Redux data
           if (user && user._id) {
-            setUserData({ success: true, user: user });
+            const userWithFixedUrls = fixUserUrls(user);
+            setUserData({ success: true, user: userWithFixedUrls });
           }
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
         // Fallback to Redux data
         if (user && user._id) {
-          setUserData({ success: true, user: user });
+          const userWithFixedUrls = fixUserUrls(user);
+          setUserData({ success: true, user: userWithFixedUrls });
         }
       } finally {
         setLoading(false);
@@ -1916,7 +1921,7 @@ const Profile = () => {
                               userData.user.gallery.length > 0 && (
                                 <div className="grid grid-cols-3 gap-3">
                                   {userData.user.gallery.map((image, index) => {
-                                    // Simple direct display of base64 images
+                                    // Get the image URL (already fixed by fixUserUrls)
                                     const imageUrl = image.url || image;
                                     console.log(
                                       `Gallery image ${index}:`,

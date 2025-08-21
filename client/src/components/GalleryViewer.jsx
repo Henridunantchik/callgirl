@@ -11,13 +11,17 @@ import {
   Share2,
   X,
 } from "lucide-react";
+import { fixUrlsInArray } from "../utils/urlHelper";
 
 const GalleryViewer = ({ images = [], videos = [], isPrivate = false }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  const allMedia = [...images, ...videos];
+  // Fix URLs in images and videos
+  const fixedImages = fixUrlsInArray(images);
+  const fixedVideos = fixUrlsInArray(videos);
+  const allMedia = [...fixedImages, ...fixedVideos];
   const isVideo = (index) => index >= images.length;
 
   const nextSlide = () => {
