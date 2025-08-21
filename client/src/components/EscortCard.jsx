@@ -28,12 +28,16 @@ import {
   getAccessLevelBadgeColor,
   getAccessLevelLabel,
 } from "../utils/escortAccess";
+import { fixUserUrls } from "../utils/urlHelper";
 
 const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
   const { countryCode } = useParams();
   const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Fix URLs in escort data
+  const fixedEscort = fixUserUrls(escort);
 
   // Function to get currency symbol based on country
   const getCurrencySymbol = (countryCode) => {
@@ -130,10 +134,10 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           <img
             src={
               imageError
-                ? escort.avatar || "/default-escort.jpg"
-                : escort.gallery?.[0]?.url || escort.avatar
+                ? fixedEscort.avatar || "/default-escort.jpg"
+                : fixedEscort.gallery?.[0]?.url || fixedEscort.avatar
             }
-            alt={escort.alias || escort.name}
+            alt={fixedEscort.alias || fixedEscort.name}
             className="w-full h-full object-cover object-center transition-transform duration-300"
             style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
             onError={handleImageError}
@@ -142,34 +146,35 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           {/* Overlay with badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
             {/* Tier badge (Featured/Premium) - not basic */}
-            {escort.subscriptionTier && escort.subscriptionTier !== "basic" && (
-              <Badge
-                variant="secondary"
-                className={`${getAccessLevelBadgeColor(
-                  getEscortAccessLevel(escort)
-                )} text-white shadow-md`}
-              >
-                <Award className="h-3 w-3 mr-1" />
-                {getAccessLevelLabel(getEscortAccessLevel(escort))}
-              </Badge>
-            )}
+            {fixedEscort.subscriptionTier &&
+              fixedEscort.subscriptionTier !== "basic" && (
+                <Badge
+                  variant="secondary"
+                  className={`${getAccessLevelBadgeColor(
+                    getEscortAccessLevel(fixedEscort)
+                  )} text-white shadow-md`}
+                >
+                  <Award className="h-3 w-3 mr-1" />
+                  {getAccessLevelLabel(getEscortAccessLevel(fixedEscort))}
+                </Badge>
+              )}
           </div>
 
           {/* Online status */}
           <div className="absolute top-3 right-3">{getOnlineStatus()}</div>
 
           {/* Favorite button - Only for premium/featured escorts */}
-          {canShowContactInfo(escort) && (
+          {canShowContactInfo(fixedEscort) && (
             <div className="absolute top-3 right-3 mt-12">
               <FavoriteButton
-                escortId={escort._id}
+                escortId={fixedEscort._id}
                 size="sm"
                 variant="ghost"
                 className="bg-white/80 hover:bg-white text-gray-700 hover:text-red-500"
                 onFavoriteToggle={() => {
                   // Update escort stats in the card if needed
                   if (onFavorite) {
-                    onFavorite(escort._id);
+                    onFavorite(fixedEscort._id);
                   }
                 }}
               />
@@ -177,11 +182,11 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           )}
 
           {/* Gallery count */}
-          {escort.gallery && escort.gallery.length > 1 && (
+          {fixedEscort.gallery && fixedEscort.gallery.length > 1 && (
             <div className="absolute bottom-3 right-3">
               <Badge variant="secondary" className="bg-black/70 text-white">
                 <Eye className="w-3 h-3 mr-1" />
-                {escort.gallery.length} photos
+                {fixedEscort.gallery.length} photos
               </Badge>
             </div>
           )}
@@ -191,14 +196,18 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           {/* Name and Age */}
           <div className="flex items-center justify-between mb-1">
             <Link
-              to={`/${countryCode}/escort/${escort.alias || escort.name}`}
+              to={`/${countryCode}/escort/${
+                fixedEscort.alias || fixedEscort.name
+              }`}
               className="hover:underline"
             >
               <h3 className="text-base font-semibold text-gray-900">
-                {escort.alias || escort.name}
+                {fixedEscort.alias || fixedEscort.name}
               </h3>
             </Link>
-            <span className="text-xs text-gray-500">{escort.age} years</span>
+            <span className="text-xs text-gray-500">
+              {fixedEscort.age} years
+            </span>
           </div>
 
           {/* Location */}
@@ -206,14 +215,17 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
             <MapPin className="w-3 h-3 mr-1" />
             {(() => {
               // Handle location whether it's an object or string
-              if (typeof escort.location === "object" && escort.location.city) {
-                return `${escort.location.city}${
-                  escort.location.subLocation
-                    ? `, ${escort.location.subLocation}`
+              if (
+                typeof fixedEscort.location === "object" &&
+                fixedEscort.location.city
+              ) {
+                return `${fixedEscort.location.city}${
+                  fixedEscort.location.subLocation
+                    ? `, ${fixedEscort.location.subLocation}`
                     : ""
                 }`;
-              } else if (typeof escort.location === "string") {
-                return escort.location;
+              } else if (typeof fixedEscort.location === "string") {
+                return fixedEscort.location;
               } else {
                 return "Location not specified";
               }
@@ -221,14 +233,14 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           </div>
 
           {/* Rating */}
-          {escort.rating && (
+          {fixedEscort.rating && (
             <div className="flex items-center mb-1">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
                     className={`w-3 h-3 ${
-                      i < Math.floor(escort.rating)
+                      i < Math.floor(fixedEscort.rating)
                         ? "fill-yellow-400 text-yellow-400"
                         : "text-gray-300"
                     }`}
@@ -236,39 +248,40 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
                 ))}
               </div>
               <span className="text-xs text-gray-600 ml-1">
-                {escort.rating.toFixed(1)} ({escort.reviewCount || 0} reviews)
+                {fixedEscort.rating.toFixed(1)} ({fixedEscort.reviewCount || 0}{" "}
+                reviews)
               </span>
             </div>
           )}
 
           {/* Physical attributes - Only show for premium escorts */}
-          {canShowDetailedInfo(escort) && (
+          {canShowDetailedInfo(fixedEscort) && (
             <div className="flex flex-wrap gap-1 mb-2">
-              {escort.height && (
+              {fixedEscort.height && (
                 <Badge variant="outline" className="text-xs">
-                  {escort.height}cm
+                  {fixedEscort.height}cm
                 </Badge>
               )}
-              {escort.bodyType && (
+              {fixedEscort.bodyType && (
                 <Badge variant="outline" className="text-xs">
-                  {escort.bodyType}
+                  {fixedEscort.bodyType}
                 </Badge>
               )}
-              {escort.ethnicity && (
+              {fixedEscort.ethnicity && (
                 <Badge variant="outline" className="text-xs">
-                  {escort.ethnicity}
+                  {fixedEscort.ethnicity}
                 </Badge>
               )}
             </div>
           )}
 
           {/* Services - Only show for premium escorts */}
-          {canShowDetailedInfo(escort) && escort.services && (
+          {canShowDetailedInfo(fixedEscort) && fixedEscort.services && (
             <div className="mb-1">
               <div className="flex flex-wrap gap-1">
                 {(() => {
                   // Handle services whether it's a string or array
-                  let servicesArray = escort.services;
+                  let servicesArray = fixedEscort.services;
                   if (typeof servicesArray === "string") {
                     // Split by common delimiters and clean up
                     servicesArray = servicesArray
@@ -306,13 +319,13 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
         </CardContent>
 
         <CardFooter className="p-3 pt-0">
-          {canShowContactInfo(escort) ? (
+          {canShowContactInfo(fixedEscort) ? (
             <div className="flex gap-2 w-full">
               <Button
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onClick={() => onContact(escort, "message")}
+                onClick={() => onContact(fixedEscort, "message")}
               >
                 <MessageCircle className="w-4 h-4 mr-1" />
                 Message
@@ -321,10 +334,10 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
                 variant="default"
                 size="sm"
                 className="flex-1"
-                onClick={() => onContact(escort, "call")}
+                onClick={() => onContact(fixedEscort, "call")}
               >
                 <Phone className="w-4 h-4 mr-1" />
-                {escort.phone || "Call"}
+                {fixedEscort.phone || "Call"}
               </Button>
             </div>
           ) : // Only show premium access message to escorts (not clients)
