@@ -12,6 +12,7 @@ import Message from "../models/message.model.js";
 import Booking from "../models/booking.model.js";
 import Review from "../models/review.model.js";
 import Favorite from "../models/favorite.model.js";
+import { fixUrlsInObject, fixUrlsInArray } from "../utils/urlHelper.js";
 
 /**
  * Get all escorts with filtering and pagination
@@ -213,8 +214,11 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
         isOnlineField: escort.isOnline,
       });
 
+      // Fix URLs for media files
+      const escortWithFixedUrls = fixUrlsInObject(escort.toObject());
+
       return {
-        ...escort.toObject(),
+        ...escortWithFixedUrls,
         services,
         benefits,
         subscriptionTier: escort.subscriptionTier || "basic",
@@ -339,12 +343,15 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
     // Get subscription benefits
     const benefits = escort.getSubscriptionBenefits();
 
+    // Fix URLs for media files
+    const escortWithFixedUrls = fixUrlsInObject(escort.toObject());
+
     return res.status(200).json(
       new ApiResponse(
         200,
         {
           escort: {
-            ...escort.toObject(),
+            ...escortWithFixedUrls,
             benefits,
             subscriptionTier: escort.subscriptionTier || "basic",
           },

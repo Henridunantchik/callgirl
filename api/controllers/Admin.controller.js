@@ -3,6 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
+import { fixUrlsInArray } from "../utils/urlHelper.js";
 
 // Make Lola Lala Premium
 const makeLolaPremium = asyncHandler(async (req, res) => {
@@ -32,6 +33,9 @@ const makeLolaPremium = asyncHandler(async (req, res) => {
     console.log(`   New tier: ${lola.subscriptionTier}`);
     console.log(`   Is Verified: ${lola.isVerified}`);
 
+    // Fix URLs for media files
+    const userWithFixedUrls = fixUrlsInArray([lola])[0];
+
     return res.status(200).json(
       new ApiResponse(
         200,
@@ -41,6 +45,7 @@ const makeLolaPremium = asyncHandler(async (req, res) => {
             name: lola.name,
             subscriptionTier: lola.subscriptionTier,
             isVerified: lola.isVerified,
+            ...userWithFixedUrls,
           },
         },
         "Lola Lala successfully upgraded to Premium"
@@ -69,11 +74,14 @@ const getAllUsers = asyncHandler(async (req, res) => {
 
   const total = await User.countDocuments(filter);
 
+  // Fix URLs for media files in all users
+  const usersWithFixedUrls = fixUrlsInArray(users);
+
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        users,
+        users: usersWithFixedUrls,
         total,
         page: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -98,9 +106,18 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
+  // Fix URLs for media files
+  const userWithFixedUrls = fixUrlsInArray([user])[0];
+
   return res
     .status(200)
-    .json(new ApiResponse(200, { user }, "User status updated successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        { user: userWithFixedUrls },
+        "User status updated successfully"
+      )
+    );
 });
 
 // Get platform stats (admin)

@@ -5,6 +5,7 @@ import bcryptjs from "bcryptjs";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import { fixUrlsInObject, fixUrlsInArray } from "../utils/urlHelper.js";
 
 export const getUser = async (req, res, next) => {
   try {
@@ -26,10 +27,14 @@ export const getUser = async (req, res, next) => {
         message: "User not found.",
       });
     }
+
+    // Fix URLs for media files
+    const userWithFixedUrls = fixUrlsInObject(user);
+
     res.status(200).json({
       success: true,
       message: "User data found.",
-      user,
+      user: userWithFixedUrls,
     });
   } catch (error) {
     console.error("Error in getUser:", error);
@@ -119,10 +124,14 @@ export const updateUser = async (req, res, next) => {
 
     const newUser = user.toObject({ getters: true });
     delete newUser.password;
+
+    // Fix URLs for media files
+    const userWithFixedUrls = fixUrlsInObject(newUser);
+
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user: newUser,
+      user: userWithFixedUrls,
     });
   } catch (error) {
     console.error("Error updating user:", error);
@@ -136,10 +145,14 @@ export const updateUser = async (req, res, next) => {
 
 export const getAllUser = async (req, res, next) => {
   try {
-    const user = await User.find().sort({ createdAt: -1 });
+    const users = await User.find().sort({ createdAt: -1 });
+
+    // Fix URLs for media files in all users
+    const usersWithFixedUrls = fixUrlsInArray(users);
+
     res.status(200).json({
       success: true,
-      user,
+      user: usersWithFixedUrls,
     });
   } catch (error) {
     next(handleError(500, error.message));
