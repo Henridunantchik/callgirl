@@ -3,10 +3,17 @@ import User from "../models/user.model.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import config from "../config/env.js";
-import { validateEmail, validatePassword, hashPassword, comparePassword, generateToken } from "../utils/security.js";
+import {
+  validateEmail,
+  validatePassword,
+  hashPassword,
+  comparePassword,
+  generateToken,
+} from "../utils/security.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { fixUrlsInObject } from "../utils/urlHelper.js";
 export const Register = asyncHandler(async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -23,7 +30,10 @@ export const Register = asyncHandler(async (req, res, next) => {
 
     // Validate password strength
     if (!validatePassword(password)) {
-      throw new ApiError(400, "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character");
+      throw new ApiError(
+        400,
+        "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+      );
     }
 
     // Check if user already exists
@@ -40,7 +50,7 @@ export const Register = asyncHandler(async (req, res, next) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
-      role: 'client', // Default role
+      role: "client", // Default role
       isActive: true,
       isVerified: false,
     });
@@ -71,9 +81,12 @@ export const Register = asyncHandler(async (req, res, next) => {
     const userResponse = user.toObject({ getters: true });
     delete userResponse.password;
 
+    // Fix URLs for media files
+    const userWithFixedUrls = fixUrlsInObject(userResponse);
+
     return res.status(201).json({
       success: true,
-      user: userResponse,
+      user: userWithFixedUrls,
       token: token,
       message: "Registration successful",
     });
@@ -82,8 +95,8 @@ export const Register = asyncHandler(async (req, res, next) => {
     console.error(`Registration failed: ${error.message}`, {
       email: req.body.email,
       ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      timestamp: new Date().toISOString()
+      userAgent: req.get("User-Agent"),
+      timestamp: new Date().toISOString(),
     });
 
     next(error);
@@ -112,7 +125,10 @@ export const Login = asyncHandler(async (req, res, next) => {
 
     // Check if user is active
     if (!user.isActive) {
-      throw new ApiError(403, "Account is deactivated. Please contact support.");
+      throw new ApiError(
+        403,
+        "Account is deactivated. Please contact support."
+      );
     }
 
     // Verify password
@@ -121,8 +137,8 @@ export const Login = asyncHandler(async (req, res, next) => {
       // Log failed login attempt
       console.warn(`Failed login attempt for email: ${email}`, {
         ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date().toISOString()
+        userAgent: req.get("User-Agent"),
+        timestamp: new Date().toISOString(),
       });
 
       throw new ApiError(401, "Invalid login credentials");
@@ -171,8 +187,8 @@ export const Login = asyncHandler(async (req, res, next) => {
     console.error(`Login failed: ${error.message}`, {
       email: req.body.email,
       ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      timestamp: new Date().toISOString()
+      userAgent: req.get("User-Agent"),
+      timestamp: new Date().toISOString(),
     });
 
     next(error);
@@ -217,9 +233,13 @@ export const GoogleLogin = async (req, res, next) => {
 
     const newUser = user.toObject({ getters: true });
     delete newUser.password;
+
+    // Fix URLs for media files
+    const userWithFixedUrls = fixUrlsInObject(newUser);
+
     res.status(200).json({
       success: true,
-      user: newUser,
+      user: userWithFixedUrls,
       token: token,
       message: "Login successful.",
     });
@@ -276,9 +296,12 @@ export const getCurrentUser = async (req, res, next) => {
       });
     }
 
+    // Fix URLs for media files
+    const userWithFixedUrls = fixUrlsInObject(user.toObject());
+
     res.status(200).json({
       success: true,
-      user: user,
+      user: userWithFixedUrls,
     });
   } catch (error) {
     console.error("getCurrentUser error:", error);
