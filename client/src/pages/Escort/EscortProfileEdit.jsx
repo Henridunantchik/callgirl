@@ -34,6 +34,7 @@ import Loading from "@/components/Loading";
 import Dropzone from "react-dropzone";
 import { showToast } from "@/helpers/showToast";
 import { userAPI, escortAPI } from "@/services/api";
+import { fixUserUrls } from "@/utils/urlHelper";
 import {
   ChevronDown,
   ChevronUp,
