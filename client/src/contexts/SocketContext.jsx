@@ -26,7 +26,10 @@ export const SocketProvider = ({ children }) => {
     // Initialize socket connection
     const socketUrl =
       import.meta.env.VITE_API_URL?.replace("/api", "") ||
-      "http://localhost:5000";
+      (window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+        ? "https://callgirls-api.onrender.com"
+        : "http://localhost:5000");
     const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ["websocket", "polling"],

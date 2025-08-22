@@ -528,7 +528,11 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
       const uploadResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+          import.meta.env.VITE_API_URL ||
+          (window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"
+            ? "https://callgirls-api.onrender.com/api"
+            : "http://localhost:5000/api")
         }/message/upload-image`,
         {
           method: "POST",
@@ -670,7 +674,9 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                     You need to be signed in to send messages
                   </p>
                   <Button
-                    onClick={() => (window.location.href = `/${countryCode}/signin`)}
+                    onClick={() =>
+                      (window.location.href = `/${countryCode}/signin`)
+                    }
                     className="w-full"
                   >
                     Sign In

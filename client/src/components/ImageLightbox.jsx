@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { fixUrlsInArray } from "../utils/urlHelper";
 
 const ImageLightbox = ({ isOpen, onClose, images = [], initialIndex = 0 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [fitMode, setFitMode] = useState("contain"); // 'contain' or 'cover'
+
+  // Fix URLs in images
+  const fixedImages = fixUrlsInArray(images);
 
   // Update current index when initialIndex changes
   useEffect(() => {
@@ -34,18 +38,20 @@ const ImageLightbox = ({ isOpen, onClose, images = [], initialIndex = 0 }) => {
   }, [isOpen, currentIndex, onClose]);
 
   const nextImage = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
+    setCurrentIndex((prev) => (prev + 1) % fixedImages.length);
   };
 
   const prevImage = () => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    setCurrentIndex(
+      (prev) => (prev - 1 + fixedImages.length) % fixedImages.length
+    );
   };
 
   const toggleFitMode = () => {
     setFitMode((prev) => (prev === "contain" ? "cover" : "contain"));
   };
 
-  if (!isOpen || images.length === 0) return null;
+  if (!isOpen || fixedImages.length === 0) return null;
 
   return (
     <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center">
@@ -74,7 +80,7 @@ const ImageLightbox = ({ isOpen, onClose, images = [], initialIndex = 0 }) => {
         </Button>
 
         {/* Navigation Arrows */}
-        {images.length > 1 && (
+        {fixedImages.length > 1 && (
           <>
             <Button
               variant="ghost"
@@ -98,7 +104,7 @@ const ImageLightbox = ({ isOpen, onClose, images = [], initialIndex = 0 }) => {
         {/* Image */}
         <div className="max-w-5xl max-h-full p-4">
           <img
-            src={images[currentIndex]}
+            src={fixedImages[currentIndex]}
             alt={`Image ${currentIndex + 1}`}
             className={`max-w-full max-h-full object-${fitMode}`}
           />
@@ -106,7 +112,7 @@ const ImageLightbox = ({ isOpen, onClose, images = [], initialIndex = 0 }) => {
 
         {/* Image Counter */}
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-lg">
-          {currentIndex + 1} / {images.length}
+          {currentIndex + 1} / {fixedImages.length}
         </div>
 
         {/* Fit Mode Indicator */}

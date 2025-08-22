@@ -571,7 +571,12 @@ const EscortRegistration = () => {
       // Test API connection first
       try {
         console.log("🧪 Testing API connection...");
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+        const apiUrl =
+          import.meta.env.VITE_API_URL ||
+          (window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"
+            ? "https://callgirls-api.onrender.com"
+            : "http://localhost:5000");
         const testResponse = await fetch(`${apiUrl}/health`);
         console.log("✅ API Health Check:", testResponse.status);
 

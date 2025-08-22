@@ -317,7 +317,11 @@ const Messages = () => {
         // Upload image to server
         const uploadResponse = await fetch(
           `${
-            import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+            import.meta.env.VITE_API_URL ||
+            (window.location.hostname !== "localhost" &&
+            window.location.hostname !== "127.0.0.1"
+              ? "https://callgirls-api.onrender.com/api"
+              : "http://localhost:5000/api")
           }/message/upload-image`,
           {
             method: "POST",
