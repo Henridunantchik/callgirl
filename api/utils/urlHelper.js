@@ -9,7 +9,7 @@ export const getBaseUrl = () => {
   if (config.NODE_ENV === "production") {
     return "https://callgirls-api.onrender.com";
   }
-  
+
   // In development, use localhost
   return "http://localhost:5000";
 };
@@ -21,20 +21,34 @@ export const getBaseUrl = () => {
  */
 export const generateMediaUrl = (filePath) => {
   if (!filePath) return null;
-  
+
   const baseUrl = getBaseUrl();
-  
-  // If the path already contains a full URL, return it as is
-  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+
+  // If the path already contains a full URL, check if it's localhost and fix it
+  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+    // If it's a localhost URL, replace it with production URL
+    if (filePath.includes("localhost:5000")) {
+      // Extract the path part after localhost:5000
+      const pathPart = filePath
+        .replace("http://localhost:5000", "")
+        .replace("https://localhost:5000", "");
+      // Normalize path separators (handle Windows backslashes)
+      const normalizedPath = pathPart.replace(/\\/g, "/");
+      return `${baseUrl}${normalizedPath}`;
+    }
+    // If it's already a production URL, return as is
     return filePath;
   }
-  
-  // Remove leading slash if present
-  const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-  
+
+  // Remove leading slash if present and normalize path separators
+  const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+  const normalizedPath = cleanPath.replace(/\\/g, "/");
+
   // Ensure the path starts with uploads/
-  const uploadsPath = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
-  
+  const uploadsPath = normalizedPath.startsWith("uploads/")
+    ? normalizedPath
+    : `uploads/${normalizedPath}`;
+
   return `${baseUrl}/${uploadsPath}`;
 };
 
@@ -44,41 +58,41 @@ export const generateMediaUrl = (filePath) => {
  * @returns {Object} The object with fixed URLs
  */
 export const fixUrlsInObject = (obj) => {
-  if (!obj || typeof obj !== 'object') return obj;
-  
+  if (!obj || typeof obj !== "object") return obj;
+
   const fixedObj = { ...obj };
-  
+
   // Fix avatar URL
-  if (fixedObj.avatar && typeof fixedObj.avatar === 'string') {
+  if (fixedObj.avatar && typeof fixedObj.avatar === "string") {
     fixedObj.avatar = generateMediaUrl(fixedObj.avatar);
   }
-  
+
   // Fix gallery URLs
   if (fixedObj.gallery && Array.isArray(fixedObj.gallery)) {
-    fixedObj.gallery = fixedObj.gallery.map(item => {
-      if (typeof item === 'string') {
+    fixedObj.gallery = fixedObj.gallery.map((item) => {
+      if (typeof item === "string") {
         return generateMediaUrl(item);
       }
-      if (item && typeof item === 'object' && item.url) {
+      if (item && typeof item === "object" && item.url) {
         return { ...item, url: generateMediaUrl(item.url) };
       }
       return item;
     });
   }
-  
+
   // Fix video URLs
   if (fixedObj.videos && Array.isArray(fixedObj.videos)) {
-    fixedObj.videos = fixedObj.videos.map(item => {
-      if (typeof item === 'string') {
+    fixedObj.videos = fixedObj.videos.map((item) => {
+      if (typeof item === "string") {
         return generateMediaUrl(item);
       }
-      if (item && typeof item === 'object' && item.url) {
+      if (item && typeof item === "object" && item.url) {
         return { ...item, url: generateMediaUrl(item.url) };
       }
       return item;
     });
   }
-  
+
   return fixedObj;
 };
 
@@ -89,13 +103,13 @@ export const fixUrlsInObject = (obj) => {
  */
 export const fixUrlsInArray = (array) => {
   if (!Array.isArray(array)) return array;
-  
-  return array.map(item => fixUrlsInObject(item));
+
+  return array.map((item) => fixUrlsInObject(item));
 };
 
 export default {
   getBaseUrl,
   generateMediaUrl,
   fixUrlsInObject,
-  fixUrlsInArray
+  fixUrlsInArray,
 };
