@@ -11,7 +11,11 @@ export const useFetch = (url, options = {}, dependencies = []) => {
       try {
         // Convert relative URLs to absolute API URLs
         const apiBase =
-          import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+          import.meta.env.VITE_API_URL ||
+          (window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"
+            ? "https://callgirls-api.onrender.com/api"
+            : "http://localhost:5000/api");
         const fullUrl = url.startsWith("http")
           ? url
           : `${apiBase}/${url.replace(/^\//, "")}`;

@@ -62,18 +62,18 @@ const AdminMessages = () => {
     if (socketIsUserOnline(userId)) {
       return true;
     }
-    
+
     // Then check if the user object has isOnline field from API
-    const conversation = conversations.find(conv => conv.user._id === userId);
+    const conversation = conversations.find((conv) => conv.user._id === userId);
     if (conversation?.user?.isOnline) {
       return true;
     }
-    
+
     // Also check selectedChat user if it's the same user
     if (selectedChat?.user?._id === userId && selectedChat?.user?.isOnline) {
       return true;
     }
-    
+
     return false;
   };
 
@@ -302,7 +302,11 @@ const AdminMessages = () => {
         // Upload image to server
         const uploadResponse = await fetch(
           `${
-            import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+            import.meta.env.VITE_API_URL ||
+            (window.location.hostname !== "localhost" &&
+            window.location.hostname !== "127.0.0.1"
+              ? "https://callgirls-api.onrender.com/api"
+              : "http://localhost:5000/api")
           }/message/upload-image`,
           {
             method: "POST",

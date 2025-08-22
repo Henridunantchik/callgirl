@@ -1,5 +1,6 @@
 import React from "react";
 import { Shield } from "lucide-react";
+import { fixUrl } from "../utils/urlHelper";
 
 const PremiumAvatar = ({
   src,
@@ -18,7 +19,7 @@ const PremiumAvatar = ({
   return (
     <div className={`relative ${className}`}>
       <img
-        src={src || "/default-escort.jpg"}
+        src={fixUrl(src) || "/default-escort.jpg"}
         alt={alt || "Avatar"}
         className={`${size} rounded-full object-cover border-4 border-white shadow-lg`}
         style={

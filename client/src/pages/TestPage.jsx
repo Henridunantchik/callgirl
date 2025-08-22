@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { escortAPI, authAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
-import { showToast } from '../helpers/showToast';
+import React, { useState } from "react";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { escortAPI, authAPI } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
+import { showToast } from "../helpers/showToast";
 
 const TestPage = () => {
   const { user, loading } = useAuth();
@@ -16,22 +21,27 @@ const TestPage = () => {
     try {
       console.log(`🧪 Running test: ${testName}`);
       const result = await testFunction();
-      setTestResults(prev => ({
+      setTestResults((prev) => ({
         ...prev,
-        [testName]: { success: true, data: result, timestamp: new Date().toISOString() }
+        [testName]: {
+          success: true,
+          data: result,
+          timestamp: new Date().toISOString(),
+        },
       }));
       console.log(`✅ Test passed: ${testName}`, result);
       showToast("success", `${testName} passed!`);
     } catch (error) {
       console.error(`❌ Test failed: ${testName}`, error);
-      const errorMessage = error.response?.data?.message || error.message || "Unknown error";
-      setTestResults(prev => ({
+      const errorMessage =
+        error.response?.data?.message || error.message || "Unknown error";
+      setTestResults((prev) => ({
         ...prev,
-        [testName]: { 
-          success: false, 
+        [testName]: {
+          success: false,
           error: errorMessage,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       }));
       showToast("error", `${testName} failed: ${errorMessage}`);
     } finally {
@@ -41,46 +51,60 @@ const TestPage = () => {
 
   const tests = [
     {
-      name: 'Authentication Status',
+      name: "Authentication Status",
       function: () => Promise.resolve({ user, loading }),
-      description: 'Check if user is authenticated'
+      description: "Check if user is authenticated",
     },
     {
-      name: 'Get All Escorts',
+      name: "Get All Escorts",
       function: () => escortAPI.getAllEscorts(),
-      description: 'Fetch all escorts from API'
+      description: "Fetch all escorts from API",
     },
     {
-      name: 'Search Escorts',
-      function: () => escortAPI.searchEscorts({ q: 'test' }),
-      description: 'Search escorts with query'
+      name: "Search Escorts",
+      function: () => escortAPI.searchEscorts({ q: "test" }),
+      description: "Search escorts with query",
     },
     {
-      name: 'API Base URL',
-      function: () => Promise.resolve({ baseURL: process.env.VITE_API_BASE_URL || 'http://localhost:5000/api' }),
-      description: 'Check API base URL configuration'
-    }
+      name: "API Base URL",
+      function: () =>
+        Promise.resolve({
+          baseURL:
+            process.env.VITE_API_BASE_URL ||
+            (window.location.hostname !== "localhost" &&
+            window.location.hostname !== "127.0.0.1"
+              ? "https://callgirls-api.onrender.com/api"
+              : "http://localhost:5000/api"),
+        }),
+      description: "Check API base URL configuration",
+    },
   ];
 
   const getTestStatus = (testName) => {
     const result = testResults[testName];
-    if (!result) return 'pending';
-    return result.success ? 'passed' : 'failed';
+    if (!result) return "pending";
+    return result.success ? "passed" : "failed";
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'passed': return 'text-green-600';
-      case 'failed': return 'text-red-600';
-      default: return 'text-gray-500';
+      case "passed":
+        return "text-green-600";
+      case "failed":
+        return "text-red-600";
+      default:
+        return "text-gray-500";
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'passed': return '✅';
-      case 'failed': return '❌';
-      default: return '⏳';
+      case "passed":
+        return "✅";
+      case "failed":
+        return "❌";
+      default:
+        return "⏳";
     }
   };
 
@@ -88,8 +112,12 @@ const TestPage = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">API & Feature Test Page</h1>
-          <p className="text-gray-600">Test all escort features and API endpoints</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            API & Feature Test Page
+          </h1>
+          <p className="text-gray-600">
+            Test all escort features and API endpoints
+          </p>
         </div>
 
         {/* Authentication Status */}
@@ -101,20 +129,28 @@ const TestPage = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="font-medium">User:</span>
-                <span className={user ? 'text-green-600' : 'text-red-600'}>
-                  {user ? user.name || user.email : 'Not authenticated'}
+                <span className={user ? "text-green-600" : "text-red-600"}>
+                  {user ? user.name || user.email : "Not authenticated"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-medium">Loading:</span>
-                <span className={loading ? 'text-yellow-600' : 'text-green-600'}>
-                  {loading ? 'Yes' : 'No'}
+                <span
+                  className={loading ? "text-yellow-600" : "text-green-600"}
+                >
+                  {loading ? "Yes" : "No"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-medium">Token:</span>
-                <span className={localStorage.getItem('token') ? 'text-green-600' : 'text-red-600'}>
-                  {localStorage.getItem('token') ? 'Present' : 'Missing'}
+                <span
+                  className={
+                    localStorage.getItem("token")
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }
+                >
+                  {localStorage.getItem("token") ? "Present" : "Missing"}
                 </span>
               </div>
             </div>
@@ -129,18 +165,31 @@ const TestPage = () => {
           <CardContent>
             <div className="space-y-4">
               {tests.map((test) => (
-                <div key={test.name} className="flex items-center justify-between p-4 border rounded-lg">
+                <div
+                  key={test.name}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium">{test.name}</span>
-                      <Badge variant={getTestStatus(test.name) === 'passed' ? 'default' : 'secondary'}>
-                        {getStatusIcon(getTestStatus(test.name))} {getTestStatus(test.name)}
+                      <Badge
+                        variant={
+                          getTestStatus(test.name) === "passed"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
+                        {getStatusIcon(getTestStatus(test.name))}{" "}
+                        {getTestStatus(test.name)}
                       </Badge>
                     </div>
                     <p className="text-sm text-gray-600">{test.description}</p>
                     {testResults[test.name] && (
                       <div className="mt-2 text-xs text-gray-500">
-                        Last run: {new Date(testResults[test.name].timestamp).toLocaleTimeString()}
+                        Last run:{" "}
+                        {new Date(
+                          testResults[test.name].timestamp
+                        ).toLocaleTimeString()}
                       </div>
                     )}
                   </div>
@@ -148,9 +197,13 @@ const TestPage = () => {
                     size="sm"
                     onClick={() => runTest(test.name, test.function)}
                     disabled={runningTest === test.name}
-                    variant={getTestStatus(test.name) === 'passed' ? 'outline' : 'default'}
+                    variant={
+                      getTestStatus(test.name) === "passed"
+                        ? "outline"
+                        : "default"
+                    }
                   >
-                    {runningTest === test.name ? 'Testing...' : 'Run Test'}
+                    {runningTest === test.name ? "Testing..." : "Run Test"}
                   </Button>
                 </div>
               ))}
@@ -170,8 +223,10 @@ const TestPage = () => {
                   <div key={testName} className="border rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <strong>{testName}</strong>
-                      <Badge variant={result.success ? 'default' : 'destructive'}>
-                        {result.success ? 'PASSED' : 'FAILED'}
+                      <Badge
+                        variant={result.success ? "default" : "destructive"}
+                      >
+                        {result.success ? "PASSED" : "FAILED"}
                       </Badge>
                     </div>
                     {result.success ? (
@@ -199,13 +254,15 @@ const TestPage = () => {
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
-              <Button onClick={() => window.location.href = '/escort/registration'}>
+              <Button
+                onClick={() => (window.location.href = "/escort/registration")}
+              >
                 Test Escort Registration
               </Button>
-              <Button onClick={() => window.location.href = '/escort/list'}>
+              <Button onClick={() => (window.location.href = "/escort/list")}>
                 Test Escort List
               </Button>
-              <Button onClick={() => window.location.href = '/signin'}>
+              <Button onClick={() => (window.location.href = "/signin")}>
                 Test Authentication
               </Button>
             </div>

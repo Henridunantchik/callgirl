@@ -37,6 +37,7 @@ import { IoLogOutOutline, IoSearch } from "react-icons/io5";
 import { removeUser } from "@/redux/user/user.slice";
 import { showToast } from "@/helpers/showToast";
 import { getEvn } from "@/helpers/getEnv";
+import { fixUrl } from "@/utils/urlHelper";
 import { IoMdSearch } from "react-icons/io";
 import { AiOutlineMenu } from "react-icons/ai";
 import { useSidebar } from "./ui/sidebar";

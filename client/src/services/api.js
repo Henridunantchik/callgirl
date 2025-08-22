@@ -2,7 +2,12 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api", // Use environment variable for production
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    (window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+      ? "https://callgirls-api.onrender.com/api"
+      : "http://localhost:5000/api"), // Use environment variable for production
   withCredentials: true,
   timeout: 60000, // Increased to 60 seconds for file uploads
 });

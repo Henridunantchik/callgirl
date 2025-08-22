@@ -50,6 +50,7 @@ import {
   getAccessLevelBadgeColor,
   getAccessLevelLabel,
 } from "../../utils/escortAccess";
+import { fixUserUrls } from "../../utils/urlHelper";
 
 const EscortProfile = () => {
   const { slug } = useParams();
@@ -136,7 +137,9 @@ const EscortProfile = () => {
 
       if (escortData) {
         console.log("✅ Setting escort data:", escortData);
-        setEscort(escortData);
+        // Fix URLs in escort data
+        const escortWithFixedUrls = fixUserUrls(escortData);
+        setEscort(escortWithFixedUrls);
 
         // Update stats dynamically after setting initial data
         // Call updateEscortStats directly with the escort data
