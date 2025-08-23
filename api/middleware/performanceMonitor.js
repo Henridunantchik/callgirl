@@ -11,6 +11,20 @@ const performanceMetrics = {
     misses: 0,
     hitRate: 0,
   },
+  // Add real-time performance tracking
+  realTime: {
+    currentRequests: 0,
+    peakRequests: 0,
+    avgResponseTime: 0,
+    totalRequests: 0,
+    startTime: Date.now(),
+  },
+  // Add memory and system metrics
+  system: {
+    memoryUsage: process.memoryUsage(),
+    cpuUsage: process.cpuUsage(),
+    uptime: process.uptime(),
+  },
 };
 
 // Performance monitoring middleware
@@ -18,6 +32,14 @@ const performanceMiddleware = (req, res, next) => {
   const startTime = Date.now();
   const requestId =
     Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+  // Track current active requests
+  performanceMetrics.realTime.currentRequests++;
+  performanceMetrics.realTime.totalRequests++;
+  performanceMetrics.realTime.peakRequests = Math.max(
+    performanceMetrics.realTime.peakRequests,
+    performanceMetrics.realTime.currentRequests
+  );
 
   // Store request start time
   performanceMetrics.requests.set(requestId, {
@@ -34,6 +56,14 @@ const performanceMiddleware = (req, res, next) => {
     const endTime = Date.now();
     const duration = endTime - startTime;
 
+    // Update real-time metrics
+    performanceMetrics.realTime.currentRequests--;
+    performanceMetrics.realTime.avgResponseTime =
+      (performanceMetrics.realTime.avgResponseTime *
+        (performanceMetrics.realTime.totalRequests - 1) +
+        duration) /
+      performanceMetrics.realTime.totalRequests;
+
     // Update request metrics
     const requestData = performanceMetrics.requests.get(requestId);
     if (requestData) {
@@ -48,6 +78,13 @@ const performanceMiddleware = (req, res, next) => {
           timestamp: new Date(),
         });
       }
+
+      // Alert for very slow requests (>2s)
+      if (duration > 2000) {
+        console.error(
+          `🚨 CRITICAL: Very slow request: ${req.method} ${req.originalUrl} - ${duration}ms`
+        );
+      }
     }
 
     // Update endpoint metrics
@@ -59,6 +96,7 @@ const performanceMiddleware = (req, res, next) => {
       minDuration: Infinity,
       maxDuration: 0,
       errors: 0,
+      lastRequest: null,
     };
 
     endpointData.count++;
@@ -66,6 +104,7 @@ const performanceMiddleware = (req, res, next) => {
     endpointData.avgDuration = endpointData.totalDuration / endpointData.count;
     endpointData.minDuration = Math.min(endpointData.minDuration, duration);
     endpointData.maxDuration = Math.max(endpointData.maxDuration, duration);
+    endpointData.lastRequest = new Date();
 
     if (res.statusCode >= 400) {
       endpointData.errors++;
@@ -107,6 +146,10 @@ const trackError = (error, req) => {
 
 // Get performance metrics
 const getPerformanceMetrics = () => {
+  // Update system metrics
+  performanceMetrics.system.memoryUsage = process.memoryUsage();
+  performanceMetrics.system.uptime = process.uptime();
+
   // Calculate cache hit rate
   const totalRequests =
     performanceMetrics.cacheStats.hits + performanceMetrics.cacheStats.misses;
@@ -115,15 +158,32 @@ const getPerformanceMetrics = () => {
       ? (performanceMetrics.cacheStats.hits / totalRequests) * 100
       : 0;
 
+  // Calculate performance score (0-100)
+  const avgResponseTime = performanceMetrics.realTime.avgResponseTime;
+  let performanceScore = 100;
+
+  if (avgResponseTime > 1000) performanceScore = 60;
+  else if (avgResponseTime > 500) performanceScore = 80;
+  else if (avgResponseTime > 200) performanceScore = 90;
+  else if (avgResponseTime > 100) performanceScore = 95;
+
   return {
     requests: {
-      total: performanceMetrics.requests.size,
+      total: performanceMetrics.realTime.totalRequests,
+      current: performanceMetrics.realTime.currentRequests,
+      peak: performanceMetrics.realTime.peakRequests,
       slow: performanceMetrics.slowQueries.length,
+    },
+    performance: {
+      avgResponseTime: Math.round(avgResponseTime),
+      performanceScore,
+      uptime: Math.round(performanceMetrics.system.uptime),
     },
     endpoints: Array.from(performanceMetrics.endpoints.entries()).map(
       ([key, data]) => ({
         endpoint: key,
         ...data,
+        lastRequest: data.lastRequest?.toISOString(),
       })
     ),
     errors: Array.from(performanceMetrics.errors.entries()).map(
@@ -131,10 +191,25 @@ const getPerformanceMetrics = () => {
         error: key,
         ...data,
         endpoints: Array.from(data.endpoints),
+        lastOccurrence: data.lastOccurrence?.toISOString(),
       })
     ),
     cache: performanceMetrics.cacheStats,
     slowQueries: performanceMetrics.slowQueries.slice(-10), // Last 10 slow queries
+    system: {
+      memory: {
+        used: Math.round(
+          performanceMetrics.system.memoryUsage.used / 1024 / 1024
+        ),
+        total: Math.round(
+          performanceMetrics.system.memoryUsage.heapTotal / 1024 / 1024
+        ),
+        external: Math.round(
+          performanceMetrics.system.memoryUsage.external / 1024 / 1024
+        ),
+      },
+      uptime: Math.round(performanceMetrics.system.uptime),
+    },
   };
 };
 
@@ -162,15 +237,59 @@ const cleanupOldData = () => {
       performanceMetrics.requests.delete(id);
     }
   }
+
+  // Reset peak requests every hour
+  performanceMetrics.realTime.peakRequests =
+    performanceMetrics.realTime.currentRequests;
 };
 
 // Run cleanup every hour
 setInterval(cleanupOldData, 60 * 60 * 1000);
 
+// Performance health check
+const getPerformanceHealth = () => {
+  const metrics = getPerformanceMetrics();
+  const health = {
+    status: "healthy",
+    issues: [],
+    recommendations: [],
+  };
+
+  // Check response time
+  if (metrics.performance.avgResponseTime > 1000) {
+    health.status = "warning";
+    health.issues.push("High average response time");
+    health.recommendations.push(
+      "Consider adding caching or optimizing database queries"
+    );
+  }
+
+  // Check error rate
+  const totalErrors = metrics.errors.reduce((sum, err) => sum + err.count, 0);
+  const errorRate = (totalErrors / metrics.requests.total) * 100;
+  if (errorRate > 5) {
+    health.status = "critical";
+    health.issues.push("High error rate");
+    health.recommendations.push("Investigate and fix error patterns");
+  }
+
+  // Check memory usage
+  const memoryUsagePercent =
+    (metrics.system.memory.used / metrics.system.memory.total) * 100;
+  if (memoryUsagePercent > 80) {
+    health.status = "warning";
+    health.issues.push("High memory usage");
+    health.recommendations.push("Consider memory optimization or scaling");
+  }
+
+  return health;
+};
+
 export {
   performanceMiddleware,
   trackError,
   getPerformanceMetrics,
+  getPerformanceHealth,
   trackCacheHit,
   trackCacheMiss,
 };

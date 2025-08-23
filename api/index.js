@@ -10,7 +10,11 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { performanceMiddleware } from "./middleware/performanceMonitor.js";
-import { createDatabaseIndexes, optimizeDatabaseConnection } from "./utils/databaseOptimizer.js";
+import {
+  createDatabaseIndexes,
+  optimizeDatabaseConnection,
+} from "./utils/databaseOptimizer.js";
+import renderStorageConfig from "./config/render-storage.js";
 
 // Import configuration
 import config from "./config/env.js";
@@ -113,9 +117,11 @@ app.use(
     delete req.headers.authorization;
     next();
   },
-  express.static("/opt/render/project/src/uploads")
+  // Production: Serve from Render storage path, Development: Serve from local uploads
+  config.NODE_ENV === "production"
+    ? express.static("/opt/render/project/src/uploads")
+    : express.static(path.join(__dirname, "uploads"))
 );
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Fallback for local development
 
 // Health check endpoints - NO RATE LIMITING
 app.get("/health", (req, res) => {
@@ -142,9 +148,11 @@ app.get("/api/status", (req, res) => {
 // Performance metrics endpoint
 app.get("/api/performance", async (req, res) => {
   try {
-    const { getPerformanceMetrics } = await import("./middleware/performanceMonitor.js");
+    const { getPerformanceMetrics } = await import(
+      "./middleware/performanceMonitor.js"
+    );
     const metrics = getPerformanceMetrics();
-    
+
     res.status(200).json({
       success: true,
       data: metrics,
@@ -155,7 +163,32 @@ app.get("/api/performance", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get performance metrics",
-      error: config.NODE_ENV === "development" ? error.message : "Internal error"
+      error:
+        config.NODE_ENV === "development" ? error.message : "Internal error",
+    });
+  }
+});
+
+// Performance health check endpoint
+app.get("/api/performance/health", async (req, res) => {
+  try {
+    const { getPerformanceHealth } = await import(
+      "./middleware/performanceMonitor.js"
+    );
+    const health = getPerformanceHealth();
+
+    res.status(200).json({
+      success: true,
+      data: health,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error getting performance health:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get performance health",
+      error:
+        config.NODE_ENV === "development" ? error.message : "Internal error",
     });
   }
 });
@@ -167,6 +200,58 @@ app.get("/ping", (req, res) => {
     message: "pong",
     timestamp: new Date().toISOString(),
   });
+});
+
+// File debugging endpoint - NO RATE LIMITING
+app.get("/debug/files", async (req, res) => {
+  try {
+    const renderStorage = await import("./services/renderStorage.js");
+    const storage = renderStorage.default;
+
+    // Test storage configuration
+    const storageInfo = storage.getStorageInfo();
+    const testFiles = await storage.listFiles("gallery");
+
+    // Test file path generation
+    const testFilePath =
+      "/opt/render/project/src/uploads/gallery/test-image.jpg";
+    const testUrl = renderStorageConfig.getFileUrl(testFilePath);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        environment: config.NODE_ENV,
+        storageInfo,
+        testFiles,
+        testFilePath,
+        testUrl,
+        uploadPath:
+          process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads",
+        baseUrl:
+          process.env.RENDER_EXTERNAL_URL ||
+          "https://callgirls-api.onrender.com",
+        directories: {
+          images: "/opt/render/project/src/uploads/images",
+          gallery: "/opt/render/project/src/uploads/gallery",
+          videos: "/opt/render/project/src/uploads/videos",
+        },
+        envVars: {
+          NODE_ENV: process.env.NODE_ENV,
+          RENDER_STORAGE_PATH: process.env.RENDER_STORAGE_PATH,
+          RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL,
+        },
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error debugging files:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to debug files",
+      error:
+        config.NODE_ENV === "development" ? error.message : "Internal error",
+    });
+  }
 });
 
 // API routes (individual)
@@ -240,7 +325,7 @@ const startServer = async () => {
   try {
     // Optimize database connection
     optimizeDatabaseConnection();
-    
+
     // Connect to MongoDB with optimized settings
     await mongoose.connect(config.MONGODB_CONN, {
       maxPoolSize: 10,
@@ -259,7 +344,9 @@ const startServer = async () => {
       console.log(`📱 Frontend URL: ${config.FRONTEND_URL}`);
       console.log(`🔧 Environment: ${config.NODE_ENV}`);
       console.log(`🌐 Health check: http://localhost:${port}/health`);
-      console.log(`📊 Performance metrics: http://localhost:${port}/api/performance`);
+      console.log(
+        `📊 Performance metrics: http://localhost:${port}/api/performance`
+      );
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
