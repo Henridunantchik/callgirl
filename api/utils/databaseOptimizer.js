@@ -43,26 +43,45 @@ export const createDatabaseIndexes = async () => {
         { background: true }
       );
 
-    // Text search indexes
-    await mongoose.connection.db.collection("users").createIndex(
-      {
-        name: "text",
-        alias: "text",
-        bio: "text",
-        "location.city": "text",
-        services: "text",
-      },
-      {
-        background: true,
-        weights: {
-          name: 10,
-          alias: 8,
-          bio: 5,
-          "location.city": 3,
-          services: 6,
-        },
+    // Text search indexes - check if exists first
+    try {
+      const existingIndexes = await mongoose.connection.db
+        .collection("users")
+        .listIndexes()
+        .toArray();
+      
+      const hasTextIndex = existingIndexes.some(
+        index => index.key && index.key._fts === "text"
+      );
+      
+      if (!hasTextIndex) {
+        await mongoose.connection.db.collection("users").createIndex(
+          {
+            name: "text",
+            alias: "text",
+            bio: "text",
+            "location.city": "text",
+            "location.country": "text",
+            services: "text",
+          },
+          {
+            background: true,
+            weights: {
+              name: 1,
+              alias: 1,
+              bio: 1,
+              "location.city": 1,
+              "location.country": 1,
+              services: 1,
+            },
+          }
+        );
+      } else {
+        console.log("✅ Text search index already exists, skipping...");
       }
-    );
+    } catch (error) {
+      console.log("⚠️ Error with text search index:", error.message);
+    }
 
     // Message collection indexes
     await mongoose.connection.db
@@ -94,13 +113,33 @@ export const createDatabaseIndexes = async () => {
       .collection("reviews")
       .createIndex({ userId: 1, createdAt: -1 }, { background: true });
 
-    // Favorite collection indexes
-    await mongoose.connection.db
-      .collection("favorites")
-      .createIndex(
-        { userId: 1, escortId: 1 },
-        { unique: true, background: true }
+    // Favorite collection indexes - check if exists first
+    try {
+      const existingIndexes = await mongoose.connection.db
+        .collection("favorites")
+        .listIndexes()
+        .toArray();
+      
+      const hasIndex = existingIndexes.some(
+        index => 
+          index.key && 
+          index.key.userId === 1 && 
+          index.key.escortId === 1
       );
+      
+      if (!hasIndex) {
+        await mongoose.connection.db
+          .collection("favorites")
+          .createIndex(
+            { userId: 1, escortId: 1 },
+            { background: true }
+          );
+      } else {
+        console.log("✅ Favorites index already exists, skipping...");
+      }
+    } catch (error) {
+      console.log("⚠️ Error with favorites index:", error.message);
+    }
 
     console.log("✅ Database indexes created successfully");
   } catch (error) {
