@@ -126,6 +126,16 @@ class RenderStorageService {
     }
   }
 
+  // Get storage info
+  getStorageInfo() {
+    try {
+      return renderStorageConfig.getAvailableSpace();
+    } catch (error) {
+      console.error("Error getting storage info:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Get storage statistics
   async getStorageStats() {
     try {

@@ -58,7 +58,7 @@ const renderStorageConfig = {
   // URL base for serving files - Use localhost for development, Render URL for production
   baseUrl:
     config.NODE_ENV === "production"
-      ? "https://callgirls-api.onrender.com"
+      ? process.env.RENDER_EXTERNAL_URL || "https://callgirls-api.onrender.com"
       : "http://localhost:5000",
 
   // Initialize storage directories
@@ -82,15 +82,43 @@ const renderStorageConfig = {
       });
 
       console.log("✅ Render storage initialized successfully");
+      console.log("🌍 Environment:", config.NODE_ENV);
+      console.log("📁 Upload path:", renderStorageConfig.uploadPath);
+      console.log("🌐 Base URL:", renderStorageConfig.baseUrl);
     } catch (error) {
       console.error("❌ Error initializing Render storage:", error);
     }
   },
 
-  // Get file URL
+  // Get file URL - Fixed for production
   getFileUrl: (filePath) => {
-    const relativePath = filePath.replace(renderStorageConfig.uploadPath, "");
-    return `${renderStorageConfig.baseUrl}/uploads${relativePath}`;
+    try {
+      // For production, we need to handle the Render path correctly
+      if (config.NODE_ENV === "production") {
+        // Extract the relative path from the full file path
+        const relativePath = filePath.replace(
+          "/opt/render/project/src/uploads",
+          ""
+        );
+        const cleanPath = relativePath.replace(/\\/g, "/"); // Ensure forward slashes
+
+        // Build the full URL
+        const fullUrl = `${renderStorageConfig.baseUrl}/uploads${cleanPath}`;
+        console.log(`🔗 Generated URL: ${fullUrl} from path: ${filePath}`);
+        return fullUrl;
+      } else {
+        // Development - use local path
+        const relativePath = filePath.replace(
+          path.join(__dirname, "../uploads"),
+          ""
+        );
+        return `${renderStorageConfig.baseUrl}/uploads${relativePath}`;
+      }
+    } catch (error) {
+      console.error("❌ Error generating file URL:", error);
+      // Fallback to a basic URL
+      return `${renderStorageConfig.baseUrl}/uploads/fallback`;
+    }
   },
 
   // Check available space
@@ -99,13 +127,67 @@ const renderStorageConfig = {
       const stats = fs.statSync(renderStorageConfig.uploadPath);
       // This is a simplified check - in production you'd want more sophisticated space monitoring
       return {
-        total: 1024 * 1024 * 1024, // 1GB (Render free tier)
-        used: 0, // Would need to calculate actual usage
-        available: 1024 * 1024 * 1024, // Simplified
+        success: true,
+        path: renderStorageConfig.uploadPath,
+        exists: true,
+        isDirectory: stats.isDirectory(),
       };
     } catch (error) {
-      console.error("Error checking storage space:", error);
-      return { total: 0, used: 0, available: 0 };
+      return {
+        success: false,
+        error: error.message,
+        path: renderStorageConfig.uploadPath,
+      };
+    }
+  },
+
+  // List files in directory
+  listFiles: (directory) => {
+    try {
+      const dirPath = renderStorageConfig.directories[directory] || directory;
+      if (!fs.existsSync(dirPath)) {
+        return { success: false, error: "Directory not found", files: [] };
+      }
+
+      const files = fs.readdirSync(dirPath);
+      const fileList = files.map((file) => {
+        const filePath = path.join(dirPath, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          path: filePath,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime,
+          url: renderStorageConfig.getFileUrl(filePath),
+        };
+      });
+
+      return { success: true, files: fileList };
+    } catch (error) {
+      return { success: false, error: error.message, files: [] };
+    }
+  },
+
+  // Test file access
+  testFileAccess: (filePath) => {
+    try {
+      if (!fs.existsSync(filePath)) {
+        return { success: false, error: "File not found" };
+      }
+
+      const stats = fs.statSync(filePath);
+      const url = renderStorageConfig.getFileUrl(filePath);
+
+      return {
+        success: true,
+        exists: true,
+        size: stats.size,
+        url: url,
+        accessible: true,
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
   },
 };
