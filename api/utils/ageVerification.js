@@ -2,7 +2,7 @@ import { ApiError } from "./ApiError.js";
 import { ApiResponse } from "./ApiResponse.js";
 import { asyncHandler } from "./asyncHandler.js";
 import config from "../config/env.js";
-import cloudinary from "../config/cloudinary.js";
+import renderStorage from "../services/renderStorage.js";
 
 // Supported document types for age verification
 const SUPPORTED_DOCUMENT_TYPES = [
@@ -768,15 +768,16 @@ export const uploadAgeVerificationDocument = async (file, userId) => {
       );
     }
 
-    // Upload to Cloudinary for secure storage
-    const uploadResult = await cloudinary.uploader.upload(file.tempFilePath, {
-      folder: "age-verification",
-      public_id: `user-${userId}-${Date.now()}`,
-      resource_type: "auto",
-      allowed_formats: ["pdf", "jpg", "jpeg", "png", "tiff", "bmp", "webp"],
-    });
+    // Upload to Render storage for secure storage
+    const uploadResult = await renderStorage.uploadFile(file, "documents");
 
-    console.log(`Document uploaded to Cloudinary: ${uploadResult.public_id}`);
+    if (!uploadResult.success) {
+      throw new Error(`Upload failed: ${uploadResult.error}`);
+    }
+
+    console.log(
+      `Document uploaded to Render storage: ${uploadResult.publicId}`
+    );
 
     // Process document for age verification
     const verificationResult = await verifyAgeFromDocument(
@@ -786,8 +787,8 @@ export const uploadAgeVerificationDocument = async (file, userId) => {
     );
 
     // Add document URL to result
-    verificationResult.documentUrl = uploadResult.secure_url;
-    verificationResult.documentId = uploadResult.public_id;
+    verificationResult.documentUrl = uploadResult.url;
+    verificationResult.documentId = uploadResult.publicId;
 
     return verificationResult;
   } catch (error) {

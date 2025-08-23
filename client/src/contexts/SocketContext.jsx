@@ -23,7 +23,7 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (!user || !user._id) return;
 
-    // Initialize socket connection
+    // Initialize socket connection with better configuration
     const socketUrl =
       import.meta.env.VITE_API_URL?.replace("/api", "") ||
       (window.location.hostname !== "localhost" &&
@@ -33,6 +33,13 @@ export const SocketProvider = ({ children }) => {
     const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ["websocket", "polling"],
+      timeout: 20000, // 20 second timeout
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      maxReconnectionAttempts: 5,
+      forceNew: true,
     });
 
     setSocket(newSocket);
@@ -58,6 +65,29 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on("connect_error", (error) => {
       console.error("🔌 Socket connection error:", error);
+      setIsConnected(false);
+
+      // Attempt to reconnect after a delay
+      setTimeout(() => {
+        if (newSocket.disconnected) {
+          console.log("🔄 Attempting to reconnect...");
+          newSocket.connect();
+        }
+      }, 3000);
+    });
+
+    newSocket.on("reconnect", (attemptNumber) => {
+      console.log(`🔌 Socket reconnected after ${attemptNumber} attempts`);
+      setIsConnected(true);
+    });
+
+    newSocket.on("reconnect_error", (error) => {
+      console.error("🔌 Socket reconnection error:", error);
+      setIsConnected(false);
+    });
+
+    newSocket.on("reconnect_failed", () => {
+      console.error("🔌 Socket reconnection failed");
       setIsConnected(false);
     });
 

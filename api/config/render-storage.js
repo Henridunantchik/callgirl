@@ -32,6 +32,10 @@ const renderStorageConfig = {
       config.NODE_ENV === "production"
         ? "/opt/render/project/src/uploads/gallery"
         : path.join(__dirname, "../uploads/gallery"),
+    documents:
+      config.NODE_ENV === "production"
+        ? "/opt/render/project/src/uploads/documents"
+        : path.join(__dirname, "../uploads/documents"),
     temp:
       config.NODE_ENV === "production"
         ? "/opt/render/project/src/uploads/temp"

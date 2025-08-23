@@ -28,6 +28,9 @@ class RenderStorageService {
         case "video":
           uploadDir = renderStorageConfig.directories.videos;
           break;
+        case "documents":
+          uploadDir = renderStorageConfig.directories.documents;
+          break;
         default:
           uploadDir = renderStorageConfig.directories.images;
       }

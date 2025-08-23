@@ -9,6 +9,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { performanceMiddleware } from "./middleware/performanceMonitor.js";
+import { createDatabaseIndexes, optimizeDatabaseConnection } from "./utils/databaseOptimizer.js";
 
 // Import configuration
 import config from "./config/env.js";
@@ -50,6 +52,7 @@ const io = new Server(server, {
 });
 
 // Middleware
+app.use(performanceMiddleware); // Performance monitoring
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -136,6 +139,27 @@ app.get("/api/status", (req, res) => {
   });
 });
 
+// Performance metrics endpoint
+app.get("/api/performance", async (req, res) => {
+  try {
+    const { getPerformanceMetrics } = await import("./middleware/performanceMonitor.js");
+    const metrics = getPerformanceMetrics();
+    
+    res.status(200).json({
+      success: true,
+      data: metrics,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error getting performance metrics:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get performance metrics",
+      error: config.NODE_ENV === "development" ? error.message : "Internal error"
+    });
+  }
+});
+
 // Ping endpoint - NO RATE LIMITING
 app.get("/ping", (req, res) => {
   res.status(200).json({
@@ -214,9 +238,19 @@ app.use("*", (req, res) => {
 // Connect to MongoDB and start server
 const startServer = async () => {
   try {
-    // Connect to MongoDB
-    await mongoose.connect(config.MONGODB_CONN);
+    // Optimize database connection
+    optimizeDatabaseConnection();
+    
+    // Connect to MongoDB with optimized settings
+    await mongoose.connect(config.MONGODB_CONN, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
     console.log("✅ Connected to MongoDB");
+
+    // Create database indexes for performance
+    await createDatabaseIndexes();
 
     // Start server
     const port = config.PORT || 10000;
@@ -225,6 +259,7 @@ const startServer = async () => {
       console.log(`📱 Frontend URL: ${config.FRONTEND_URL}`);
       console.log(`🔧 Environment: ${config.NODE_ENV}`);
       console.log(`🌐 Health check: http://localhost:${port}/health`);
+      console.log(`📊 Performance metrics: http://localhost:${port}/api/performance`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

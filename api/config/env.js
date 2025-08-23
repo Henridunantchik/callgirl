@@ -15,108 +15,89 @@ const requiredEnvVars = {
     required: false,
     type: "number",
     default: 5000,
-    description: "Server port number"
+    description: "Server port number",
   },
   NODE_ENV: {
     required: false,
     type: "string",
     default: "development",
     allowedValues: ["development", "production", "test"],
-    description: "Application environment"
+    description: "Application environment",
   },
-  
+
   // Database Configuration
   MONGODB_CONN: {
     required: false,
     type: "string",
     default: "mongodb://localhost:27017/callgirls_db",
-    description: "MongoDB connection string"
+    description: "MongoDB connection string",
   },
-  
+
   // JWT Configuration
   JWT_SECRET: {
     required: false,
     type: "string",
-    default: "your-super-secret-jwt-key-that-is-at-least-64-characters-long-for-security",
+    default:
+      "your-super-secret-jwt-key-that-is-at-least-64-characters-long-for-security",
     minLength: 32,
-    description: "JWT secret key for token signing"
+    description: "JWT secret key for token signing",
   },
-  
+
   // Frontend Configuration
   FRONTEND_URL: {
     required: false,
     type: "string",
     default: "http://localhost:5173",
-    description: "Frontend application URL"
+    description: "Frontend application URL",
   },
-  
-  // Cloudinary Configuration
-  CLOUDINARY_APP_NAME: {
+
+  // File Storage Configuration
+  RENDER_STORAGE_PATH: {
     required: false,
     type: "string",
-    default: "your-cloudinary-app-name",
-    description: "Cloudinary cloud name"
+    default: "/opt/render/project/src/uploads",
+    description: "Render storage path for production",
   },
-  CLOUDINARY_API_KEY: {
-    required: false,
-    type: "string",
-    default: "your-cloudinary-api-key",
-    description: "Cloudinary API key"
-  },
-  CLOUDINARY_API_SECRET: {
-    required: false,
-    type: "string",
-    default: "your-cloudinary-api-secret",
-    description: "Cloudinary API secret"
-  },
-  
-  // Optional Configuration
-  CLOUDINARY_URL: {
-    required: false,
-    type: "string",
-    default: "https://res.cloudinary.com/your-cloud-name",
-    description: "Cloudinary URL (optional)"
-  },
-  
+
   // Stripe Configuration (for future use)
   STRIPE_SECRET_KEY: {
     required: false,
     type: "string",
     default: "sk_test_your_stripe_secret_key",
-    description: "Stripe secret key"
+    description: "Stripe secret key",
   },
   STRIPE_WEBHOOK_SECRET: {
     required: false,
     type: "string",
     default: "whsec_your_stripe_webhook_secret",
-    description: "Stripe webhook secret"
+    description: "Stripe webhook secret",
   },
-  
+
   // Twilio Configuration (for future use)
   TWILIO_ACCOUNT_SID: {
     required: false,
     type: "string",
     default: "your_twilio_account_sid",
-    description: "Twilio account SID"
+    description: "Twilio account SID",
   },
   TWILIO_AUTH_TOKEN: {
     required: false,
     type: "string",
     default: "your_twilio_auth_token",
-    description: "Twilio auth token"
+    description: "Twilio auth token",
   },
   TWILIO_PHONE_NUMBER: {
     required: false,
     type: "string",
     default: "+1234567890",
-    description: "Twilio phone number"
+    description: "Twilio phone number",
   },
   RENDER_EXTERNAL_URL: {
     required: false,
     type: "string",
     default: "https://srv-d2hke7je5dus738nhqag.onrender.com",
-    description: "Render external URL for file serving"
-  }
+    description: "Render external URL for file serving",
+  },
 };
 
 // Validation function
@@ -127,13 +108,15 @@ const validateEnvironment = () => {
 
   for (const [key, schema] of Object.entries(requiredEnvVars)) {
     const value = process.env[key];
-    
+
     // Check if required variable is missing
     if (schema.required && !value) {
-      errors.push(`Missing required environment variable: ${key} - ${schema.description}`);
+      errors.push(
+        `Missing required environment variable: ${key} - ${schema.description}`
+      );
       continue;
     }
-    
+
     // If not required and missing, use default or skip
     if (!value) {
       if (schema.default !== undefined) {
@@ -141,7 +124,7 @@ const validateEnvironment = () => {
       }
       continue;
     }
-    
+
     // Type validation
     if (schema.type === "number") {
       const numValue = parseInt(value);
@@ -153,16 +136,20 @@ const validateEnvironment = () => {
     } else if (schema.type === "string") {
       // Length validation
       if (schema.minLength && value.length < schema.minLength) {
-        errors.push(`${key} must be at least ${schema.minLength} characters long`);
+        errors.push(
+          `${key} must be at least ${schema.minLength} characters long`
+        );
         continue;
       }
-      
+
       // Allowed values validation
       if (schema.allowedValues && !schema.allowedValues.includes(value)) {
-        errors.push(`${key} must be one of: ${schema.allowedValues.join(", ")}`);
+        errors.push(
+          `${key} must be one of: ${schema.allowedValues.join(", ")}`
+        );
         continue;
       }
-      
+
       config[key] = value;
     }
   }
@@ -170,9 +157,11 @@ const validateEnvironment = () => {
   // Security warnings
   if (config.NODE_ENV === "production") {
     if (config.JWT_SECRET && config.JWT_SECRET.length < 64) {
-      warnings.push("JWT_SECRET should be at least 64 characters long in production");
+      warnings.push(
+        "JWT_SECRET should be at least 64 characters long in production"
+      );
     }
-    
+
     if (config.MONGODB_CONN && config.MONGODB_CONN.includes("localhost")) {
       warnings.push("Using localhost MongoDB in production is not recommended");
     }
@@ -187,14 +176,16 @@ const { errors, warnings, config } = validateEnvironment();
 // Log warnings
 if (warnings.length > 0) {
   console.warn("⚠️  Environment Warnings:");
-  warnings.forEach(warning => console.warn(`   ${warning}`));
+  warnings.forEach((warning) => console.warn(`   ${warning}`));
 }
 
 // Throw error if validation fails
 if (errors.length > 0) {
   console.error("❌ Environment Validation Failed:");
-  errors.forEach(error => console.error(`   ${error}`));
-  console.error("\nPlease check your .env file and ensure all required variables are set.");
+  errors.forEach((error) => console.error(`   ${error}`));
+  console.error(
+    "\nPlease check your .env file and ensure all required variables are set."
+  );
   process.exit(1);
 }
 
@@ -204,4 +195,4 @@ console.log(`   Environment: ${config.NODE_ENV}`);
 console.log(`   Port: ${config.PORT}`);
 console.log(`   Frontend URL: ${config.FRONTEND_URL}`);
 
-export default config; 
+export default config;
