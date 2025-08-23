@@ -12,7 +12,7 @@ const ImageOptimizer = ({
   ...props
 }) => {
   const [imageSrc, setImageSrc] = useState(src);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef(null);
@@ -48,32 +48,32 @@ const ImageOptimizer = ({
   useEffect(() => {
     if (src !== imageSrc) {
       setImageSrc(src);
-      setLoading(true);
+      setIsLoading(true);
       setError(false);
     }
   }, [src]);
 
   const handleLoad = () => {
-    setLoading(false);
+    setIsLoading(false);
     setError(false);
     onLoad?.();
   };
 
   const handleError = () => {
-    setLoading(false);
+    setIsLoading(false);
     setError(true);
 
     // Try fallback image
     if (imageSrc !== fallbackSrc) {
       setImageSrc(fallbackSrc);
-      setLoading(true);
+      setIsLoading(true);
     }
 
     onError?.();
   };
 
   const handleRetry = () => {
-    setLoading(true);
+    setIsLoading(true);
     setError(false);
     setImageSrc(src);
   };
@@ -92,7 +92,7 @@ const ImageOptimizer = ({
 
   return (
     <div className="relative">
-      {loading && (
+      {isLoading && (
         <div
           className={`${className} bg-gray-200 animate-pulse flex items-center justify-center`}
         >
@@ -104,7 +104,7 @@ const ImageOptimizer = ({
         ref={imgRef}
         src={imageSrc}
         alt={alt}
-        className={`${className} ${loading ? "hidden" : ""} ${
+        className={`${className} ${isLoading ? "hidden" : ""} ${
           error ? "opacity-50" : ""
         }`}
         onLoad={handleLoad}
