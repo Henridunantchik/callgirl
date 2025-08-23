@@ -45,9 +45,13 @@ class RenderStorageService {
       // Move file to destination
       await fs.promises.copyFile(file.path, filePath);
 
-      // Clean up temporary file
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
+      // Clean up temporary file - check if exists first
+      try {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (cleanupError) {
+        console.log("Temporary file cleanup warning:", cleanupError.message);
       }
 
       // Generate public URL

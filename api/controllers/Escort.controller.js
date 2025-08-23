@@ -565,8 +565,14 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
         escort.gallery.push(mediaItem);
         uploadedFiles.push(mediaItem);
 
-        // Clean up local file
-        fs.unlinkSync(file.path);
+        // Clean up local file - check if exists first
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (cleanupError) {
+          console.log("File cleanup warning:", cleanupError.message);
+        }
       } catch (uploadError) {
         console.error(
           "Render storage upload error for file:",
@@ -657,8 +663,14 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
         escort.videos.push(mediaItem);
         uploadedFiles.push(mediaItem);
 
-        // Clean up local file
-        fs.unlinkSync(file.path);
+        // Clean up local file - check if exists first
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (cleanupError) {
+          console.log("File cleanup warning:", cleanupError.message);
+        }
       } catch (uploadError) {
         console.error(
           "Render storage upload error for file:",

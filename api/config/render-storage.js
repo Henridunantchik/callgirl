@@ -112,7 +112,9 @@ const renderStorageConfig = {
           path.join(__dirname, "../uploads"),
           ""
         );
-        return `${renderStorageConfig.baseUrl}/uploads${relativePath}`;
+        // Ensure forward slashes for URLs
+        const cleanPath = relativePath.replace(/\\/g, "/");
+        return `${renderStorageConfig.baseUrl}/uploads${cleanPath}`;
       }
     } catch (error) {
       console.error("❌ Error generating file URL:", error);
