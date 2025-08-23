@@ -449,16 +449,20 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
     const mediaFile = req.files.media;
 
     try {
-      // Upload to Cloudinary
-      const result = await cloudinary.uploader.upload(mediaFile.path, {
-        folder: mediaType === "photo" ? "escort-gallery" : "escort-videos",
-        resource_type: "auto",
-      });
+      // Upload to Render storage
+      const result = await renderStorage.uploadFile(
+        mediaFile,
+        mediaType === "photo" ? "gallery" : "video"
+      );
+
+      if (!result.success) {
+        throw new Error(`Upload failed: ${result.error}`);
+      }
 
       // Add media to escort's gallery or videos
       const mediaItem = {
-        url: result.secure_url,
-        publicId: result.public_id,
+        url: result.url,
+        publicId: result.publicId,
         caption: caption || "",
         isPrivate: false,
       };
@@ -497,8 +501,8 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
         )
       );
     } catch (uploadError) {
-      console.error("Cloudinary upload error:", uploadError);
-      throw new ApiError(500, "Failed to upload media to cloud storage");
+      console.error("Render storage upload error:", uploadError);
+      throw new ApiError(500, "Failed to upload media to storage");
     }
   } catch (error) {
     next(error);
@@ -565,7 +569,7 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
         fs.unlinkSync(file.path);
       } catch (uploadError) {
         console.error(
-          "Cloudinary upload error for file:",
+          "Render storage upload error for file:",
           file.originalname,
           uploadError
         );
@@ -657,7 +661,7 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
         fs.unlinkSync(file.path);
       } catch (uploadError) {
         console.error(
-          "Cloudinary upload error for file:",
+          "Render storage upload error for file:",
           file.originalname,
           uploadError
         );
@@ -984,15 +988,16 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
 
       for (const file of files) {
         try {
-          // Upload to Cloudinary
-          const result = await cloudinary.uploader.upload(file.path, {
-            folder: "escort-gallery",
-            resource_type: "auto",
-          });
+          // Upload to Render storage
+          const result = await renderStorage.uploadFile(file, "gallery");
+
+          if (!result.success) {
+            throw new Error(`Upload failed: ${result.error}`);
+          }
 
           gallery.push({
-            url: result.secure_url,
-            publicId: result.public_id,
+            url: result.url,
+            publicId: result.publicId,
             caption: "",
             isPrivate: false,
             order: gallery.length,
@@ -1001,8 +1006,8 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
           // Clean up local file
           fs.unlinkSync(file.path);
         } catch (uploadError) {
-          console.error("Cloudinary upload error:", uploadError);
-          // If Cloudinary fails, use local file path as fallback
+          console.error("Render storage upload error:", uploadError);
+          // If upload fails, use local file path as fallback
           gallery.push({
             url: file.path,
             publicId: `local-${Date.now()}`,
@@ -1019,17 +1024,19 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
     if (req.files && req.files.idDocument) {
       const file = req.files.idDocument;
       try {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "id-documents",
-          resource_type: "auto",
-        });
-        idDocumentUrl = result.secure_url;
+        const result = await renderStorage.uploadFile(file, "documents");
+
+        if (!result.success) {
+          throw new Error(`Upload failed: ${result.error}`);
+        }
+
+        idDocumentUrl = result.url;
 
         // Clean up local file
         fs.unlinkSync(file.path);
       } catch (uploadError) {
         console.error("ID document upload error:", uploadError);
-        // If Cloudinary fails, use local file path as fallback
+        // If upload fails, use local file path as fallback
         idDocumentUrl = file.path;
       }
     }

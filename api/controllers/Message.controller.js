@@ -3,7 +3,7 @@ import Message from "../models/message.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import cloudinary from "../config/cloudinary.js";
+
 import renderStorage from "../services/renderStorage.js";
 
 // Send a message

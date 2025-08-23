@@ -9,7 +9,7 @@ const api = axios.create({
       ? "https://callgirls-api.onrender.com/api"
       : "http://localhost:5000/api"), // Use environment variable for production
   withCredentials: true,
-  timeout: 60000, // Increased to 60 seconds for file uploads
+  timeout: 30000, // Reduced to 30 seconds for better UX
 });
 
 // Request interceptor to add auth token

@@ -34,6 +34,7 @@ import { showToast } from "@/helpers/showToast";
 import { getEvn } from "@/helpers/getEnv";
 import { userAPI } from "@/services/api";
 import { fixUserUrls } from "@/utils/urlHelper";
+import ImageOptimizer from "@/components/ImageOptimizer";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -1933,25 +1934,12 @@ const Profile = () => {
                                         key={index}
                                         className="relative group"
                                       >
-                                        <img
+                                        <ImageOptimizer
                                           src={imageUrl}
                                           alt={`Gallery photo ${index + 1}`}
                                           className="w-full h-32 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
                                           style={{ minHeight: "128px" }}
-                                          onError={(e) => {
-                                            // Show error placeholder
-                                            e.target.style.display = "none";
-                                            const fallbackDiv =
-                                              document.createElement("div");
-                                            fallbackDiv.className =
-                                              "w-full h-32 bg-gray-200 rounded-lg border-2 border-gray-200 flex items-center justify-center";
-                                            fallbackDiv.innerHTML = `<span class="text-gray-500 text-sm">Photo ${
-                                              index + 1
-                                            }</span>`;
-                                            e.target.parentNode.appendChild(
-                                              fallbackDiv
-                                            );
-                                          }}
+                                          fallbackSrc="/placeholder-image.jpg"
                                         />
                                         <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
                                           {index === 0 ? "Main" : index + 1}
