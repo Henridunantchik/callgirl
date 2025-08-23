@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Card } from "@/components/ui/card";
 import { RouteIndex, RouteSignUp } from "@/helpers/RouteName";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { showToast } from "@/helpers/showToast";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/redux/user/user.slice";
@@ -27,7 +27,11 @@ import logo from "@/assets/images/logo-white.png";
 const SignIn = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get returnUrl from query parameters
+  const returnUrl = searchParams.get("returnUrl");
 
   const formSchema = z.object({
     email: z.string().email("Please enter a valid email address"),
@@ -73,9 +77,17 @@ const SignIn = () => {
       // Force Redux to persist to sessionStorage
       console.log("🔄 Redux state after dispatch:", store.getState());
 
-      // Navigate to home page
-      navigate(RouteIndex);
-      showToast("success", "Login successful! Welcome back.");
+      // Navigate to returnUrl if available, otherwise to home page
+      if (returnUrl) {
+        navigate(decodeURIComponent(returnUrl));
+        showToast(
+          "success",
+          "Login successful! Redirecting to your destination."
+        );
+      } else {
+        navigate(RouteIndex);
+        showToast("success", "Login successful! Welcome back.");
+      }
     } catch (error) {
       console.error("❌ Login failed:", error);
       const errorMessage =

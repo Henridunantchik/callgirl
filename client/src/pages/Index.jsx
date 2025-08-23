@@ -311,15 +311,30 @@ const Index = () => {
                   Join our platform and connect with clients in your area. Get
                   verified, build your profile, and start earning today.
                 </p>
+                {!isAuthenticated && (
+                  <p className="text-sm text-gray-500 mb-4">
+                    You'll be redirected to sign in first, then back to profile
+                    creation.
+                  </p>
+                )}
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button
-                    asChild
                     className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                    onClick={() => {
+                      if (isAuthenticated) {
+                        // User is logged in, go directly to escort registration
+                        window.location.href = `/${countryCode}/escort/registration`;
+                      } else {
+                        // User is not logged in, redirect to sign in with return URL
+                        const returnUrl = encodeURIComponent(
+                          `/${countryCode}/escort/registration`
+                        );
+                        window.location.href = `/${countryCode}/signin?returnUrl=${returnUrl}`;
+                      }
+                    }}
                   >
-                    <Link to={`/${countryCode}/escort/registration`}>
-                      <FaUserTie className="mr-2" />
-                      Join as Escort
-                    </Link>
+                    <FaUserTie className="mr-2" />
+                    {isAuthenticated ? "Join as Escort" : "Sign In to Join"}
                   </Button>
                   <Button variant="outline" asChild>
                     <Link to={`/${countryCode}/escort/list`}>
@@ -651,9 +666,58 @@ const Index = () => {
             Join our platform and reach thousands of potential clients. Create
             your profile today and start earning more.
           </p>
-          <Button size="lg" variant="secondary">
-            Create Your Profile
-          </Button>
+          {!isAuthenticated && (
+            <p className="text-sm text-white/80 mb-4">
+              You'll be redirected to sign in first, then back to profile
+              creation.
+            </p>
+          )}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => {
+                if (isAuthenticated) {
+                  // User is logged in, go directly to escort registration
+                  window.location.href = `/${countryCode}/escort/registration`;
+                } else {
+                  // User is not logged in, redirect to sign in with return URL
+                  const returnUrl = encodeURIComponent(
+                    `/${countryCode}/escort/registration`
+                  );
+                  window.location.href = `/${countryCode}/signin?returnUrl=${returnUrl}`;
+                }
+              }}
+            >
+              <FaUserTie className="mr-2" />
+              {isAuthenticated ? "Create Your Profile" : "Sign In to Join"}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="bg-white text-purple-600 hover:bg-gray-50"
+              asChild
+            >
+              <Link to={`/${countryCode}/escort/list`}>
+                <FaEye className="mr-2" />
+                See Examples
+              </Link>
+            </Button>
+          </div>
+          <div className="flex justify-center gap-6 mt-6 text-sm text-white/80">
+            <div className="flex items-center gap-2">
+              <FaShieldAlt className="text-green-300" />
+              <span>Secure & Private</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FaCrown className="text-yellow-300" />
+              <span>Premium Features</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FaUserTie className="text-blue-300" />
+              <span>24/7 Support</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
