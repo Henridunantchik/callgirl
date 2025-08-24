@@ -92,7 +92,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // app.use("/api/favorite", ...); // NO LIMIT
 // app.use("/api/user", ...); // NO LIMIT
 
-// Static files - Render storage with CORS headers
+// Static files - Render storage with CORS headers (NO AUTHENTICATION REQUIRED)
 app.use(
   "/uploads",
   (req, res, next) => {
@@ -103,9 +103,9 @@ app.use(
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      "Origin, X-Requested-With, Content-Type, Accept"
     );
-    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Credentials", "false");
 
     // Handle preflight requests
     if (req.method === "OPTIONS") {
@@ -113,8 +113,7 @@ app.use(
       return;
     }
 
-    // Remove any authentication requirement for static files
-    delete req.headers.authorization;
+    // NO AUTHENTICATION for static files - they should be publicly accessible
     next();
   },
   // Production: Serve from Render storage path, Development: Serve from local uploads

@@ -231,12 +231,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authAPI.login(credentials);
-      const { token, user } = response.data;
+      const { token, refreshToken, user } = response.data;
 
       // Start online status updates after login
       startOnlineStatusUpdates();
 
       localStorage.setItem("token", token);
+      localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
 

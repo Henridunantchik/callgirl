@@ -144,21 +144,32 @@ export const Login = asyncHandler(async (req, res, next) => {
       throw new ApiError(401, "Invalid login credentials");
     }
 
-    // Generate secure token
-    const token = generateToken({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
+    // Generate secure tokens
+    const accessToken = generateToken(
+      {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      "1h"
+    ); // Access token expires in 1 hour
+
+    const refreshToken = generateToken(
+      {
+        _id: user._id,
+        type: "refresh",
+      },
+      "7d"
+    ); // Refresh token expires in 7 days
 
     // Set secure cookie
-    res.cookie("access_token", token, {
+    res.cookie("access_token", accessToken, {
       httpOnly: true,
       secure: config.NODE_ENV === "production",
       sameSite: config.NODE_ENV === "production" ? "none" : "strict",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 60 * 60 * 1000, // 1 hour
     });
 
     // Log successful login
@@ -168,19 +179,15 @@ export const Login = asyncHandler(async (req, res, next) => {
     const userResponse = user.toObject({ getters: true });
     delete userResponse.password;
 
-    // Generate token for response
-    const tokenForResponse = generateToken({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
-
+    // Return both tokens
     return res.status(200).json({
       success: true,
-      user: userResponse,
-      token: tokenForResponse,
       message: "Login successful",
+      data: {
+        user: userResponse,
+        token: accessToken,
+        refreshToken: refreshToken,
+      },
     });
   } catch (error) {
     // Log login errors
@@ -191,6 +198,60 @@ export const Login = asyncHandler(async (req, res, next) => {
       timestamp: new Date().toISOString(),
     });
 
+    next(error);
+  }
+});
+
+export const RefreshToken = asyncHandler(async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      throw new ApiError(400, "Refresh token is required");
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
+
+    if (decoded.type !== "refresh") {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+
+    // Get user from database
+    const user = await User.findById(decoded._id).select("-password");
+    if (!user) {
+      throw new ApiError(401, "User not found");
+    }
+
+    // Generate new access token
+    const newAccessToken = generateToken(
+      {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      "1h"
+    );
+
+    // Set new cookie
+    res.cookie("access_token", newAccessToken, {
+      httpOnly: true,
+      secure: config.NODE_ENV === "production",
+      sameSite: config.NODE_ENV === "production" ? "none" : "strict",
+      path: "/",
+      maxAge: 60 * 60 * 1000, // 1 hour
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      data: {
+        token: newAccessToken,
+        user: user,
+      },
+    });
+  } catch (error) {
     next(error);
   }
 });
