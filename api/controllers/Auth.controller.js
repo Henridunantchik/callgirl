@@ -183,11 +183,9 @@ export const Login = asyncHandler(async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      data: {
-        user: userResponse,
-        token: accessToken,
-        refreshToken: refreshToken,
-      },
+      user: userResponse,
+      token: accessToken,
+      refreshToken: refreshToken,
     });
   } catch (error) {
     // Log login errors
