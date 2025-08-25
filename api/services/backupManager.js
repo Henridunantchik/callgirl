@@ -7,16 +7,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Professional Backup Manager
- * Manages file synchronization between local storage and Render
- * Ensures app functionality 24/7 regardless of Render restarts
+ * ULTRA-AGGRESSIVE Backup Manager
+ * Re-uploads files to Render every 30 seconds to counter deletion
+ * This ensures files are ALWAYS available on Render
  */
 class BackupManager {
   constructor() {
     this.localBackupPath = path.join(__dirname, "..", "uploads");
     this.renderPath =
       process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads";
-    this.syncInterval = 5 * 60 * 1000; // 5 minutes
+    this.syncInterval = 30 * 1000; // 30 SECONDES (ultra-agressif)
     this.lastSync = new Date();
     this.syncInProgress = false;
     this.syncStats = {
@@ -44,7 +44,8 @@ class BackupManager {
       // Initial sync
       await this.performFullSync();
 
-      console.log("✅ Backup Manager initialized successfully");
+      console.log("✅ ULTRA-AGGRESSIVE Backup Manager initialized successfully");
+      console.log("🔄 Will re-upload files every 30 seconds to counter Render deletion");
     } catch (error) {
       console.error("❌ Failed to initialize Backup Manager:", error);
     }
@@ -76,17 +77,17 @@ class BackupManager {
    * Start continuous monitoring
    */
   startMonitoring() {
-    // Monitor every 5 minutes
+    // Monitor every 30 seconds (ULTRA-AGGRESSIVE)
     setInterval(async () => {
       if (!this.syncInProgress) {
-        await this.checkAndSync();
+        await this.performFullSync(); // ALWAYS SYNC
       }
     }, this.syncInterval);
 
     // Monitor file changes in real-time
     this.watchLocalChanges();
 
-    console.log("🔍 Backup monitoring started");
+    console.log("🔍 ULTRA-AGGRESSIVE monitoring started - 30 second intervals");
   }
 
   /**
@@ -103,98 +104,14 @@ class BackupManager {
           { recursive: true },
           async (eventType, filename) => {
             if (filename && !filename.startsWith(".")) {
-              console.log(`📝 File change detected: ${dir}/${filename}`);
-              // Debounce sync to avoid multiple rapid syncs
-              clearTimeout(this.syncTimeout);
-              this.syncTimeout = setTimeout(() => {
-                this.performFullSync();
-              }, 2000);
+              console.log(`📝 File change detected: ${dir}/${filename} - SYNCING IMMEDIATELY`);
+              // Sync immediately, no debounce
+              this.performFullSync();
             }
           }
         );
       }
     });
-  }
-
-  /**
-   * Check Render status and sync if needed
-   */
-  async checkAndSync() {
-    try {
-      const renderStatus = await this.checkRenderStatus();
-
-      if (renderStatus.needsSync) {
-        console.log("🔄 Render needs sync, starting backup...");
-        await this.performFullSync();
-      }
-
-      this.syncStats.renderStatus = renderStatus.status;
-      this.syncStats.lastSyncTime = new Date();
-    } catch (error) {
-      console.error("❌ Sync check failed:", error);
-      // If we can't check Render, assume it needs sync
-      await this.performFullSync();
-    }
-  }
-
-  /**
-   * Check if Render needs synchronization
-   */
-  async checkRenderStatus() {
-    try {
-      // Check if Render storage is accessible and has files
-      const hasFiles = await this.checkRenderHasFiles();
-      const isAccessible = await this.checkRenderAccessibility();
-
-      if (!isAccessible || !hasFiles) {
-        return { needsSync: true, status: "needs_sync" };
-      }
-
-      return { needsSync: false, status: "healthy" };
-    } catch (error) {
-      return { needsSync: true, status: "error" };
-    }
-  }
-
-  /**
-   * Check if Render has files
-   */
-  async checkRenderHasFiles() {
-    try {
-      if (config.NODE_ENV === "development") {
-        return true; // Local development always has files
-      }
-
-      // Check if Render storage has any files
-      const directories = ["avatars", "gallery", "videos"];
-      for (const dir of directories) {
-        const renderDir = path.join(this.renderPath, dir);
-        if (fs.existsSync(renderDir)) {
-          const files = fs.readdirSync(renderDir);
-          if (files.length > 0) {
-            return true;
-          }
-        }
-      }
-      return false;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  /**
-   * Check if Render storage is accessible
-   */
-  async checkRenderAccessibility() {
-    try {
-      if (config.NODE_ENV === "development") {
-        return true;
-      }
-
-      return fs.existsSync(this.renderPath);
-    } catch (error) {
-      return false;
-    }
   }
 
   /**
@@ -207,14 +124,14 @@ class BackupManager {
     }
 
     this.syncInProgress = true;
-    console.log("🔄 Starting full synchronization...");
+    console.log("🔄 Starting ULTRA-AGGRESSIVE synchronization...");
 
     try {
       const stats = await this.syncAllDirectories();
       this.syncStats = { ...this.syncStats, ...stats };
 
       console.log(
-        `✅ Sync completed: ${stats.syncedFiles}/${stats.totalFiles} files`
+        `✅ ULTRA-AGGRESSIVE sync completed: ${stats.syncedFiles}/${stats.totalFiles} files`
       );
       this.lastSync = new Date();
     } catch (error) {
@@ -271,15 +188,10 @@ class BackupManager {
       const renderPath = path.join(renderDir, file);
 
       try {
-        // Copy file to render if it doesn't exist or is different
-        if (
-          !fs.existsSync(renderPath) ||
-          this.filesAreDifferent(localPath, renderPath)
-        ) {
-          fs.copyFileSync(localPath, renderPath);
-          synced++;
-          console.log(`📁 Synced: ${dirName}/${file}`);
-        }
+        // ALWAYS COPY to render (ultra-aggressive)
+        fs.copyFileSync(localPath, renderPath);
+        synced++;
+        console.log(`📁 ULTRA-AGGRESSIVE sync: ${dirName}/${file}`);
       } catch (error) {
         console.error(`❌ Failed to sync ${dirName}/${file}:`, error);
         failed++;
@@ -287,24 +199,6 @@ class BackupManager {
     }
 
     return { total: localFiles.length, synced, failed };
-  }
-
-  /**
-   * Check if two files are different
-   */
-  filesAreDifferent(file1, file2) {
-    try {
-      const stats1 = fs.statSync(file1);
-      const stats2 = fs.statSync(file2);
-
-      // Compare file size and modification time
-      return (
-        stats1.size !== stats2.size ||
-        Math.abs(stats1.mtime.getTime() - stats2.mtime.getTime()) > 1000
-      );
-    } catch (error) {
-      return true; // If we can't compare, assume they're different
-    }
   }
 
   /**
@@ -333,13 +227,7 @@ class BackupManager {
    */
   getFileUrl(filePath, directory = "gallery") {
     try {
-      // First, try to serve from local backup
-      const localPath = path.join(this.localBackupPath, directory, filePath);
-      if (fs.existsSync(localPath)) {
-        return `/uploads/${directory}/${filePath}`;
-      }
-
-      // Fallback to render path
+      // Always serve from render path since we're ultra-aggressive
       return `/uploads/${directory}/${filePath}`;
     } catch (error) {
       console.error("Error getting file URL:", error);
