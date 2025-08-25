@@ -144,24 +144,32 @@ export const Login = asyncHandler(async (req, res, next) => {
       throw new ApiError(401, "Invalid login credentials");
     }
 
-    // Generate secure tokens - NO EXPIRY (valid until logout)
+    // Generate secure tokens
     const accessToken = generateToken(
       {
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-      }
-      // No expiry = token valid forever until logout
-    );
+      },
+      "1h"
+    ); // Access token expires in 1 hour
 
-    // Set secure cookie - NO EXPIRY
+    const refreshToken = generateToken(
+      {
+        _id: user._id,
+        type: "refresh",
+      },
+      "7d"
+    ); // Refresh token expires in 7 days
+
+    // Set secure cookie
     res.cookie("access_token", accessToken, {
       httpOnly: true,
       secure: config.NODE_ENV === "production",
       sameSite: config.NODE_ENV === "production" ? "none" : "strict",
       path: "/",
-      // No maxAge = cookie valid until browser closes
+      maxAge: 60 * 60 * 1000, // 1 hour
     });
 
     // Log successful login
@@ -171,12 +179,13 @@ export const Login = asyncHandler(async (req, res, next) => {
     const userResponse = user.toObject({ getters: true });
     delete userResponse.password;
 
-    // Return token only (no expiry)
+    // Return both tokens
     return res.status(200).json({
       success: true,
       message: "Login successful",
       user: userResponse,
       token: accessToken,
+      refreshToken: refreshToken,
     });
   } catch (error) {
     // Log login errors
@@ -191,88 +200,109 @@ export const Login = asyncHandler(async (req, res, next) => {
   }
 });
 
-// RefreshToken function removed - no longer needed with permanent tokens
-
-export const GoogleLogin = async (req, res, next) => {
+export const RefreshToken = asyncHandler(async (req, res, next) => {
   try {
-    const { name, email, avatar } = req.body;
+    const { refreshToken } = req.body;
 
-    // Validate required fields
-    if (!name || !email) {
-      throw new ApiError(400, "Name and email are required");
+    if (!refreshToken) {
+      throw new ApiError(400, "Refresh token is required");
     }
 
-    let user = await User.findOne({ email });
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
 
+    if (decoded.type !== "refresh") {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+
+    // Get user from database
+    const user = await User.findById(decoded._id).select("-password");
     if (!user) {
-      // Create new user
-      const password = Math.random().toString(36).slice(-12);
-      const hashedPassword = await bcryptjs.hash(password, 12);
-
-      const newUser = new User({
-        name,
-        email: email.toLowerCase().trim(),
-        password: hashedPassword,
-        avatar,
-        role: "client", // Default role
-        isActive: true,
-        isAgeVerified: true, // Google users are pre-verified
-        profileCompletion: 80, // Basic profile completion
-      });
-
-      user = await newUser.save();
-      console.log(`✅ New Google user created: ${email}`);
-    } else {
-      console.log(`✅ Existing Google user logged in: ${email}`);
+      throw new ApiError(401, "User not found");
     }
 
-    // Generate JWT token using config - NO EXPIRY (valid until logout)
-    const token = jwt.sign(
+    // Generate new access token
+    const newAccessToken = generateToken(
       {
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
       },
-      config.JWT_SECRET
-      // No expiresIn = token valid forever until logout
+      "1h"
     );
 
-    // Set secure cookie with proper CORS settings - NO EXPIRY
-    res.cookie("access_token", token, {
-      httpOnly: false, // Allow JavaScript access
+    // Set new cookie
+    res.cookie("access_token", newAccessToken, {
+      httpOnly: true,
       secure: config.NODE_ENV === "production",
-      sameSite: "lax", // Better CORS compatibility
+      sameSite: config.NODE_ENV === "production" ? "none" : "strict",
       path: "/",
-      // No maxAge = cookie valid until browser closes
-      domain: config.NODE_ENV === "production" ? ".onrender.com" : undefined,
+      maxAge: 60 * 60 * 1000, // 1 hour
     });
-
-    // Prepare user response
-    const userResponse = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatar,
-      isAgeVerified: user.isAgeVerified,
-      profileCompletion: user.profileCompletion,
-      isActive: user.isActive,
-    };
-
-    // Fix URLs for media files
-    const userWithFixedUrls = fixUrlsInObject(userResponse);
-
-    console.log(`✅ Google login successful for: ${email}`);
 
     return res.status(200).json({
       success: true,
-      user: userWithFixedUrls,
-      token: token,
-      message: "Google login successful",
+      message: "Token refreshed successfully",
+      data: {
+        token: newAccessToken,
+        user: user,
+      },
     });
   } catch (error) {
-    console.error("❌ Google login error:", error);
+    next(error);
+  }
+});
+
+export const GoogleLogin = async (req, res, next) => {
+  try {
+    const { name, email, avatar } = req.body;
+    let user;
+    user = await User.findOne({ email });
+    if (!user) {
+      //  create new user
+      const password = Math.random().toString();
+      const hashedPassword = bcryptjs.hashSync(password);
+      const newUser = new User({
+        name,
+        email,
+        password: hashedPassword,
+        avatar,
+      });
+
+      user = await newUser.save();
+    }
+
+    const token = jwt.sign(
+      {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+      "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca"
+    );
+
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      path: "/",
+    });
+
+    const newUser = user.toObject({ getters: true });
+    delete newUser.password;
+
+    // Fix URLs for media files
+    const userWithFixedUrls = fixUrlsInObject(newUser);
+
+    res.status(200).json({
+      success: true,
+      user: userWithFixedUrls,
+      token: token,
+      message: "Login successful.",
+    });
+  } catch (error) {
     next(handleError(500, error.message));
   }
 };

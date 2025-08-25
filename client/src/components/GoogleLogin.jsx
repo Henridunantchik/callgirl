@@ -1,11 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { FcGoogle } from "react-icons/fc";
-import {
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-} from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "@/helpers/firebase";
 import { RouteIndex } from "@/helpers/RouteName";
 import { showToast } from "@/helpers/showToast";
@@ -21,34 +17,21 @@ const GoogleLogin = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle redirect result on component mount
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("🔄 Handling Google redirect result...");
-          await processGoogleUser(result.user);
-        }
-      } catch (error) {
-        console.error("❌ Error handling redirect result:", error);
-        showToast("error", "Google login failed. Please try again.");
-      }
-    };
-
-    handleRedirectResult();
-  }, []);
-
-  // Process Google user data
-  const processGoogleUser = async (googleUser) => {
+  const handleLogin = async () => {
+    setIsLoading(true);
     try {
+      console.log("🔐 Attempting Google login...");
+
+      const googleResponse = await signInWithPopup(auth, provider);
+      const user = googleResponse.user;
+
       const bodyData = {
-        name: googleUser.displayName || googleUser.email.split("@")[0],
-        email: googleUser.email,
-        avatar: googleUser.photoURL || "",
+        name: user.displayName,
+        email: user.email,
+        avatar: user.photoURL,
       };
 
-      console.log("📧 Processing Google user data:", bodyData.email);
+      console.log("📧 Google user data:", bodyData.email);
 
       const response = await authAPI.googleLogin(bodyData);
       console.log("📦 Raw Google API response:", response);
@@ -80,72 +63,10 @@ const GoogleLogin = () => {
       navigate(RouteIndex);
       showToast("success", "Google login successful! Welcome back.");
     } catch (error) {
-      console.error("❌ Error processing Google user:", error);
+      console.error("❌ Google login failed:", error);
       const errorMessage =
         error.response?.data?.message ||
         "Google login failed. Please try again.";
-      showToast("error", errorMessage);
-    }
-  };
-
-  const handleLogin = async () => {
-    setIsLoading(true);
-    try {
-      console.log("🔐 Attempting Google login...");
-      console.log("🔧 Firebase config check:", {
-        apiKey: !!import.meta.env.VITE_FIREBASE_API,
-        authDomain: "tusiwawasahau.firebaseapp.com",
-        projectId: "tusiwawasahau",
-      });
-
-      // Try popup first, fallback to redirect if popup fails
-      let googleResponse;
-      try {
-        console.log("🔄 Trying popup authentication...");
-        googleResponse = await signInWithPopup(auth, provider);
-        console.log("✅ Popup authentication successful");
-      } catch (popupError) {
-        console.log("⚠️ Popup failed, error details:", {
-          code: popupError.code,
-          message: popupError.message,
-          email: popupError.email,
-        });
-
-        if (
-          popupError.code === "auth/popup-blocked" ||
-          popupError.code === "auth/popup-closed-by-user" ||
-          popupError.code === "auth/internal-error"
-        ) {
-          console.log("🔄 Fallback to redirect authentication...");
-          // Fallback to redirect
-          await signInWithRedirect(auth, provider);
-          return; // Redirect will handle the rest
-        }
-        throw popupError;
-      }
-
-      const user = googleResponse.user;
-      console.log("✅ Google authentication successful:", user.email);
-
-      await processGoogleUser(user);
-    } catch (error) {
-      console.error("❌ Google login failed:", error);
-
-      let errorMessage = "Google login failed. Please try again.";
-
-      if (error.code === "auth/popup-blocked") {
-        errorMessage = "Popup blocked. Please allow popups and try again.";
-      } else if (error.code === "auth/popup-closed-by-user") {
-        errorMessage = "Login cancelled. Please try again.";
-      } else if (error.code === "auth/network-request-failed") {
-        errorMessage = "Network error. Please check your connection.";
-      } else if (error.code === "auth/internal-error") {
-        errorMessage = "Firebase configuration error. Please contact support.";
-        console.error("🚨 Firebase config error - check domain settings");
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
       showToast("error", errorMessage);
     } finally {
       setIsLoading(false);

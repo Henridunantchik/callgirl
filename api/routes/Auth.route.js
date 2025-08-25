@@ -6,6 +6,7 @@ import {
   GoogleLogin,
   Logout,
   getCurrentUser,
+  RefreshToken,
 } from "../controllers/Auth.controller.js";
 
 const router = express.Router();
@@ -15,7 +16,7 @@ router.post("/register", Register);
 router.post("/login", Login);
 router.post("/google-login", GoogleLogin);
 router.post("/logout", Logout);
-// Refresh token route removed - no longer needed
+router.post("/refresh-token", RefreshToken);
 router.get("/me", authenticate, getCurrentUser);
 
 export default router;
