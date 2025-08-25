@@ -13,7 +13,8 @@ const __dirname = path.dirname(__filename);
  */
 class BackupManager {
   constructor() {
-    this.localBackupPath = path.join(__dirname, "..", "uploads");
+    // CORRECTION: Utiliser le même chemin que Render pour la synchronisation
+    this.localBackupPath = process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads";
     this.renderPath =
       process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads";
     this.syncInterval = 30 * 1000; // 30 SECONDES (ultra-agressif)
@@ -26,6 +27,9 @@ class BackupManager {
       lastSyncTime: null,
       renderStatus: "unknown",
     };
+
+    console.log(`🔧 Backup Manager - Local path: ${this.localBackupPath}`);
+    console.log(`🔧 Backup Manager - Render path: ${this.renderPath}`);
 
     this.initializeBackupSystem();
   }
@@ -125,6 +129,8 @@ class BackupManager {
 
     this.syncInProgress = true;
     console.log("🔄 Starting ULTRA-AGGRESSIVE synchronization...");
+    console.log(`🔧 Will sync directories: avatars, gallery, videos, documents, images`);
+    console.log(`🔧 Local backup path: ${this.localBackupPath}`);
 
     try {
       const stats = await this.syncAllDirectories();
@@ -168,16 +174,24 @@ class BackupManager {
     const localDir = path.join(this.localBackupPath, dirName);
     const renderDir = path.join(this.renderPath, dirName);
 
+    console.log(`🔍 Checking directory: ${dirName}`);
+    console.log(`🔍 Local path: ${localDir}`);
+    console.log(`🔍 Render path: ${renderDir}`);
+
     if (!fs.existsSync(localDir)) {
+      console.log(`❌ Local directory does not exist: ${localDir}`);
       return { total: 0, synced: 0, failed: 0 };
     }
 
     // Ensure render directory exists
     if (!fs.existsSync(renderDir)) {
       fs.mkdirSync(renderDir, { recursive: true });
+      console.log(`📁 Created render directory: ${renderDir}`);
     }
 
     const localFiles = fs.readdirSync(localDir);
+    console.log(`📊 Found ${localFiles.length} files in ${dirName}: ${localFiles.join(', ')}`);
+    
     let synced = 0;
     let failed = 0;
 
@@ -198,6 +212,7 @@ class BackupManager {
       }
     }
 
+    console.log(`✅ Directory ${dirName}: ${synced} synced, ${failed} failed out of ${localFiles.length} total`);
     return { total: localFiles.length, synced, failed };
   }
 
