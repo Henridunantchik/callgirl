@@ -1,17 +1,23 @@
-import mongoose from "mongoose";
+console.log("🧪 Simple Test Starting...");
+
 import config from "./config/env.js";
+console.log("✅ Config loaded:", config.NODE_ENV);
 
-console.log("Testing basic imports...");
-console.log("Config loaded:", config.PORT);
+import renderStorageConfig from "./config/render-storage.js";
+console.log("✅ Render storage config loaded");
 
-// Test simple mongoose connection
-mongoose
-  .connect(config.MONGODB_CONN)
-  .then(() => {
-    console.log("✅ MongoDB connection successful");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("❌ MongoDB connection failed:", error);
-    process.exit(1);
-  }); 
+console.log("🔗 Base URL:", renderStorageConfig.baseUrl);
+console.log("📁 Upload Path:", renderStorageConfig.uploadPath);
+
+// Test one URL generation
+const testPath = "/opt/render/project/src/uploads/avatars/test.jpg";
+console.log("🔗 Testing URL generation for:", testPath);
+
+try {
+  const url = renderStorageConfig.getFileUrl(testPath);
+  console.log("✅ Generated URL:", url);
+} catch (error) {
+  console.error("❌ Error:", error.message);
+}
+
+console.log("✅ Test completed"); 
