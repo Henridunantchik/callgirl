@@ -126,8 +126,12 @@ app.use(
   },
   // Use intelligent fallback middleware for file serving
   fileFallbackMiddleware,
-  // Fallback to static serving if middleware doesn't handle it
-  express.static(path.join(__dirname, "uploads"))
+  // Use production path for Render, local path for development
+  config.NODE_ENV === "production"
+    ? express.static(
+        process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads"
+      )
+    : express.static(path.join(__dirname, "uploads"))
 );
 
 // Health check endpoints - NO RATE LIMITING
@@ -366,9 +370,15 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${port}`);
       console.log(`📱 Frontend URL: ${config.FRONTEND_URL}`);
       console.log(`🔧 Environment: ${config.NODE_ENV}`);
-      console.log(`🌐 Health check: ${config.BASE_URL || `http://localhost:${port}`}/health`);
       console.log(
-        `📊 Performance metrics: ${config.BASE_URL || `http://localhost:${port}`}/api/performance`
+        `🌐 Health check: ${
+          config.BASE_URL || `http://localhost:${port}`
+        }/health`
+      );
+      console.log(
+        `📊 Performance metrics: ${
+          config.BASE_URL || `http://localhost:${port}`
+        }/api/performance`
       );
     });
   } catch (error) {
