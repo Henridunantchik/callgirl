@@ -366,9 +366,9 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${port}`);
       console.log(`📱 Frontend URL: ${config.FRONTEND_URL}`);
       console.log(`🔧 Environment: ${config.NODE_ENV}`);
-      console.log(`🌐 Health check: http://localhost:${port}/health`);
+      console.log(`🌐 Health check: ${config.BASE_URL || `http://localhost:${port}`}/health`);
       console.log(
-        `📊 Performance metrics: http://localhost:${port}/api/performance`
+        `📊 Performance metrics: ${config.BASE_URL || `http://localhost:${port}`}/api/performance`
       );
     });
   } catch (error) {
