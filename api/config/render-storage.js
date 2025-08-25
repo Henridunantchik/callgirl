@@ -56,10 +56,15 @@ const renderStorageConfig = {
   },
 
   // URL base for serving files - Use localhost for development, Render URL for production
-  baseUrl:
-    config.NODE_ENV === "production"
-      ? process.env.RENDER_EXTERNAL_URL || "https://callgirls-api.onrender.com"
-      : "http://localhost:5000",
+  get baseUrl() {
+    if (config.NODE_ENV === "production") {
+      // Use environment variable or fallback to the correct Render URL
+      return process.env.RENDER_EXTERNAL_URL || "https://callgirls-api.onrender.com";
+    } else {
+      // Development - use localhost
+      return "http://localhost:5000";
+    }
+  },
 
   // Initialize storage directories
   init: () => {
@@ -91,35 +96,69 @@ const renderStorageConfig = {
   },
 
   // Get file URL - Fixed for production
-  getFileUrl: (filePath) => {
+  getFileUrl(filePath) {
     try {
       // For production, we need to handle the Render path correctly
       if (config.NODE_ENV === "production") {
         // Extract the relative path from the full file path
-        const relativePath = filePath.replace(
-          "/opt/render/project/src/uploads",
-          ""
-        );
-        const cleanPath = relativePath.replace(/\\/g, "/"); // Ensure forward slashes
-
+        let relativePath;
+        
+        if (filePath.includes("/opt/render/project/src/uploads")) {
+          // Production path - extract the part after uploads
+          relativePath = filePath.replace("/opt/render/project/src/uploads", "");
+        } else if (filePath.includes("uploads")) {
+          // Already has uploads in path, extract the part after uploads
+          const uploadsIndex = filePath.indexOf("uploads");
+          relativePath = filePath.substring(uploadsIndex + 7); // 7 = "uploads".length
+        } else {
+          // Fallback - assume it's already a relative path
+          relativePath = filePath;
+        }
+        
+        // Ensure the path starts with a forward slash
+        if (!relativePath.startsWith("/")) {
+          relativePath = "/" + relativePath;
+        }
+        
+        // Remove any double slashes
+        relativePath = relativePath.replace(/\/+/g, "/");
+        
         // Build the full URL
-        const fullUrl = `${renderStorageConfig.baseUrl}/uploads${cleanPath}`;
-        console.log(`🔗 Generated URL: ${fullUrl} from path: ${filePath}`);
+        const fullUrl = `${this.baseUrl}/uploads${relativePath}`;
+        console.log(`🔗 Generated production URL: ${fullUrl} from path: ${filePath}`);
         return fullUrl;
       } else {
-        // Development - use local path
-        const relativePath = filePath.replace(
-          path.join(__dirname, "../uploads"),
-          ""
-        );
-        // Ensure forward slashes for URLs
+        // Development - extract the part after uploads directory
+        const uploadsDir = path.join(__dirname, "../uploads");
+        let relativePath;
+        
+        if (filePath.includes(uploadsDir)) {
+          relativePath = filePath.replace(uploadsDir, "");
+        } else if (filePath.includes("uploads")) {
+          const uploadsIndex = filePath.indexOf("uploads");
+          relativePath = filePath.substring(uploadsIndex + 7);
+        } else {
+          relativePath = filePath;
+        }
+        
+        // Ensure the path starts with a forward slash
+        if (!relativePath.startsWith("/")) {
+          relativePath = "/" + relativePath;
+        }
+        
+        // Remove any double slashes
+        relativePath = relativePath.replace(/\/+/g, "/");
+        
+        // Normalize path separators for URLs
         const cleanPath = relativePath.replace(/\\/g, "/");
-        return `${renderStorageConfig.baseUrl}/uploads${cleanPath}`;
+        const fullUrl = `${this.baseUrl}/uploads${cleanPath}`;
+        console.log(`🔗 Generated development URL: ${fullUrl} from path: ${filePath}`);
+        return fullUrl;
       }
     } catch (error) {
       console.error("❌ Error generating file URL:", error);
       // Fallback to a basic URL
-      return `${renderStorageConfig.baseUrl}/uploads/fallback`;
+      return `${this.baseUrl}/uploads/fallback`;
     }
   },
 

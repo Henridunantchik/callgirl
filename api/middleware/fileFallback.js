@@ -35,6 +35,7 @@ export const fileFallbackMiddleware = (req, res, next) => {
   // Check if file exists in Render storage
   if (fs.existsSync(renderPath)) {
     // File exists in Render, serve normally
+    console.log(`📁 Serving file from Render storage: ${directory}/${filename}`);
     return next();
   }
 
@@ -42,7 +43,7 @@ export const fileFallbackMiddleware = (req, res, next) => {
   const localPath = path.join(__dirname, "..", "uploads", directory, filename);
 
   if (fs.existsSync(localPath)) {
-    console.log(`🔄 Serving from local backup: ${directory}/${filename}`);
+    console.log(`📁 Serving file from local backup: ${directory}/${filename}`);
 
     // Set appropriate headers
     const ext = path.extname(filename).toLowerCase();
