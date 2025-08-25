@@ -92,7 +92,15 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // app.use("/api/favorite", ...); // NO LIMIT
 // app.use("/api/user", ...); // NO LIMIT
 
-// Static files - Render storage with CORS headers (NO AUTHENTICATION REQUIRED)
+// Import backup manager and file fallback middleware
+import backupManager from "./services/backupManager.js";
+import {
+  fileFallbackMiddleware,
+  serveFileWithFallback,
+  fileStorageHealth,
+} from "./middleware/fileFallback.js";
+
+// Static files with INTELLIGENT FALLBACK SYSTEM
 app.use(
   "/uploads",
   (req, res, next) => {
@@ -116,10 +124,10 @@ app.use(
     // NO AUTHENTICATION for static files - they should be publicly accessible
     next();
   },
-  // Production: Serve from Render storage path, Development: Serve from local uploads
-  config.NODE_ENV === "production"
-    ? express.static("/opt/render/project/src/uploads")
-    : express.static(path.join(__dirname, "uploads"))
+  // Use intelligent fallback middleware for file serving
+  fileFallbackMiddleware,
+  // Fallback to static serving if middleware doesn't handle it
+  express.static(path.join(__dirname, "uploads"))
 );
 
 // Health check endpoints - NO RATE LIMITING
@@ -201,29 +209,24 @@ app.get("/ping", (req, res) => {
   });
 });
 
-// File debugging endpoint - NO RATE LIMITING
+// Enhanced file debugging endpoint with backup manager integration
 app.get("/debug/files", async (req, res) => {
   try {
-    const renderStorage = await import("./services/renderStorage.js");
-    const storage = renderStorage.default;
+    // Get backup manager stats
+    const backupStats = backupManager.getStats();
 
-    // Test storage configuration
-    const storageInfo = storage.getStorageInfo();
-    const testFiles = await storage.listFiles("gallery");
-
-    // Test file path generation
-    const testFilePath =
-      "/opt/render/project/src/uploads/gallery/test-image.jpg";
-    const testUrl = renderStorageConfig.getFileUrl(testFilePath);
+    // Get file storage health
+    const healthResponse = await fetch(
+      `${req.protocol}://${req.get("host")}/api/storage/health`
+    );
+    const healthData = healthResponse.ok ? await healthResponse.json() : null;
 
     res.status(200).json({
       success: true,
       data: {
         environment: config.NODE_ENV,
-        storageInfo,
-        testFiles,
-        testFilePath,
-        testUrl,
+        backupManager: backupStats,
+        storageHealth: healthData?.data || null,
         uploadPath:
           process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads",
         baseUrl:
@@ -249,6 +252,27 @@ app.get("/debug/files", async (req, res) => {
       message: "Failed to debug files",
       error:
         config.NODE_ENV === "development" ? error.message : "Internal error",
+    });
+  }
+});
+
+// File storage health endpoint
+app.get("/api/storage/health", fileStorageHealth);
+
+// Force backup sync endpoint
+app.post("/api/storage/sync", async (req, res) => {
+  try {
+    await backupManager.forceSync();
+    res.json({
+      success: true,
+      message: "Backup sync initiated",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Sync failed",
+      message: error.message,
     });
   }
 });
