@@ -64,8 +64,26 @@ app.use(
 );
 app.use(
   cors({
-    origin: config.FRONTEND_URL,
+    origin: [
+      config.FRONTEND_URL,
+      "https://callgirls.vercel.app",
+      "https://accounts.google.com", // Google OAuth
+      "https://www.googleapis.com", // Google APIs
+    ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "X-File-Source",
+      "X-Client-Version", // Google OAuth headers
+    ],
+    exposedHeaders: ["Set-Cookie", "X-File-Source", "X-File-Path"],
+    preflightContinue: false,
+    optionsSuccessStatus: 200,
   })
 );
 app.use(cookieParser());

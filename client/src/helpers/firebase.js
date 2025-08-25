@@ -22,4 +22,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+// Configure Google OAuth for better CORS compatibility
+provider.setCustomParameters({
+  prompt: "select_account",
+  access_type: "offline",
+  include_granted_scopes: true,
+});
+
+// Configure auth settings
+auth.useDeviceLanguage();
+auth.settings.appVerificationDisabledForTesting = false;
+
 export { auth, provider };

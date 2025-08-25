@@ -55,31 +55,10 @@ api.interceptors.response.use(
     );
 
     if (error.response?.status === 401) {
-      // Try to refresh token first
-      try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (refreshToken) {
-          const refreshResponse = await api.post("/auth/refresh-token", {
-            refreshToken,
-          });
-
-          if (refreshResponse.data.token) {
-            localStorage.setItem("token", refreshResponse.data.token);
-            // Retry the original request
-            const originalRequest = error.config;
-            originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
-            return api(originalRequest);
-          }
-        }
-      } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
-      }
-
-      // If refresh fails, redirect to login
+      // Token expired or invalid - redirect to login
       localStorage.removeItem("token");
       localStorage.removeItem("auth");
       localStorage.removeItem("user");
-      localStorage.removeItem("refreshToken");
       window.location.href = "/sign-in";
     }
     return Promise.reject(error);
