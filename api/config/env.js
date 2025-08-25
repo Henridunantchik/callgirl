@@ -98,6 +98,14 @@ const requiredEnvVars = {
     default: "https://srv-d2hke7je5dus738nhqag.onrender.com",
     description: "Render external URL for file serving",
   },
+  
+  // Backend Base URL Configuration
+  BASE_URL: {
+    required: false,
+    type: "string",
+    default: process.env.NODE_ENV === "production" ? "https://callgirls-api.onrender.com" : "http://localhost:5000",
+    description: "Backend base URL for production",
+  },
 };
 
 // Validation function
