@@ -12,7 +12,7 @@ export const getBaseUrl = () => {
     window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1"
   ) {
-    return "https://callgirls-api.onrender.com";
+    return "https://apicallgirls.vercel.app"; // Use Vercel backend instead of Render
   }
 
   // In development, use localhost

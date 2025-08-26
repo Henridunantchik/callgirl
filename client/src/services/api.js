@@ -6,10 +6,10 @@ const api = axios.create({
     import.meta.env.VITE_API_URL ||
     (window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1"
-      ? "https://callgirls-api.onrender.com/api"
+      ? "https://apicallgirls.vercel.app/api" // Use Vercel backend instead of Render
       : "http://localhost:5000/api"), // Use environment variable for production
   withCredentials: true,
-  timeout: 30000, // Reduced to 30 seconds for better UX
+  timeout: 15000, // Reduced to 15 seconds for better UX
 });
 
 // Request interceptor to add auth token
