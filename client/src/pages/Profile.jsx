@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
-import PremiumAvatar from "@/components/PremiumAvatar";
+
 import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,7 +34,7 @@ import { showToast } from "@/helpers/showToast";
 import { getEvn } from "@/helpers/getEnv";
 import { userAPI } from "@/services/api";
 import { fixUserUrls } from "@/utils/urlHelper";
-import ImageOptimizer from "@/components/ImageOptimizer";
+import { FirebaseImageDisplay } from "@/components/firebase";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -956,14 +956,15 @@ const Profile = () => {
                       <div {...getRootProps()}>
                         <input {...getInputProps()} />
                         <div className="relative group cursor-pointer">
-                          <PremiumAvatar
+                          <FirebasePremiumAvatar
                             src={
                               filePreview ? filePreview : userData?.user?.avatar
                             }
                             alt={userData?.user?.name || "Profile"}
                             size="w-24 h-24"
                             showBadge={true}
-                            user={userData?.user}
+                            subscriptionTier={userData?.user?.subscriptionTier}
+                            isVerified={userData?.user?.isVerified}
                             className="mx-auto"
                           />
                           <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
@@ -1934,7 +1935,7 @@ const Profile = () => {
                                         key={index}
                                         className="relative group"
                                       >
-                                        <ImageOptimizer
+                                        <FirebaseImageDisplay
                                           src={imageUrl}
                                           alt={`Gallery photo ${index + 1}`}
                                           className="w-full h-32 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
