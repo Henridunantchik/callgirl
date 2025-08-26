@@ -1,0 +1,43 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Règles pour les avatars (photos de profil)
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;  // Lecture publique des avatars
+      allow write: if request.auth != null && 
+                   request.auth.uid == userId;  // Écriture uniquement par l'utilisateur
+    }
+    
+    // Règles pour la galerie (photos des escortes)
+    match /gallery/{fileName} {
+      allow read: if true;  // Lecture publique de la galerie
+      allow write: if request.auth != null;  // Écriture authentifiée
+    }
+    
+    // Règles pour les vidéos
+    match /videos/{fileName} {
+      allow read: if true;  // Lecture publique des vidéos
+      allow write: if request.auth != null;  // Écriture authentifiée
+    }
+    
+    // Règles pour les documents
+    match /documents/{fileName} {
+      allow read: if true;  // Lecture publique des documents
+      allow write: if request.auth != null;  // Écriture authentifiée
+    }
+    
+    // Règles pour les fichiers temporaires
+    match /temp/{fileName} {
+      allow read: if request.auth != null;  // Lecture authentifiée
+      allow write: if request.auth != null;  // Écriture authentifiée
+      allow delete: if request.auth != null;  // Suppression authentifiée
+    }
+    
+    // Règles par défaut pour les autres fichiers
+    match /{allPaths=**} {
+      allow read: if true;  // Lecture publique par défaut
+      allow write: if request.auth != null;  // Écriture authentifiée par défaut
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import renderStorage from "../services/renderStorage.js";
+import firebaseStorage from "../services/firebaseStorage.js";
 import { handleError } from "../helpers/handleError.js";
 import User from "../models/user.model.js";
 import bcryptjs from "bcryptjs";
@@ -107,7 +107,7 @@ export const updateUser = async (req, res, next) => {
 
     // Avatar upload (if file provided)
     if (req.file) {
-      const uploadResult = await renderStorage.uploadFile(req.file, "avatar");
+      const uploadResult = await firebaseStorage.uploadFile(req.file, "avatar");
 
       if (!uploadResult.success) {
         console.error("Avatar upload error:", uploadResult.error);

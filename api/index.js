@@ -100,9 +100,6 @@ import {
   fileStorageHealth,
 } from "./middleware/fileFallback.js";
 
-// Import du gestionnaire de restauration automatique
-import autoRestoreManager from "./services/autoRestoreManager.js";
-
 // Static files with INTELLIGENT FALLBACK SYSTEM
 app.use(
   "/uploads",
@@ -283,59 +280,6 @@ app.post("/api/storage/sync", async (req, res) => {
     });
   }
 });
-
-// Démarrer la surveillance automatique des fichiers
-if (config.NODE_ENV === "production") {
-  console.log("🚀 Starting automatic file restoration monitoring...");
-  autoRestoreManager.startMonitoring();
-
-  // Endpoint pour vérifier le statut du monitoring
-  app.get("/api/auto-restore/status", (req, res) => {
-    const status = autoRestoreManager.getStatus();
-    res.json({
-      success: true,
-      data: status,
-      message: "Auto-restore status retrieved successfully",
-    });
-  });
-
-  // Endpoint pour forcer la restauration
-  app.post("/api/auto-restore/force", async (req, res) => {
-    try {
-      await autoRestoreManager.forceRestoreAll();
-      res.json({
-        success: true,
-        message: "Force restore completed successfully",
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "Force restore failed",
-        error: error.message,
-      });
-    }
-  });
-
-  // Endpoint de santé du système
-  app.get("/api/auto-restore/health", async (req, res) => {
-    try {
-      const health = await autoRestoreManager.healthCheck();
-      res.json({
-        success: true,
-        data: health,
-        message: "Auto-restore health check completed",
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "Health check failed",
-        error: error.message,
-      });
-    }
-  });
-
-  console.log("✅ Auto-restore endpoints configured");
-}
 
 // API routes (individual)
 app.use("/api/auth", authRoutes);
