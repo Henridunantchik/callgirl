@@ -16,7 +16,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "../../components/ui/avatar";
-import PremiumAvatar from "../../components/PremiumAvatar";
+import { FirebasePremiumAvatar } from "../../components/firebase";
 import {
   MessageCircle,
   Send,
@@ -698,14 +698,17 @@ const Messages = () => {
                     >
                       <div className="flex items-center space-x-3">
                         <div className="relative">
-                          <PremiumAvatar
+                          <FirebasePremiumAvatar
                             src={conversation.user.avatar}
                             alt={
                               conversation.user.name || conversation.user.alias
                             }
                             size="h-10 w-10"
                             showBadge={false}
-                            user={conversation.user}
+                            subscriptionTier={
+                              conversation.user.subscriptionTier
+                            }
+                            isVerified={conversation.user.isVerified}
                           />
                           {isUserOnline(conversation.user._id) && (
                             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
@@ -753,14 +756,15 @@ const Messages = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <PremiumAvatar
+                        <FirebasePremiumAvatar
                           src={selectedChat.user.avatar}
                           alt={
                             selectedChat.user.name || selectedChat.user.alias
                           }
                           size="h-8 w-8"
                           showBadge={false}
-                          user={selectedChat.user}
+                          subscriptionTier={selectedChat.user.subscriptionTier}
+                          isVerified={selectedChat.user.isVerified}
                         />
                         <div>
                           <span className="font-medium">
@@ -915,7 +919,9 @@ const Messages = () => {
                                   {msg.type === "image" ||
                                   (msg.content &&
                                     msg.content.startsWith("http") &&
-                                    (msg.content.includes("cloudinary.com") ||
+                                    (msg.content.includes(
+                                      "firebasestorage.googleapis.com"
+                                    ) ||
                                       msg.content.includes(".jpg") ||
                                       msg.content.includes(".jpeg") ||
                                       msg.content.includes(".png") ||

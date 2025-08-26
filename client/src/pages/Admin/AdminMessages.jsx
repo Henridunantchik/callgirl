@@ -16,7 +16,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "../../components/ui/avatar";
-import PremiumAvatar from "../../components/PremiumAvatar";
+import { FirebasePremiumAvatar } from "../../components/firebase";
 import {
   MessageCircle,
   Send,
@@ -522,12 +522,13 @@ const AdminMessages = () => {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <PremiumAvatar
+                        <FirebasePremiumAvatar
                           src={conversation.user.avatar}
                           alt={conversation.user.name}
                           size="w-12 h-12"
                           showBadge={false}
-                          user={conversation.user}
+                          subscriptionTier={conversation.user.subscriptionTier}
+                          isVerified={conversation.user.isVerified}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
@@ -576,12 +577,13 @@ const AdminMessages = () => {
                   <CardHeader className="border-b">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <PremiumAvatar
+                        <FirebasePremiumAvatar
                           src={selectedChat.user.avatar}
                           alt={selectedChat.user.name}
                           size="w-10 h-10"
                           showBadge={false}
-                          user={selectedChat.user}
+                          subscriptionTier={selectedChat.user.subscriptionTier}
+                          isVerified={selectedChat.user.isVerified}
                         />
                         <div>
                           <h3 className="font-semibold text-gray-900">

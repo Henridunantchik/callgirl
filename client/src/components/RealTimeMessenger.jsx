@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import PremiumAvatar from "./PremiumAvatar";
+import { FirebasePremiumAvatar } from "./firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import {
   MessageCircle,
@@ -728,7 +728,7 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                         >
                           <div className="flex items-center space-x-3">
                             <div className="relative">
-                              <PremiumAvatar
+                              <FirebasePremiumAvatar
                                 src={conversation.user.avatar}
                                 alt={
                                   conversation.user.alias ||
@@ -736,7 +736,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                                 }
                                 size="w-10 h-10"
                                 showBadge={false}
-                                user={conversation.user}
+                                subscriptionTier={
+                                  conversation.user.subscriptionTier
+                                }
+                                isVerified={conversation.user.isVerified}
                               />
                               {isUserOnline(conversation.user._id) && (
                                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
@@ -782,14 +785,15 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="relative">
-                        <PremiumAvatar
+                        <FirebasePremiumAvatar
                           src={selectedChat.user.avatar}
                           alt={
                             selectedChat.user.alias || selectedChat.user.name
                           }
                           size="w-8 h-8"
                           showBadge={false}
-                          user={selectedChat.user}
+                          subscriptionTier={selectedChat.user.subscriptionTier}
+                          isVerified={selectedChat.user.isVerified}
                         />
                         {isUserOnline(selectedChat.user._id) && (
                           <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>
@@ -918,7 +922,9 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                             {/* Check if content is an image URL */}
                             {msg.content &&
                             msg.content.startsWith("http") &&
-                            (msg.content.includes("cloudinary.com") ||
+                            (msg.content.includes(
+                              "firebasestorage.googleapis.com"
+                            ) ||
                               msg.content.includes(".jpg") ||
                               msg.content.includes(".jpeg") ||
                               msg.content.includes(".png") ||

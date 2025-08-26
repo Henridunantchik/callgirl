@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import usericon from "@/assets/images/user.png";
-import PremiumAvatar from "./PremiumAvatar";
+import { FirebasePremiumAvatar } from "./firebase";
 
 import {
   FaRegUser,
@@ -203,12 +203,13 @@ const Topbar = () => {
           <DropdownMenu>
             <DropdownMenuTrigger>
               <div className="flex items-center gap-2">
-                <PremiumAvatar
+                <FirebasePremiumAvatar
                   src={user?.user?.avatar || usericon}
                   alt={user?.user?.name || "User"}
                   size="w-10 h-10"
                   showBadge={false}
-                  user={user?.user}
+                  subscriptionTier={user?.user?.subscriptionTier}
+                  isVerified={user?.user?.isVerified}
                 />
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-medium">
@@ -221,12 +222,13 @@ const Topbar = () => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex items-center gap-2">
-                  <PremiumAvatar
+                  <FirebasePremiumAvatar
                     src={user?.user?.avatar || usericon}
                     alt={user?.user?.name || "User"}
                     size="w-8 h-8"
                     showBadge={false}
-                    user={user?.user}
+                    subscriptionTier={user?.user?.subscriptionTier}
+                    isVerified={user?.user?.isVerified}
                   />
                   <div>
                     <p className="font-medium">{user?.user?.name || "User"}</p>

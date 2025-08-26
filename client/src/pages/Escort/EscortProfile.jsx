@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import PremiumAvatar from "../../components/PremiumAvatar";
+import { FirebasePremiumAvatar } from "../../components/firebase";
 import {
   MapPin,
   Phone,
@@ -36,7 +36,7 @@ import { RouteSignIn } from "../../helpers/RouteName";
 import RealTimeMessenger from "../../components/RealTimeMessenger";
 import ReviewSystem from "../../components/ReviewSystem";
 import FavoriteButton from "../../components/FavoriteButton";
-import ImageLightbox from "../../components/ImageLightbox";
+import { FirebaseGallery } from "../../components/firebase";
 import {
   hasPremiumAccess,
   canShowContactInfo,
@@ -368,7 +368,7 @@ const EscortProfile = () => {
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             {/* Avatar */}
-            <PremiumAvatar
+            <FirebasePremiumAvatar
               src={
                 escort.avatar ||
                 escort.gallery?.[0]?.url ||
@@ -1141,13 +1141,13 @@ const EscortProfile = () => {
         selectedEscort={escort}
       />
 
-      {/* Image Lightbox */}
+      {/* Firebase Gallery */}
       {escort.gallery && escort.gallery.length > 0 && (
-        <ImageLightbox
-          isOpen={isGalleryOpen}
-          onClose={() => setIsGalleryOpen(false)}
-          images={escort.gallery.map((photo) => photo.url)}
-          initialIndex={selectedImageIndex}
+        <FirebaseGallery
+          images={escort.gallery}
+          maxDisplay={6}
+          showLightbox={true}
+          onImageClick={(media, index) => setSelectedImageIndex(index)}
         />
       )}
     </div>
