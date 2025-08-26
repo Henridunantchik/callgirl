@@ -6,252 +6,298 @@ import config from "../config/env.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * ULTRA-AGGRESSIVE Backup Manager
- * Re-uploads files to Render every 30 seconds to counter deletion
- * This ensures files are ALWAYS available on Render
- */
 class BackupManager {
   constructor() {
-    // CORRECTION: Utiliser le même chemin que Render pour la synchronisation
-    this.localBackupPath = process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads";
+    // Chemin de sauvegarde locale
+    this.localBackupPath = path.join(__dirname, "..", "backups");
+
+    // Chemin Render (production)
     this.renderPath =
       process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads";
-    this.syncInterval = 30 * 1000; // 30 SECONDES (ultra-agressif)
-    this.lastSync = new Date();
-    this.syncInProgress = false;
-    this.syncStats = {
-      totalFiles: 0,
-      syncedFiles: 0,
-      failedFiles: 0,
-      lastSyncTime: null,
-      renderStatus: "unknown",
-    };
 
-    console.log(`🔧 Backup Manager - Local path: ${this.localBackupPath}`);
-    console.log(`🔧 Backup Manager - Render path: ${this.renderPath}`);
+    // Créer le dossier de sauvegarde s'il n'existe pas
+    if (!fs.existsSync(this.localBackupPath)) {
+      fs.mkdirSync(this.localBackupPath, { recursive: true });
+    }
 
-    this.initializeBackupSystem();
+    console.log("✅ Backup Manager initialized");
+    console.log(`   Local backup: ${this.localBackupPath}`);
+    console.log(`   Render path: ${this.renderPath}`);
   }
 
-  /**
-   * Initialize the backup system
-   */
-  async initializeBackupSystem() {
+  // Sauvegarder un fichier spécifique
+  async backupFile(filePath, folder = "general") {
     try {
-      // Ensure local backup directories exist
-      await this.createBackupDirectories();
+      // Déterminer le dossier de sauvegarde
+      const backupDir = path.join(this.localBackupPath, folder);
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
 
-      // Start monitoring
-      this.startMonitoring();
+      // Nom du fichier
+      const fileName = path.basename(filePath);
+      const backupPath = path.join(backupDir, fileName);
 
-      // Initial sync
-      await this.performFullSync();
-
-      console.log("✅ ULTRA-AGGRESSIVE Backup Manager initialized successfully");
-      console.log("🔄 Will re-upload files every 30 seconds to counter Render deletion");
+      // Copier le fichier vers la sauvegarde
+      if (fs.existsSync(filePath)) {
+        await fs.promises.copyFile(filePath, backupPath);
+        console.log(`✅ File backed up: ${fileName} → ${backupPath}`);
+        return { success: true, backupPath };
+      } else {
+        console.log(`⚠️  File not found for backup: ${filePath}`);
+        return { success: false, error: "File not found" };
+      }
     } catch (error) {
-      console.error("❌ Failed to initialize Backup Manager:", error);
+      console.error(`❌ Backup failed for ${filePath}:`, error.message);
+      return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Create all necessary backup directories
-   */
-  async createBackupDirectories() {
-    const directories = [
-      "avatars",
-      "gallery",
-      "videos",
-      "documents",
-      "images",
-      "temp",
-    ];
-
-    for (const dir of directories) {
-      const fullPath = path.join(this.localBackupPath, dir);
-      if (!fs.existsSync(fullPath)) {
-        fs.mkdirSync(fullPath, { recursive: true });
-        console.log(`📁 Created backup directory: ${dir}`);
-      }
-    }
-  }
-
-  /**
-   * Start continuous monitoring
-   */
-  startMonitoring() {
-    // Monitor every 30 seconds (ULTRA-AGGRESSIVE)
-    setInterval(async () => {
-      if (!this.syncInProgress) {
-        await this.performFullSync(); // ALWAYS SYNC
-      }
-    }, this.syncInterval);
-
-    // Monitor file changes in real-time
-    this.watchLocalChanges();
-
-    console.log("🔍 ULTRA-AGGRESSIVE monitoring started - 30 second intervals");
-  }
-
-  /**
-   * Watch for local file changes and sync immediately
-   */
-  watchLocalChanges() {
-    const directories = ["avatars", "gallery", "videos", "documents", "images"];
-
-    directories.forEach((dir) => {
-      const watchPath = path.join(this.localBackupPath, dir);
-      if (fs.existsSync(watchPath)) {
-        fs.watch(
-          watchPath,
-          { recursive: true },
-          async (eventType, filename) => {
-            if (filename && !filename.startsWith(".")) {
-              console.log(`📝 File change detected: ${dir}/${filename} - SYNCING IMMEDIATELY`);
-              // Sync immediately, no debounce
-              this.performFullSync();
-            }
-          }
-        );
-      }
-    });
-  }
-
-  /**
-   * Perform full synchronization
-   */
-  async performFullSync() {
-    if (this.syncInProgress) {
-      console.log("⏳ Sync already in progress, skipping...");
-      return;
-    }
-
-    this.syncInProgress = true;
-    console.log("🔄 Starting ULTRA-AGGRESSIVE synchronization...");
-    console.log(`🔧 Will sync directories: avatars, gallery, videos, documents, images`);
-    console.log(`🔧 Local backup path: ${this.localBackupPath}`);
-
+  // Sauvegarder tous les fichiers d'un dossier
+  async backupDirectory(directoryName) {
     try {
-      const stats = await this.syncAllDirectories();
-      this.syncStats = { ...this.syncStats, ...stats };
+      const sourceDir = path.join(this.renderPath, directoryName);
+      const backupDir = path.join(this.localBackupPath, directoryName);
+
+      if (!fs.existsSync(sourceDir)) {
+        console.log(`⚠️  Source directory not found: ${sourceDir}`);
+        return { success: false, error: "Source directory not found" };
+      }
+
+      // Créer le dossier de sauvegarde
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+
+      // Lister tous les fichiers
+      const files = fs.readdirSync(sourceDir);
+      let backedUpCount = 0;
+      let errors = [];
 
       console.log(
-        `✅ ULTRA-AGGRESSIVE sync completed: ${stats.syncedFiles}/${stats.totalFiles} files`
+        `🔄 Starting backup of ${files.length} files from ${directoryName}...`
       );
-      this.lastSync = new Date();
+
+      for (const file of files) {
+        const sourcePath = path.join(sourceDir, file);
+        const backupPath = path.join(backupDir, file);
+
+        try {
+          // Vérifier si c'est un fichier (pas un dossier)
+          const stats = fs.statSync(sourcePath);
+          if (stats.isFile()) {
+            await fs.promises.copyFile(sourcePath, backupPath);
+            backedUpCount++;
+            console.log(`   ✅ ${file}`);
+          }
+        } catch (error) {
+          console.error(`   ❌ ${file}: ${error.message}`);
+          errors.push({ file, error: error.message });
+        }
+      }
+
+      console.log(
+        `🎉 Backup completed: ${backedUpCount}/${files.length} files backed up`
+      );
+
+      if (errors.length > 0) {
+        console.log(`⚠️  ${errors.length} files had errors during backup`);
+      }
+
+      return {
+        success: true,
+        backedUpCount,
+        totalFiles: files.length,
+        errors,
+      };
     } catch (error) {
-      console.error("❌ Full sync failed:", error);
-      this.syncStats.failedFiles++;
-    } finally {
-      this.syncInProgress = false;
+      console.error(
+        `❌ Directory backup failed for ${directoryName}:`,
+        error.message
+      );
+      return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Sync all directories
-   */
-  async syncAllDirectories() {
-    const directories = ["avatars", "gallery", "videos", "documents", "images"];
-    let totalFiles = 0;
-    let syncedFiles = 0;
-    let failedFiles = 0;
+  // Sauvegarder tous les dossiers importants
+  async backupAllDirectories() {
+    const directories = ["avatars", "gallery", "videos", "images", "documents"];
+    const results = {};
+
+    console.log("🚀 Starting full backup of all directories...\n");
 
     for (const dir of directories) {
-      const result = await this.syncDirectory(dir);
-      totalFiles += result.total;
-      syncedFiles += result.synced;
-      failedFiles += result.failed;
+      console.log(`📁 Backing up ${dir}...`);
+      results[dir] = await this.backupDirectory(dir);
+      console.log("");
     }
 
-    return { totalFiles, syncedFiles, failedFiles };
-  }
+    // Résumé
+    console.log("📊 BACKUP SUMMARY:");
+    let totalFiles = 0;
+    let totalErrors = 0;
 
-  /**
-   * Sync a specific directory
-   */
-  async syncDirectory(dirName) {
-    const localDir = path.join(this.localBackupPath, dirName);
-    const renderDir = path.join(this.renderPath, dirName);
-
-    console.log(`🔍 Checking directory: ${dirName}`);
-    console.log(`🔍 Local path: ${localDir}`);
-    console.log(`🔍 Render path: ${renderDir}`);
-
-    if (!fs.existsSync(localDir)) {
-      console.log(`❌ Local directory does not exist: ${localDir}`);
-      return { total: 0, synced: 0, failed: 0 };
-    }
-
-    // Ensure render directory exists
-    if (!fs.existsSync(renderDir)) {
-      fs.mkdirSync(renderDir, { recursive: true });
-      console.log(`📁 Created render directory: ${renderDir}`);
-    }
-
-    const localFiles = fs.readdirSync(localDir);
-    console.log(`📊 Found ${localFiles.length} files in ${dirName}: ${localFiles.join(', ')}`);
-    
-    let synced = 0;
-    let failed = 0;
-
-    for (const file of localFiles) {
-      if (file.startsWith(".")) continue; // Skip hidden files
-
-      const localPath = path.join(localDir, file);
-      const renderPath = path.join(renderDir, file);
-
-      try {
-        // ALWAYS COPY to render (ultra-aggressive)
-        fs.copyFileSync(localPath, renderPath);
-        synced++;
-        console.log(`📁 ULTRA-AGGRESSIVE sync: ${dirName}/${file}`);
-      } catch (error) {
-        console.error(`❌ Failed to sync ${dirName}/${file}:`, error);
-        failed++;
+    Object.entries(results).forEach(([dir, result]) => {
+      if (result.success) {
+        console.log(
+          `   ✅ ${dir}: ${result.backedUpCount}/${result.totalFiles} files`
+        );
+        totalFiles += result.backedUpCount;
+        totalErrors += result.errors?.length || 0;
+      } else {
+        console.log(`   ❌ ${dir}: ${result.error}`);
       }
-    }
+    });
 
-    console.log(`✅ Directory ${dirName}: ${synced} synced, ${failed} failed out of ${localFiles.length} total`);
-    return { total: localFiles.length, synced, failed };
+    console.log(
+      `\n🎯 Total: ${totalFiles} files backed up, ${totalErrors} errors`
+    );
+
+    return results;
   }
 
-  /**
-   * Get backup statistics
-   */
-  getStats() {
-    return {
-      ...this.syncStats,
-      localBackupPath: this.localBackupPath,
-      renderPath: this.renderPath,
-      lastSync: this.lastSync,
-      syncInProgress: this.syncInProgress,
-    };
-  }
-
-  /**
-   * Force immediate sync
-   */
-  async forceSync() {
-    console.log("🚀 Force sync requested...");
-    await this.performFullSync();
-  }
-
-  /**
-   * Get file URL with fallback
-   */
-  getFileUrl(filePath, directory = "gallery") {
+  // Restaurer un fichier depuis la sauvegarde
+  async restoreFile(fileName, folder = "general") {
     try {
-      // Always serve from render path since we're ultra-aggressive
-      return `/uploads/${directory}/${filePath}`;
+      const backupPath = path.join(this.localBackupPath, folder, fileName);
+      const restorePath = path.join(this.renderPath, folder, fileName);
+
+      if (!fs.existsSync(backupPath)) {
+        return { success: false, error: "Backup file not found" };
+      }
+
+      // Créer le dossier de destination si nécessaire
+      const restoreDir = path.dirname(restorePath);
+      if (!fs.existsSync(restoreDir)) {
+        fs.mkdirSync(restoreDir, { recursive: true });
+      }
+
+      // Restaurer le fichier
+      await fs.promises.copyFile(backupPath, restorePath);
+      console.log(`✅ File restored: ${fileName} → ${restorePath}`);
+
+      return { success: true, restoredPath: restorePath };
     } catch (error) {
-      console.error("Error getting file URL:", error);
-      return null;
+      console.error(`❌ Restore failed for ${fileName}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Vérifier l'intégrité des sauvegardes
+  async checkBackupIntegrity() {
+    try {
+      const directories = [
+        "avatars",
+        "gallery",
+        "videos",
+        "images",
+        "documents",
+      ];
+      const integrity = {};
+
+      console.log("🔍 Checking backup integrity...\n");
+
+      for (const dir of directories) {
+        const renderDir = path.join(this.renderPath, dir);
+        const backupDir = path.join(this.localBackupPath, dir);
+
+        if (!fs.existsSync(renderDir) || !fs.existsSync(backupDir)) {
+          integrity[dir] = {
+            status: "missing",
+            render: fs.existsSync(renderDir),
+            backup: fs.existsSync(backupDir),
+          };
+          continue;
+        }
+
+        const renderFiles = fs
+          .readdirSync(renderDir)
+          .filter((f) => fs.statSync(path.join(renderDir, f)).isFile());
+        const backupFiles = fs
+          .readdirSync(backupDir)
+          .filter((f) => fs.statSync(path.join(backupDir, f)).isFile());
+
+        const missingInBackup = renderFiles.filter(
+          (f) => !backupFiles.includes(f)
+        );
+        const missingInRender = backupFiles.filter(
+          (f) => !renderFiles.includes(f)
+        );
+
+        integrity[dir] = {
+          status: "ok",
+          renderCount: renderFiles.length,
+          backupCount: backupFiles.length,
+          missingInBackup,
+          missingInRender,
+        };
+      }
+
+      // Afficher le rapport
+      console.log("📊 INTEGRITY REPORT:");
+      Object.entries(integrity).forEach(([dir, info]) => {
+        if (info.status === "ok") {
+          console.log(
+            `   ✅ ${dir}: ${info.renderCount} files in Render, ${info.backupCount} in backup`
+          );
+          if (info.missingInBackup.length > 0) {
+            console.log(
+              `      ⚠️  ${info.missingInBackup.length} files missing in backup`
+            );
+          }
+          if (info.missingInRender.length > 0) {
+            console.log(
+              `      ⚠️  ${info.missingInRender.length} files missing in Render`
+            );
+          }
+        } else {
+          console.log(`   ❌ ${dir}: ${info.status}`);
+        }
+      });
+
+      return integrity;
+    } catch (error) {
+      console.error("❌ Integrity check failed:", error.message);
+      return { error: error.message };
+    }
+  }
+
+  // Obtenir les statistiques des sauvegardes
+  getBackupStats() {
+    try {
+      const directories = [
+        "avatars",
+        "gallery",
+        "videos",
+        "images",
+        "documents",
+      ];
+      const stats = {};
+
+      directories.forEach((dir) => {
+        const backupDir = path.join(this.localBackupPath, dir);
+        if (fs.existsSync(backupDir)) {
+          const files = fs.readdirSync(backupDir).filter((f) => {
+            const filePath = path.join(backupDir, f);
+            return fs.statSync(filePath).isFile();
+          });
+          stats[dir] = files.length;
+        } else {
+          stats[dir] = 0;
+        }
+      });
+
+      return {
+        totalFiles: Object.values(stats).reduce((a, b) => a + b, 0),
+        byDirectory: stats,
+        backupPath: this.localBackupPath,
+        renderPath: this.renderPath,
+      };
+    } catch (error) {
+      console.error("❌ Failed to get backup stats:", error.message);
+      return { error: error.message };
     }
   }
 }
 
-// Create singleton instance
-const backupManager = new BackupManager();
-
-export default backupManager;
+export default new BackupManager();
