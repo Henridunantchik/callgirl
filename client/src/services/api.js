@@ -12,7 +12,6 @@ const api = axios.create({
   timeout: 10000, // Reduced to 10 seconds for better UX
   // Add performance headers
   headers: {
-    "Accept-Encoding": "gzip, deflate, br",
     "Cache-Control": "no-cache",
   },
 });

@@ -14,11 +14,11 @@ export const useFetch = (url, options = {}, dependencies = []) => {
           import.meta.env.VITE_API_URL ||
           (window.location.hostname !== "localhost" &&
           window.location.hostname !== "127.0.0.1"
-            ? "https://api.epicescorts.live/api"
-            : "http://localhost:5000/api");
+            ? "https://api.epicescorts.live"
+            : "http://localhost:5000");
         const fullUrl = url.startsWith("http")
           ? url
-          : `${apiBase}/${url.replace(/^\//, "")}`;
+          : `${apiBase}${url.startsWith("/") ? url : `/${url}`}`;
 
         const response = await fetch(fullUrl, options);
         const responseData = await response.json();
