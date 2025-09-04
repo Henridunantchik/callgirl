@@ -1,6 +1,6 @@
 console.log("🧪 Testing Static File Serving After Fix\n");
 
-const API_BASE = "https://callgirls-api.onrender.com";
+const API_BASE = "https://api.epicescorts.live";
 
 // Test endpoints
 const testEndpoints = [

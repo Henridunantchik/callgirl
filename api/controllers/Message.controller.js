@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
-import renderStorage from "../services/renderStorage.js";
+import railwayStorage from "../services/railwayStorage.js";
 
 // Send a message
 const sendMessage = asyncHandler(async (req, res) => {
@@ -268,8 +268,8 @@ const uploadMessageImage = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Upload to Render storage instead of Cloudinary
-    const result = await renderStorage.uploadFile(req.file, "message-images");
+    // Upload to Railway storage instead of Cloudinary
+    const result = await railwayStorage.uploadFile(req.file, "message-images");
 
     if (!result.success) {
       throw new Error(`Failed to upload file: ${result.error}`);
@@ -281,7 +281,7 @@ const uploadMessageImage = asyncHandler(async (req, res) => {
         new ApiResponse(200, { url: result.url }, "Image uploaded successfully")
       );
   } catch (error) {
-    console.error("Render storage upload error:", error);
+    console.error("Railway storage upload error:", error);
     throw new ApiError(500, "Failed to upload image");
   }
 });

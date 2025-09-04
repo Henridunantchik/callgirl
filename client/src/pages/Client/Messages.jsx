@@ -320,7 +320,7 @@ const Messages = () => {
             import.meta.env.VITE_API_URL ||
             (window.location.hostname !== "localhost" &&
             window.location.hostname !== "127.0.0.1"
-              ? "https://callgirls-api.onrender.com/api"
+              ? "https://api.epicescorts.live/api"
               : "http://localhost:5000/api")
           }/message/upload-image`,
           {

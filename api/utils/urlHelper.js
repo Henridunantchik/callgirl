@@ -7,7 +7,7 @@ import config from "../config/env.js";
 export const getBaseUrl = () => {
   // In production, use the production URL
   if (config.NODE_ENV === "production") {
-    return "https://callgirls-api.onrender.com";
+    return "https://api.epicescorts.live";
   }
 
   // In development, use localhost

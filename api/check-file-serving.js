@@ -1,6 +1,6 @@
 console.log("🔍 Checking File Serving Configuration\n");
 
-const API_BASE = "https://callgirls-api.onrender.com";
+const API_BASE = "https://api.epicescorts.live";
 
 // Test the debug endpoint to see the current configuration
 async function checkConfiguration() {
@@ -43,8 +43,8 @@ async function checkConfiguration() {
         console.log("   ❌ Environment is not production");
       }
 
-      if (data.data?.uploadPath?.includes("/opt/render/project/src/uploads")) {
-        console.log("   ✅ Upload path is correct for Render");
+      if (data.data?.uploadPath?.includes("/app/uploads")) {
+        console.log("   ✅ Upload path is correct for Railway");
       } else {
         console.log("   ❌ Upload path is incorrect");
       }
@@ -57,7 +57,7 @@ async function checkConfiguration() {
       console.log("   This is why /uploads/* endpoints return 404");
       console.log("");
       console.log("🔧 SOLUTION:");
-      console.log("   1. Check if the uploads directory exists on Render");
+      console.log("   1. Check if the uploads directory exists on Railway");
       console.log("   2. Verify file permissions");
       console.log("   3. Check the static file middleware in your API");
     } else {
