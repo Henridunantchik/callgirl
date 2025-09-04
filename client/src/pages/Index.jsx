@@ -72,7 +72,7 @@ const Index = () => {
           countryCode: countryCode || "ug", // Add country code filter
           _t: Date.now(), // Cache busting parameter
         }),
-        statsAPI.getGlobalStats(countryCode || "ug"),
+        statsAPI.getCountryStats(countryCode || "ug"),
       ]);
 
       // Handle escorts response
@@ -80,9 +80,9 @@ const Index = () => {
         console.log("Escorts API response:", escortsResponse.value.data);
       } else {
         console.error("Error fetching escorts:", escortsResponse.reason);
+        // Render empty state instead of hanging
+        setEscortData({ escorts: [] });
         setError("Failed to load escorts");
-        setLoading(false);
-        return;
       }
 
       // Handle stats response
@@ -94,16 +94,19 @@ const Index = () => {
       }
 
       // Filter and sort escort data
-      let escorts =
-        escortsResponse.value.data.data?.escorts ||
-        escortsResponse.value.data.data ||
-        [];
+      let escorts = [];
+      if (escortsResponse.status === "fulfilled") {
+        escorts =
+          escortsResponse.value.data.data?.escorts ||
+          escortsResponse.value.data.data ||
+          [];
+      }
 
       // Filter: Only Premium/Elite and Featured escorts
       console.log("All escorts before filtering:", escorts);
 
       // If no escorts found, try fetching all escorts and filter on frontend
-      if (escorts.length === 0) {
+      if (escorts.length === 0 && escortsResponse.status === "fulfilled") {
         console.log(
           "No escorts found with featured filter, trying to fetch all escorts..."
         );
@@ -168,7 +171,9 @@ const Index = () => {
         setStatsData(statsResponse.value.data.data.stats);
       }
 
-      setError(null);
+      if (escortsResponse.status === "fulfilled") {
+        setError(null);
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err);
@@ -179,7 +184,20 @@ const Index = () => {
 
   // Fetch escorts and stats on component mount
   React.useEffect(() => {
+    let canceled = false;
+    // Safety timeout to ensure UI doesn't hang
+    const safety = setTimeout(() => {
+      if (!canceled) {
+        setLoading(false);
+      }
+    }, 8000);
+
     fetchEscortData();
+
+    return () => {
+      canceled = true;
+      clearTimeout(safety);
+    };
   }, [countryCode]);
 
   // Note: Removed auto-refresh to prevent cards from reloading themselves
