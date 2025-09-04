@@ -22,6 +22,81 @@ import {
   getQueryHint,
 } from "../utils/databaseOptimizer.js";
 
+// Local helpers for lean documents
+// Compute benefits by subscription tier (aligns with user.model.js)
+const getSubscriptionBenefits = (tier) => {
+  const benefits = {
+    basic: {
+      photos: 10,
+      videos: 5,
+      features: ["Basic Profile", "Standard Search", "Basic Messaging"],
+    },
+    verified: {
+      photos: 20,
+      videos: 10,
+      features: [
+        "Verified Badge",
+        "Priority Search",
+        "Enhanced Analytics",
+        "Priority Support",
+      ],
+    },
+    premium: {
+      photos: -1,
+      videos: -1,
+      features: [
+        "Premium Badge",
+        "Featured Placement",
+        "Unlimited Media",
+        "Direct Contact",
+        "Profile Highlighting",
+        "Analytics Dashboard",
+      ],
+    },
+    elite: {
+      photos: -1,
+      videos: -1,
+      features: [
+        "VIP Badge",
+        "Homepage Featured",
+        "Priority Booking",
+        "Custom Profile",
+        "Social Media Integration",
+        "Professional Tips",
+        "Marketing Support",
+      ],
+    },
+  };
+  return benefits[tier] || benefits.basic;
+};
+
+// Compute profile completion for lean objects (rough equivalent of model method)
+const calculateProfileCompletion = (escort) => {
+  const requiredFields = [
+    "name",
+    "alias",
+    "email",
+    "phone",
+    "age",
+    "gender",
+    "location.city",
+    "location.country",
+    "services",
+    "rates.hourly",
+    "gallery",
+  ];
+
+  const getValue = (obj, path) =>
+    path.split(".").reduce((acc, key) => (acc ? acc[key] : undefined), obj);
+
+  const completed = requiredFields.filter((field) => {
+    const value = getValue(escort, field);
+    return value && (Array.isArray(value) ? value.length > 0 : true);
+  }).length;
+
+  return Math.round((completed / requiredFields.length) * 100);
+};
+
 /**
  * Get all escorts with filtering and pagination - OPTIMIZED FOR UNLIMITED PERFORMANCE
  * GET /api/escort/all
@@ -191,17 +266,41 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Start performance monitoring
     const queryStart = Date.now();
 
-    // Get escorts with OPTIMIZED query
-    const escorts = await User.find(filter)
-      .select(
-        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone bio ethnicity bodyType lastActive profileViews rating reviewCount"
-      )
+    // Get escorts with OPTIMIZED query (safe hint)
+    const baseSelect =
+      "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone bio ethnicity bodyType lastActive profileViews rating reviewCount";
+    const hintName = getQueryHint(filter);
+
+    let query = User.find(filter)
+      .select(baseSelect)
       .sort(sort)
       .limit(pagination.limit)
       .skip(pagination.skip)
-      .lean() // Use lean for better performance
-      .hint(getQueryHint(filter)) // Use optimal index
-      .exec();
+      .lean();
+
+    if (hintName) {
+      query = query.hint(hintName);
+    }
+
+    let escorts;
+    try {
+      escorts = await query.exec();
+    } catch (hintError) {
+      if (hintName) {
+        console.warn(
+          `⚠️ Hint failed ('${hintName}'): ${hintError.message}. Retrying without hint.`
+        );
+        escorts = await User.find(filter)
+          .select(baseSelect)
+          .sort(sort)
+          .limit(pagination.limit)
+          .skip(pagination.skip)
+          .lean()
+          .exec();
+      } else {
+        throw hintError;
+      }
+    }
 
     // Monitor query performance
     const queryDuration = monitorQueryPerformance(null, queryStart);

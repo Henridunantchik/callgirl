@@ -332,8 +332,14 @@ export const monitorQueryPerformance = (query, startTime) => {
 
   if (duration > 100) {
     console.warn(`🐌 Slow query detected: ${duration}ms`);
-    console.log("Query:", JSON.stringify(query.getQuery()));
-    console.log("Collection:", query.mongooseCollection.name);
+    try {
+      if (query && typeof query.getQuery === "function") {
+        console.log("Query:", JSON.stringify(query.getQuery()));
+        console.log("Collection:", query.mongooseCollection?.name);
+      }
+    } catch (_) {
+      // Swallow logging errors to avoid impacting request flow
+    }
   }
 
   return duration;
