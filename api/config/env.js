@@ -51,12 +51,21 @@ const requiredEnvVars = {
     description: "Frontend application URL",
   },
 
-  // File Storage Configuration
-  RENDER_STORAGE_PATH: {
+  // Additional Frontend URLs for CORS
+  FRONTEND_URLS: {
     required: false,
     type: "string",
-    default: "/opt/render/project/src/uploads",
-    description: "Render storage path for production",
+    default:
+      "https://epicescorts.live,https://callgirls.vercel.app,http://localhost:5173",
+    description: "Comma-separated list of allowed frontend URLs for CORS",
+  },
+
+  // File Storage Configuration
+  RAILWAY_STORAGE_PATH: {
+    required: false,
+    type: "string",
+    default: "/app/uploads",
+    description: "Railway storage path for production",
   },
 
   // Stripe Configuration (for future use)
@@ -92,18 +101,21 @@ const requiredEnvVars = {
     default: "+1234567890",
     description: "Twilio phone number",
   },
-  RENDER_EXTERNAL_URL: {
+  RAILWAY_EXTERNAL_URL: {
     required: false,
     type: "string",
-    default: "https://srv-d2hke7je5dus738nhqag.onrender.com",
-    description: "Render external URL for file serving",
+    default: "https://api.epicescorts.live",
+    description: "Railway external URL for file serving",
   },
-  
+
   // Backend Base URL Configuration
   BASE_URL: {
     required: false,
     type: "string",
-    default: process.env.NODE_ENV === "production" ? "https://callgirls-api.onrender.com" : "http://localhost:5000",
+    default:
+      process.env.NODE_ENV === "production"
+        ? "https://api.epicescorts.live"
+        : "http://localhost:5000",
     description: "Backend base URL for production",
   },
 };

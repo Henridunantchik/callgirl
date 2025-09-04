@@ -46,10 +46,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const server = createServer(app);
 
+// Configure CORS for multiple frontend URLs
+const allowedOrigins = config.FRONTEND_URLS
+  ? config.FRONTEND_URLS.split(",").map((url) => url.trim())
+  : [config.FRONTEND_URL];
+
 // Create Socket.io server
 const io = new Server(server, {
   cors: {
-    origin: config.FRONTEND_URL,
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -62,9 +67,31 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
+
 app.use(
   cors({
-    origin: config.FRONTEND_URL,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Check if origin matches any of the allowed patterns
+      const isAllowed = allowedOrigins.some((allowedUrl) => {
+        if (allowedUrl.includes("localhost")) {
+          return origin.includes("localhost");
+        }
+        return origin === allowedUrl;
+      });
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
@@ -126,11 +153,9 @@ app.use(
   },
   // Use intelligent fallback middleware for file serving
   fileFallbackMiddleware,
-  // Use production path for Render, local path for development
+  // Use production path for Railway, local path for development
   config.NODE_ENV === "production"
-    ? express.static(
-        process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads"
-      )
+    ? express.static(process.env.RAILWAY_STORAGE_PATH || "/app/uploads")
     : express.static(path.join(__dirname, "uploads"))
 );
 
@@ -231,20 +256,18 @@ app.get("/debug/files", async (req, res) => {
         environment: config.NODE_ENV,
         backupManager: backupStats,
         storageHealth: healthData?.data || null,
-        uploadPath:
-          process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads",
+        uploadPath: process.env.RAILWAY_STORAGE_PATH || "/app/uploads",
         baseUrl:
-          process.env.RENDER_EXTERNAL_URL ||
-          "https://callgirls-api.onrender.com",
+          process.env.RAILWAY_EXTERNAL_URL || "https://api.epicescorts.live",
         directories: {
-          images: "/opt/render/project/src/uploads/images",
-          gallery: "/opt/render/project/src/uploads/gallery",
-          videos: "/opt/render/project/src/uploads/videos",
+          images: "/app/uploads/images",
+          gallery: "/app/uploads/gallery",
+          videos: "/app/uploads/videos",
         },
         envVars: {
           NODE_ENV: process.env.NODE_ENV,
-          RENDER_STORAGE_PATH: process.env.RENDER_STORAGE_PATH,
-          RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL,
+          RAILWAY_STORAGE_PATH: process.env.RAILWAY_STORAGE_PATH,
+          RAILWAY_EXTERNAL_URL: process.env.RAILWAY_EXTERNAL_URL,
         },
       },
       timestamp: new Date().toISOString(),
@@ -365,7 +388,7 @@ const startServer = async () => {
     await createDatabaseIndexes();
 
     // Start server
-    const port = config.PORT || 10000;
+    const port = process.env.PORT || config.PORT || 5000;
     server.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
       console.log(`📱 Frontend URL: ${config.FRONTEND_URL}`);
