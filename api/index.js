@@ -89,9 +89,24 @@ app.use(
         return callback(null, true);
       }
 
+      // Log the rejected origin for debugging
+      console.log(`CORS: Rejected origin: ${origin}`);
+      console.log(`CORS: Allowed origins: ${allowedOrigins.join(", ")}`);
+
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "Cache-Control",
+    ],
+    exposedHeaders: ["Content-Length", "X-Foo", "X-Bar"],
+    optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
   })
 );
 app.use(cookieParser());
@@ -129,16 +144,24 @@ import {
 app.use(
   "/uploads",
   (req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
+    // Use the same CORS logic as the main middleware
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+    } else if (!origin) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      res.header("Access-Control-Allow-Origin", "*");
+    }
+
     res.header(
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, DELETE, OPTIONS"
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept"
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
     );
-    res.header("Access-Control-Allow-Credentials", "false");
+    res.header("Access-Control-Allow-Credentials", "true");
 
     // Handle preflight requests
     if (req.method === "OPTIONS") {
@@ -309,6 +332,34 @@ app.post("/api/storage/sync", async (req, res) => {
       message: error.message,
     });
   }
+});
+
+// Global CORS handler for all API routes
+app.use("/api", (req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  } else if (!origin) {
+    res.header("Access-Control-Allow-Origin", "*");
+  }
+
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
+  next();
 });
 
 // API routes (individual)
