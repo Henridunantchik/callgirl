@@ -6,7 +6,7 @@ const api = axios.create({
     import.meta.env.VITE_API_URL ||
     (window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1"
-      ? "https://apicallgirls.vercel.app/api" // Use Vercel backend instead of Render
+      ? "https://api.epicescorts.live/api" // Use custom domain
       : "http://localhost:5000/api"), // Use environment variable for production
   withCredentials: true,
   timeout: 10000, // Reduced to 10 seconds for better UX
