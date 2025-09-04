@@ -286,7 +286,7 @@ export const optimizeQuery = (query, options = {}) => {
 };
 
 // Get optimal query hint based on query structure
-const getQueryHint = (query) => {
+export const getQueryHint = (query) => {
   if (query.role === "escort" && query.isActive) {
     if (query["location.country"]) return "escort_location";
     if (query.age) return "escort_age";
