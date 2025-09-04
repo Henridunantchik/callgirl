@@ -42,7 +42,7 @@ import { getEvn } from "@/helpers/getEnv";
 import { useSelector } from "react-redux";
 import { getCitiesByCountry, getCountryByCode } from "@/helpers/countries";
 import { useState, useEffect } from "react";
-import { messageAPI, bookingAPI, reviewAPI } from "@/services/api";
+import { messageAPI, bookingAPI, reviewAPI, categoryAPI } from "@/services/api";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -56,10 +56,21 @@ const AppSidebar = () => {
     bookings: 0,
     reviews: 0,
   });
-  const { data: categoryData } = useFetch(`/api/category/all-category`, {
-    method: "get",
-    credentials: "include",
-  });
+  const [categoryData, setCategoryData] = useState(null);
+
+  // Fetch categories using the API service
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoryAPI.getAllCategories();
+        setCategoryData(response.data);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Get cities for the current country
   const cities = getCitiesByCountry(countryCode);
