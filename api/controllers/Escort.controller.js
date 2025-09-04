@@ -19,6 +19,7 @@ import {
   optimizeQuery,
   createPagination,
   monitorQueryPerformance,
+  getQueryHint,
 } from "../utils/databaseOptimizer.js";
 
 /**
