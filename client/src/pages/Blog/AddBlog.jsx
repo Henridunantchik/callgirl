@@ -29,18 +29,33 @@ import Editor from "@/components/Editor";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { RouteBlog } from "@/helpers/RouteName";
+import { categoryAPI } from "@/services/api";
 
 const AddBlog = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user);
-  const {
-    data: categoryData,
-    loading,
-    error,
-  } = useFetch(`/api/category/all-category`, {
-    method: "get",
-    credentials: "include",
-  });
+  const [categoryData, setCategoryData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch categories using the API service
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await categoryAPI.getAllCategories();
+        setCategoryData(response.data);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        console.error("Error fetching categories:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const [filePreview, setPreview] = useState();
   const [file, setFile] = useState();

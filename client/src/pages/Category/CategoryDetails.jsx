@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { RouteAddCategory, RouteEditCategory } from "@/helpers/RouteName";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Table,
@@ -19,21 +19,32 @@ import { FiEdit } from "react-icons/fi";
 import { FaRegTrashAlt } from "react-icons/fa";
 import { deleteData } from "@/helpers/handleDelete";
 import { showToast } from "@/helpers/showToast";
+import { categoryAPI } from "@/services/api";
 
 const CategoryDetails = () => {
   const [refreshData, setRefreshData] = useState(false);
-  const {
-    data: categoryData,
-    loading,
-    error,
-  } = useFetch(
-    `/api/category/all-category`,
-    {
-      method: "get",
-      credentials: "include",
-    },
-    [refreshData]
-  );
+  const [categoryData, setCategoryData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch categories using the API service
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await categoryAPI.getAllCategories();
+        setCategoryData(response.data);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        console.error("Error fetching categories:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [refreshData]);
 
   const handleDelete = (id) => {
     const response = deleteData(
