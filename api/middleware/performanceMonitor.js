@@ -5,37 +5,9 @@ import mongoose from "mongoose";
 export const performanceMiddleware = (req, res, next) => {
   const start = performance.now();
   const startTime = Date.now();
-
-  // Track database queries
-  const originalQuery = mongoose.Query.prototype.exec;
   const queries = [];
 
-  mongoose.Query.prototype.exec = function () {
-    const queryStart = performance.now();
-    const queryStr = this.getQuery();
-    const collection = this.mongooseCollection.name;
-
-    return originalQuery.apply(this, arguments).then((result) => {
-      const queryDuration = performance.now() - queryStart;
-      queries.push({
-        collection,
-        query: queryStr,
-        duration: queryDuration,
-        timestamp: Date.now(),
-      });
-
-      // Log slow queries (>100ms)
-      if (queryDuration > 100) {
-        console.warn(
-          `🐌 Slow query detected: ${collection} took ${queryDuration.toFixed(
-            2
-          )}ms`
-        );
-      }
-
-      return result;
-    });
-  };
+  // Simple performance tracking without modifying mongoose prototype
 
   // Track response
   res.on("finish", () => {
@@ -79,7 +51,7 @@ export const performanceMiddleware = (req, res, next) => {
 };
 
 // Performance analytics endpoint
-export const getPerformanceMetrics = (req, res) => {
+export const getPerformanceMetrics = () => {
   const metrics = global.performanceMetrics || [];
 
   // Calculate performance statistics
@@ -113,9 +85,33 @@ export const getPerformanceMetrics = (req, res) => {
     ep.averageDuration = ep.totalDuration / ep.count;
   });
 
-  res.json({
+  return {
     success: true,
     data: stats,
     timestamp: new Date().toISOString(),
-  });
+  };
+};
+
+// Performance health check
+export const getPerformanceHealth = () => {
+  const metrics = global.performanceMetrics || [];
+  const recentMetrics = metrics.slice(-100); // Last 100 requests
+
+  const avgResponseTime =
+    recentMetrics.length > 0
+      ? recentMetrics.reduce((sum, m) => sum + m.responseTime, 0) /
+        recentMetrics.length
+      : 0;
+
+  const slowRequests = recentMetrics.filter(
+    (m) => m.responseTime > 1000
+  ).length;
+
+  return {
+    healthy: avgResponseTime < 2000 && slowRequests < 10,
+    averageResponseTime: avgResponseTime,
+    slowRequests: slowRequests,
+    totalRequests: recentMetrics.length,
+    timestamp: new Date().toISOString(),
+  };
 };

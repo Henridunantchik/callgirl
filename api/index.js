@@ -119,7 +119,6 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // app.use("/api/user", ...); // NO LIMIT
 
 // Import backup manager and file fallback middleware
-import backupManager from "./services/backupManager.js";
 import {
   fileFallbackMiddleware,
   serveFileWithFallback,
@@ -240,8 +239,15 @@ app.get("/ping", (req, res) => {
 // Enhanced file debugging endpoint with backup manager integration
 app.get("/debug/files", async (req, res) => {
   try {
-    // Get backup manager stats
-    const backupStats = backupManager.getStats();
+    // Get backup manager stats (if available)
+    let backupStats = null;
+    try {
+      const backupManagerModule = await import("./services/backupManager.js");
+      const backupManager = backupManagerModule.default;
+      backupStats = backupManager.getStats();
+    } catch (error) {
+      backupStats = { error: "Backup manager not available" };
+    }
 
     // Get file storage health
     const healthResponse = await fetch(
@@ -288,6 +294,8 @@ app.get("/api/storage/health", fileStorageHealth);
 // Force backup sync endpoint
 app.post("/api/storage/sync", async (req, res) => {
   try {
+    const backupManagerModule = await import("./services/backupManager.js");
+    const backupManager = backupManagerModule.default;
     await backupManager.forceSync();
     res.json({
       success: true,
@@ -372,19 +380,61 @@ app.use("*", (req, res) => {
 // Connect to MongoDB and start server
 const startServer = async () => {
   try {
+    console.log("🚀 Starting server...");
+    console.log(`🔧 Environment: ${config.NODE_ENV}`);
+    console.log(`📦 Node version: ${process.version}`);
+    console.log(
+      `💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`
+    );
+
+    // Log environment variables (without sensitive data)
+    console.log("🔧 Environment variables:");
+    console.log(`   PORT: ${process.env.PORT || "not set"}`);
+    console.log(`   NODE_ENV: ${process.env.NODE_ENV || "not set"}`);
+    console.log(
+      `   MONGODB_CONN: ${process.env.MONGODB_CONN ? "set" : "not set"}`
+    );
+    console.log(`   JWT_SECRET: ${process.env.JWT_SECRET ? "set" : "not set"}`);
+    console.log(`   FRONTEND_URL: ${process.env.FRONTEND_URL || "not set"}`);
+
     // Optimize database connection
     optimizeDatabaseConnection();
 
     // Connect to MongoDB with optimized settings
-    await mongoose.connect(config.MONGODB_CONN, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
-    console.log("✅ Connected to MongoDB");
+    console.log("🔌 Connecting to MongoDB...");
+    console.log(
+      `   Connection string: ${config.MONGODB_CONN.substring(0, 20)}...`
+    );
 
-    // Create database indexes for performance
-    await createDatabaseIndexes();
+    try {
+      await mongoose.connect(config.MONGODB_CONN, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 10000, // Increased timeout
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000, // Added connection timeout
+      });
+      console.log("✅ Connected to MongoDB");
+    } catch (dbError) {
+      console.error("❌ MongoDB connection failed:", dbError.message);
+      console.log("⚠️ Continuing without database connection...");
+      // Don't exit, let the server start without DB for now
+    }
+
+    // Create database indexes for performance (only if connected)
+    if (mongoose.connection.readyState === 1) {
+      console.log("📊 Creating database indexes...");
+      try {
+        await createDatabaseIndexes();
+        console.log("✅ Database indexes created");
+      } catch (indexError) {
+        console.warn(
+          "⚠️ Failed to create database indexes:",
+          indexError.message
+        );
+      }
+    } else {
+      console.log("⚠️ Skipping database indexes (not connected)");
+    }
 
     // Start server
     const port = process.env.PORT || config.PORT || 5000;
@@ -402,12 +452,35 @@ const startServer = async () => {
           config.BASE_URL || `http://localhost:${port}`
         }/api/performance`
       );
+      console.log("✅ Server startup complete");
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     process.exit(1);
   }
 };
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+  console.error("Error details:", {
+    message: error.message,
+    stack: error.stack,
+    name: error.name,
+  });
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+  process.exit(1);
+});
 
 // Handle graceful shutdown
 process.on("SIGTERM", () => {
