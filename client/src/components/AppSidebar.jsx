@@ -56,7 +56,7 @@ const AppSidebar = () => {
     bookings: 0,
     reviews: 0,
   });
-  const { data: categoryData } = useFetch(`category/all-category`, {
+  const { data: categoryData } = useFetch(`/api/category/all-category`, {
     method: "get",
     credentials: "include",
   });

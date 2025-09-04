@@ -22,7 +22,7 @@ class RequestBatcher {
   constructor() {
     this.batch = new Map();
     this.timer = null;
-    this.batchTimeout = 50; // 50ms batch window
+    this.batchTimeout = 25; // Reduced to 25ms for faster response
   }
 
   // Add request to batch
@@ -260,7 +260,7 @@ export const escortAPI = {
       }
     }
 
-    return api.get("/escort/all", { params, batch: false });
+    return api.get("/api/escort/all", { params, batch: false });
   },
 
   // Get escort by ID
