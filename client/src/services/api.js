@@ -99,6 +99,12 @@ api.interceptors.request.use(
       console.log(`🌐 Full URL: ${config.baseURL}${config.url}`);
     }
 
+    // Always log the baseURL and URL for debugging
+    console.log(`🔍 DEBUG - BaseURL: "${config.baseURL}"`);
+    console.log(`🔍 DEBUG - URL: "${config.url}"`);
+    console.log(`🔍 DEBUG - VITE_API_URL: "${import.meta.env.VITE_API_URL}"`);
+    console.log(`🔍 DEBUG - Final URL: "${config.baseURL}${config.url}"`);
+
     return config;
   },
   (error) => {
