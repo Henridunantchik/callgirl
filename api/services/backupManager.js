@@ -108,10 +108,14 @@ class BackupManager {
     directories.forEach((dir) => {
       const watchPath = path.join(this.localBackupPath, dir);
       if (fs.existsSync(watchPath)) {
-        fs.watch(
-          watchPath,
-          { recursive: true },
-          async (eventType, filename) => {
+        try {
+          // Check if recursive watching is supported on this platform
+          const watchOptions =
+            process.platform === "win32"
+              ? { recursive: true }
+              : { recursive: true };
+
+          fs.watch(watchPath, watchOptions, async (eventType, filename) => {
             if (filename && !filename.startsWith(".")) {
               console.log(
                 `📝 File change detected: ${dir}/${filename} - SYNCING IMMEDIATELY`
@@ -119,10 +123,66 @@ class BackupManager {
               // Sync immediately, no debounce
               this.performFullSync();
             }
+          });
+        } catch (error) {
+          if (error.code === "ERR_FEATURE_UNAVAILABLE_ON_PLATFORM") {
+            console.log(
+              `⚠️ Recursive file watching not supported on this platform for ${dir}, falling back to polling`
+            );
+            // Fall back to polling-based monitoring for this directory
+            this.startPollingForDirectory(dir);
+          } else {
+            console.error(`❌ Failed to watch directory ${dir}:`, error);
           }
-        );
+        }
       }
     });
+  }
+
+  /**
+   * Start polling-based monitoring for directories where fs.watch is not supported
+   */
+  startPollingForDirectory(dirName) {
+    const watchPath = path.join(this.localBackupPath, dirName);
+    let lastFiles = new Set();
+
+    // Initial scan
+    try {
+      if (fs.existsSync(watchPath)) {
+        const files = fs.readdirSync(watchPath);
+        lastFiles = new Set(files.filter((f) => !f.startsWith(".")));
+      }
+    } catch (error) {
+      console.error(`❌ Failed to scan directory ${dirName}:`, error);
+      return;
+    }
+
+    // Poll every 10 seconds for changes
+    setInterval(() => {
+      try {
+        if (fs.existsSync(watchPath)) {
+          const currentFiles = new Set(
+            fs.readdirSync(watchPath).filter((f) => !f.startsWith("."))
+          );
+
+          // Check for new or modified files
+          const newFiles = [...currentFiles].filter((f) => !lastFiles.has(f));
+          const removedFiles = [...lastFiles].filter(
+            (f) => !currentFiles.has(f)
+          );
+
+          if (newFiles.length > 0 || removedFiles.length > 0) {
+            console.log(
+              `📝 Polling detected changes in ${dirName}: ${newFiles.length} new, ${removedFiles.length} removed`
+            );
+            this.performFullSync();
+            lastFiles = currentFiles;
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Polling error for directory ${dirName}:`, error);
+      }
+    }, 10000); // Poll every 10 seconds
   }
 
   /**
