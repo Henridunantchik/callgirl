@@ -1,0 +1,17 @@
+# Firebase Configuration
+FIREBASE_API_KEY=AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+FIREBASE_AUTH_DOMAIN=tusiwawasahau.firebaseapp.com
+FIREBASE_PROJECT_ID=tusiwawasahau
+FIREBASE_STORAGE_BUCKET=tusiwawasahau.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=404272240278
+FIREBASE_APP_ID=1:404272240278:web:6fe4c3058ee8b63a9dd4b7
+
+# MongoDB
+MONGODB_URI=mongodb://localhost:27017/callgirls
+
+# JWT
+JWT_SECRET=your-jwt-secret-here
+
+# Server
+PORT=5000
+NODE_ENV=development

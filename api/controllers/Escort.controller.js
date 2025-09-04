@@ -3,7 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
-import renderStorage from "../services/renderStorage.js";
+import firebaseStorage from "../services/firebaseStorage.js";
 import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
 import fs from "fs";
@@ -13,16 +13,21 @@ import Booking from "../models/booking.model.js";
 import Review from "../models/review.model.js";
 import Favorite from "../models/favorite.model.js";
 import { fixUrlsInObject, fixUrlsInArray } from "../utils/urlHelper.js";
+import cacheManager from "../utils/cacheManager.js";
+import {
+  optimizeQuery,
+  createPagination,
+  monitorQueryPerformance,
+} from "../utils/databaseOptimizer.js";
 
 /**
- * Get all escorts with filtering and pagination
+ * Get all escorts with filtering and pagination - OPTIMIZED FOR UNLIMITED PERFORMANCE
  * GET /api/escort/all
  */
 export const getAllEscorts = asyncHandler(async (req, res, next) => {
   try {
     // Check if MongoDB is connected
     if (mongoose.connection.readyState !== 1) {
-      // Return demo data if database is not connected
       return res.status(200).json(
         new ApiResponse(
           200,
@@ -44,7 +49,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       q, // Search query
       city,
       country,
-      countryCode, // New parameter for country code
+      countryCode,
       age,
       bodyType,
       service,
@@ -57,6 +62,18 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       sortOrder = "desc",
     } = req.query;
 
+    // Generate cache key for this query
+    const cacheKey = `escorts:${JSON.stringify(req.query)}`;
+
+    // Try to get from cache first
+    const cached = cacheManager.get(cacheKey);
+    if (cached) {
+      console.log("🚀 Cache HIT for escort query");
+      return res.json(cached);
+    }
+
+    console.log("💾 Cache MISS for escort query");
+
     // Map country codes to country names
     const countryMapping = {
       ug: "Uganda",
@@ -67,30 +84,24 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       cd: "DR Congo",
     };
 
-    // Build filter object
+    // Build optimized filter object
     const filter = {
       role: "escort",
       isActive: true,
+      isAvailable: true, // Only show available escorts
     };
 
     // Auto-filter by country if countryCode is provided
     if (countryCode && countryMapping[countryCode]) {
       const countryName = countryMapping[countryCode];
-      // Filter by both country name and country code (for backward compatibility)
       filter["location.country"] = {
         $in: [countryName, countryCode],
       };
     }
 
-    // Search query - use regex search for better compatibility
+    // Search query - use text search for better performance
     if (q) {
-      filter.$or = [
-        { name: { $regex: q, $options: "i" } },
-        { alias: { $regex: q, $options: "i" } },
-        { bio: { $regex: q, $options: "i" } },
-        { "location.city": { $regex: q, $options: "i" } },
-        { services: { $regex: q, $options: "i" } },
-      ];
+      filter.$text = { $search: q };
     }
 
     // Location filters
@@ -139,26 +150,23 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
 
     // Online status filter
     if (online === "true") {
-      // Filter by last active time (within last 30 minutes)
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       filter.lastActive = { $gte: thirtyMinutesAgo };
-      console.log("🔍 Online filter applied:", { thirtyMinutesAgo, filter });
     }
 
-    // Featured filter - support multiple ways to identify featured escorts
+    // Featured filter
     if (featured === "true" || featured === true) {
-      // Filter by either isFeatured flag OR subscriptionTier being featured/premium
       filter.$or = [
         { isFeatured: true },
         { subscriptionTier: { $in: ["featured", "premium"] } },
       ];
     }
 
-    // Build sort object
+    // Build optimized sort object
     const sort = {};
     if (sortBy === "relevance" && q) {
-      // For regex search, sort by name similarity or keep default order
-      sort.name = 1;
+      // Use text search score for relevance
+      sort.score = { $meta: "textScore" };
     } else if (sortBy === "rating") {
       sort.rating = sortOrder === "desc" ? -1 : 1;
     } else if (sortBy === "price-low") {
@@ -175,73 +183,112 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       sort[sortBy] = sortOrder === "desc" ? -1 : 1;
     }
 
-    // Get escorts with pagination
+    // Create pagination
+    const pagination = createPagination(page, limit, 100);
+
+    // Start performance monitoring
+    const queryStart = Date.now();
+
+    // Get escorts with OPTIMIZED query
     const escorts = await User.find(filter)
       .select(
         "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion isFeatured isActive phone bio ethnicity bodyType lastActive profileViews rating reviewCount"
       )
       .sort(sort)
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
+      .limit(pagination.limit)
+      .skip(pagination.skip)
+      .lean() // Use lean for better performance
+      .hint(getQueryHint(filter)) // Use optimal index
+      .exec();
 
-    const total = await User.countDocuments(filter);
+    // Monitor query performance
+    const queryDuration = monitorQueryPerformance(null, queryStart);
 
-    // Add subscription benefits and online status to each escort
+    // Get total count with same filter (cached separately)
+    const countCacheKey = `escort_count:${JSON.stringify(filter)}`;
+    let total = cacheManager.get(countCacheKey);
+
+    if (total === null) {
+      total = await User.countDocuments(filter);
+      cacheManager.set(countCacheKey, total, 300000); // Cache count for 5 minutes
+    }
+
+    // Process escorts data efficiently
     const escortsWithBenefits = escorts.map((escort) => {
-      const benefits = escort.getSubscriptionBenefits();
-
       // Parse services if it's a string
       let services = escort.services;
       if (typeof services === "string") {
         try {
           services = JSON.parse(services);
         } catch (e) {
-          // If parsing fails, split by comma or space
           services = services.split(/[,\s]+/).filter((s) => s.trim());
         }
       }
 
-      // Calculate online status (active within last 30 minutes)
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      // Calculate online status
       const isOnline =
-        escort.lastActive && escort.lastActive >= thirtyMinutesAgo;
+        escort.lastActive &&
+        Date.now() - new Date(escort.lastActive).getTime() < 30 * 60 * 1000;
 
-      // Debug online status calculation
-      console.log(`🔍 Online status for ${escort.name}:`, {
-        lastActive: escort.lastActive,
-        thirtyMinutesAgo,
-        isOnline,
-        isOnlineField: escort.isOnline,
-      });
-
-      // Fix URLs for media files
-      const escortWithFixedUrls = fixUrlsInObject(escort.toObject());
+      // Get subscription benefits
+      const benefits = getSubscriptionBenefits(escort.subscriptionTier);
 
       return {
-        ...escortWithFixedUrls,
+        ...escort,
         services,
-        benefits,
-        subscriptionTier: escort.subscriptionTier || "basic",
         isOnline,
+        benefits,
+        // Optimize image URLs
+        gallery: escort.gallery ? escort.gallery.slice(0, 3) : [], // Only first 3 images
+        // Remove sensitive fields
+        phone: undefined,
+        // Add computed fields
+        profileCompletion: calculateProfileCompletion(escort),
+        // Format rates
+        rates: {
+          hourly: escort.rates?.hourly || 0,
+          overnight: escort.rates?.overnight || 0,
+          weekend: escort.rates?.weekend || 0,
+        },
       };
     });
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          escorts: escortsWithBenefits,
-          totalPages: Math.ceil(total / limit),
-          currentPage: parseInt(page),
-          total,
-          hasNextPage: page * limit < total,
-          hasPrevPage: page > 1,
-        },
-        "Escorts retrieved successfully"
-      )
-    );
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / pagination.limit);
+
+    // Prepare response
+    const response = {
+      escorts: escortsWithBenefits,
+      totalEscorts: total,
+      totalPages,
+      currentPage: pagination.page,
+      limit: pagination.limit,
+      hasMore: pagination.page < totalPages,
+      performance: {
+        queryDuration: `${queryDuration}ms`,
+        cacheHit: false,
+        totalResults: escortsWithBenefits.length,
+      },
+    };
+
+    // Cache the response for 2 minutes
+    cacheManager.set(cacheKey, response, 120000);
+
+    // Log performance metrics
+    if (queryDuration > 100) {
+      console.warn(
+        `🐌 Slow escort query: ${queryDuration}ms for ${escortsWithBenefits.length} results`
+      );
+    } else {
+      console.log(
+        `⚡ Fast escort query: ${queryDuration}ms for ${escortsWithBenefits.length} results`
+      );
+    }
+
+    res.json(new ApiResponse(200, response, "Escorts retrieved successfully"));
   } catch (error) {
-    next(error);
+    console.error("❌ Error in getAllEscorts:", error);
+    next(new ApiError(500, "Failed to retrieve escorts"));
   }
 });
 
@@ -449,8 +496,8 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
     const mediaFile = req.files.media;
 
     try {
-      // Upload to Render storage
-      const result = await renderStorage.uploadFile(
+      // Upload to Firebase storage
+      const result = await firebaseStorage.uploadFile(
         mediaFile,
         mediaType === "photo" ? "gallery" : "video"
       );
@@ -545,8 +592,8 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
 
     for (const file of req.files) {
       try {
-        // Upload to Render storage
-        const result = await renderStorage.uploadFile(file, "gallery");
+        // Upload to Firebase storage
+        const result = await firebaseStorage.uploadFile(file, "gallery");
 
         if (!result.success) {
           throw new Error(`Failed to upload file: ${result.error}`);
@@ -641,8 +688,8 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
         console.log("File path:", file.path);
         console.log("File size:", file.size);
 
-        // Upload to Render storage
-        const result = await renderStorage.uploadFile(file, "video");
+        // Upload to Firebase storage
+        const result = await firebaseStorage.uploadFile(file, "video");
 
         if (!result.success) {
           throw new Error(`Failed to upload file: ${result.error}`);
@@ -1000,8 +1047,8 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
 
       for (const file of files) {
         try {
-          // Upload to Render storage
-          const result = await renderStorage.uploadFile(file, "gallery");
+          // Upload to Firebase storage
+          const result = await firebaseStorage.uploadFile(file, "gallery");
 
           if (!result.success) {
             throw new Error(`Upload failed: ${result.error}`);
