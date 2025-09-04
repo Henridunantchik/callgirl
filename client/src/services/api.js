@@ -462,6 +462,40 @@ export const blogAPI = {
   unlikeBlog: (id) => api.delete(`/blog/${id}/like`),
 };
 
+// Payment API
+export const paymentAPI = {
+  // Check PesaPal payment status
+  checkPesaPalStatus: (orderId) =>
+    api.get(`/payment/pesapal/status/${orderId}`),
+
+  // Create PesaPal payment
+  createPesaPalPayment: (data) => api.post("/payment/pesapal/create", data),
+
+  // Process payment callback
+  processPaymentCallback: (data) => api.post("/payment/callback", data),
+
+  // Get payment history
+  getPaymentHistory: () => api.get("/payment/history"),
+
+  // Refund payment
+  refundPayment: (paymentId) => api.post(`/payment/${paymentId}/refund`),
+};
+
+// Upgrade API
+export const upgradeAPI = {
+  // Get subscription status
+  getSubscriptionStatus: () => api.get("/upgrade-request/status"),
+
+  // Create upgrade request
+  createUpgradeRequest: (data) => api.post("/upgrade-request/create", data),
+
+  // Get user upgrade requests
+  getUserUpgradeRequests: () => api.get("/upgrade-request/user"),
+
+  // Cancel upgrade request
+  cancelUpgradeRequest: (id) => api.put(`/upgrade-request/${id}/cancel`),
+};
+
 // Admin API
 export const adminAPI = {
   // Get admin dashboard

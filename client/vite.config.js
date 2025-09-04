@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { compression } from "vite-plugin-compression2";
 import { visualizer } from "rollup-plugin-visualizer";
+import autoprefixer from "autoprefixer";
+import tailwindcss from "tailwindcss";
 
 export default defineConfig({
   plugins: [
@@ -78,7 +80,7 @@ export default defineConfig({
     // Optimize CSS
     cssCodeSplit: true,
     // Target modern browsers
-    target: "es2015",
+    target: "es2020",
     // Enable chunk size warnings
     chunkSizeWarningLimit: 1000,
   },
@@ -100,7 +102,7 @@ export default defineConfig({
     // Enable tree shaking
     treeShaking: true,
     // Target modern browsers
-    target: "es2015",
+    target: "es2020",
   },
   // CSS optimizations
   css: {
@@ -110,7 +112,7 @@ export default defineConfig({
     },
     // PostCSS configuration
     postcss: {
-      plugins: [require("autoprefixer"), require("tailwindcss")],
+      plugins: [autoprefixer, tailwindcss],
     },
   },
   // Define global constants
