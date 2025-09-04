@@ -1,16 +1,41 @@
 import axios from "axios";
 
+// Normalize and compute API base URL safely
+const computeBaseURL = () => {
+  const envUrl = import.meta.env.VITE_API_URL?.trim();
+
+  // Helper to ensure we end up with .../api (single /)
+  const ensureApiSuffix = (url) => {
+    if (!url) return url;
+    // Remove trailing slashes
+    let normalized = url.replace(/\/+$/, "");
+    // Append /api if missing
+    if (!/\/(api)(\/)?$/.test(normalized)) {
+      normalized = `${normalized}/api`;
+    }
+    return normalized;
+  };
+
+  // Prefer env if provided, but normalize it
+  if (envUrl) {
+    return ensureApiSuffix(envUrl);
+  }
+
+  // Otherwise choose based on host
+  const isLocal =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+
+  return isLocal
+    ? "http://localhost:5000/api"
+    : "https://api.epicescorts.live/api";
+};
+
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    (window.location.hostname !== "localhost" &&
-    window.location.hostname !== "127.0.0.1"
-      ? "https://api.epicescorts.live/api" // Use custom domain
-      : "http://localhost:5000/api"), // Use environment variable for production
+  baseURL: computeBaseURL(),
   withCredentials: true,
-  timeout: 10000, // Reduced to 10 seconds for better UX
-  // Add performance headers
+  timeout: 10000,
   headers: {
     "Cache-Control": "no-cache",
   },
@@ -87,6 +112,11 @@ api.interceptors.request.use(
       return new Promise((resolve, reject) => {
         requestBatcher.add(batchKey, { resolve, reject, config });
       });
+    }
+
+    // Ensure URL has no leading slash to avoid dropping /api from baseURL
+    if (typeof config.url === "string") {
+      config.url = config.url.replace(/^\/+/, "");
     }
 
     // Log API requests in development
