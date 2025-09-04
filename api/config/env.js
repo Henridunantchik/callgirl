@@ -56,7 +56,7 @@ const requiredEnvVars = {
     required: false,
     type: "string",
     default:
-      "https://epicescorts.live,https://callgirls.vercel.app,http://localhost:5173",
+      "https://epicescorts.live,https://www.epicescorts.live,https://callgirls.vercel.app,http://localhost:5173",
     description: "Comma-separated list of allowed frontend URLs for CORS",
   },
 
