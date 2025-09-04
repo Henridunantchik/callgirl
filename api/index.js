@@ -14,7 +14,6 @@ import {
   createDatabaseIndexes,
   optimizeDatabaseConnection,
 } from "./utils/databaseOptimizer.js";
-import renderStorageConfig from "./config/render-storage.js";
 
 // Import configuration
 import config from "./config/env.js";

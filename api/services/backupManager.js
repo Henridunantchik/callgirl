@@ -13,11 +13,9 @@ const __dirname = path.dirname(__filename);
  */
 class BackupManager {
   constructor() {
-    // CORRECTION: Utiliser le même chemin que Render pour la synchronisation
-    this.localBackupPath =
-      process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads";
-    this.renderPath =
-      process.env.RENDER_STORAGE_PATH || "/opt/render/project/src/uploads";
+    // Railway storage paths
+    this.localBackupPath = process.env.RAILWAY_STORAGE_PATH || "/app/uploads";
+    this.railwayPath = process.env.RAILWAY_STORAGE_PATH || "/app/uploads";
     this.syncInterval = 30 * 1000; // 30 SECONDES (ultra-agressif)
     this.lastSync = new Date();
     this.syncInProgress = false;
@@ -30,7 +28,7 @@ class BackupManager {
     };
 
     console.log(`🔧 Backup Manager - Local path: ${this.localBackupPath}`);
-    console.log(`🔧 Backup Manager - Render path: ${this.renderPath}`);
+    console.log(`🔧 Backup Manager - Railway path: ${this.railwayPath}`);
 
     this.initializeBackupSystem();
   }
@@ -53,7 +51,7 @@ class BackupManager {
         "✅ ULTRA-AGGRESSIVE Backup Manager initialized successfully"
       );
       console.log(
-        "🔄 Will re-upload files every 30 seconds to counter Render deletion"
+        "🔄 Will re-upload files every 30 seconds to maintain Railway storage"
       );
     } catch (error) {
       console.error("❌ Failed to initialize Backup Manager:", error);
@@ -241,21 +239,21 @@ class BackupManager {
    */
   async syncDirectory(dirName) {
     const localDir = path.join(this.localBackupPath, dirName);
-    const renderDir = path.join(this.renderPath, dirName);
+    const railwayDir = path.join(this.railwayPath, dirName);
 
     console.log(`🔍 Checking directory: ${dirName}`);
     console.log(`🔍 Local path: ${localDir}`);
-    console.log(`🔍 Render path: ${renderDir}`);
+    console.log(`🔍 Railway path: ${railwayDir}`);
 
     if (!fs.existsSync(localDir)) {
       console.log(`❌ Local directory does not exist: ${localDir}`);
       return { total: 0, synced: 0, failed: 0 };
     }
 
-    // Ensure render directory exists
-    if (!fs.existsSync(renderDir)) {
-      fs.mkdirSync(renderDir, { recursive: true });
-      console.log(`📁 Created render directory: ${renderDir}`);
+    // Ensure railway directory exists
+    if (!fs.existsSync(railwayDir)) {
+      fs.mkdirSync(railwayDir, { recursive: true });
+      console.log(`📁 Created railway directory: ${railwayDir}`);
     }
 
     const localFiles = fs.readdirSync(localDir);
@@ -272,11 +270,11 @@ class BackupManager {
       if (file.startsWith(".")) continue; // Skip hidden files
 
       const localPath = path.join(localDir, file);
-      const renderPath = path.join(renderDir, file);
+      const railwayPath = path.join(railwayDir, file);
 
       try {
-        // ALWAYS COPY to render (ultra-aggressive)
-        fs.copyFileSync(localPath, renderPath);
+        // ALWAYS COPY to railway (ultra-aggressive)
+        fs.copyFileSync(localPath, railwayPath);
         synced++;
         console.log(`📁 ULTRA-AGGRESSIVE sync: ${dirName}/${file}`);
       } catch (error) {
@@ -298,7 +296,7 @@ class BackupManager {
     return {
       ...this.syncStats,
       localBackupPath: this.localBackupPath,
-      renderPath: this.renderPath,
+      railwayPath: this.railwayPath,
       lastSync: this.lastSync,
       syncInProgress: this.syncInProgress,
     };
@@ -317,7 +315,7 @@ class BackupManager {
    */
   getFileUrl(filePath, directory = "gallery") {
     try {
-      // Always serve from render path since we're ultra-aggressive
+      // Always serve from railway path since we're ultra-aggressive
       return `/uploads/${directory}/${filePath}`;
     } catch (error) {
       console.error("Error getting file URL:", error);
