@@ -28,7 +28,7 @@ export const SocketProvider = ({ children }) => {
       import.meta.env.VITE_API_URL?.replace("/api", "") ||
       (window.location.hostname !== "localhost" &&
       window.location.hostname !== "127.0.0.1"
-        ? "https://apicallgirls.vercel.app" // Use Vercel backend instead of Render
+        ? "https://api.epicescorts.live" // Use correct API domain
         : "http://localhost:5000");
     const newSocket = io(socketUrl, {
       withCredentials: true,
