@@ -15,7 +15,7 @@ import { performance } from "perf_hooks";
 
 const BASE_URLS = {
   dev: "http://localhost:5000",
-  prod: "https://callgirls-api.onrender.com", // Update this with your actual production URL
+  prod: "https://api.epicescorts.live", // Railway production URL
 };
 
 const ENDPOINTS = [

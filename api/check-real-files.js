@@ -1,6 +1,6 @@
 console.log("🔍 Checking Real Uploaded Files\n");
 
-const API_BASE = "https://callgirls-api.onrender.com";
+const API_BASE = "https://api.epicescorts.live";
 
 // Check if we can access the debug endpoint to see what files exist
 async function checkRealFiles() {

@@ -1,6 +1,6 @@
 console.log("🧪 Testing Production API - Photo Display Issue\n");
 
-const API_BASE = "https://callgirls-api.onrender.com";
+const API_BASE = "https://api.epicescorts.live";
 
 // Test endpoints
 const endpoints = [

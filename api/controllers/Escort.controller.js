@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
 import firebaseStorage from "../services/firebaseStorage.js";
+import railwayStorage from "../services/railwayStorage.js";
 import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
 import fs from "fs";
@@ -548,7 +549,7 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
         )
       );
     } catch (uploadError) {
-      console.error("Render storage upload error:", uploadError);
+      console.error("Railway storage upload error:", uploadError);
       throw new ApiError(500, "Failed to upload media to storage");
     }
   } catch (error) {
@@ -622,7 +623,7 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
         }
       } catch (uploadError) {
         console.error(
-          "Render storage upload error for file:",
+          "Railway storage upload error for file:",
           file.originalname,
           uploadError
         );
@@ -695,7 +696,7 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
           throw new Error(`Failed to upload file: ${result.error}`);
         }
 
-        console.log("Render storage upload successful:", result.publicId);
+        console.log("Railway storage upload successful:", result.publicId);
 
         // Add to videos
         const mediaItem = {
@@ -720,7 +721,7 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
         }
       } catch (uploadError) {
         console.error(
-          "Render storage upload error for file:",
+          "Railway storage upload error for file:",
           file.originalname,
           uploadError
         );
@@ -1065,7 +1066,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
           // Clean up local file
           fs.unlinkSync(file.path);
         } catch (uploadError) {
-          console.error("Render storage upload error:", uploadError);
+          console.error("Railway storage upload error:", uploadError);
           // If upload fails, use local file path as fallback
           gallery.push({
             url: file.path,
@@ -1083,7 +1084,7 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
     if (req.files && req.files.idDocument) {
       const file = req.files.idDocument;
       try {
-        const result = await renderStorage.uploadFile(file, "documents");
+        const result = await railwayStorage.uploadFile(file, "documents");
 
         if (!result.success) {
           throw new Error(`Upload failed: ${result.error}`);
@@ -1497,12 +1498,12 @@ export const deleteGalleryImage = asyncHandler(async (req, res, next) => {
 
     const image = escort.gallery[imageIndex];
 
-    // Delete from Render storage if filePath exists
+    // Delete from Railway storage if filePath exists
     if (image.filePath) {
       try {
-        await renderStorage.deleteFile(image.filePath);
+        await railwayStorage.deleteFile(image.filePath);
       } catch (deleteError) {
-        console.error("Render storage delete error:", deleteError);
+        console.error("Railway storage delete error:", deleteError);
         // Continue even if delete fails
       }
     }
@@ -1563,12 +1564,12 @@ export const deleteVideo = asyncHandler(async (req, res, next) => {
 
     const video = escort.videos[videoIndex];
 
-    // Delete from Render storage if filePath exists
+    // Delete from Railway storage if filePath exists
     if (video.filePath) {
       try {
-        await renderStorage.deleteFile(video.filePath);
+        await railwayStorage.deleteFile(video.filePath);
       } catch (deleteError) {
-        console.error("Render storage delete error:", deleteError);
+        console.error("Railway storage delete error:", deleteError);
         // Continue even if delete fails
       }
     }

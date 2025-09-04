@@ -2,7 +2,7 @@ import { ApiError } from "./ApiError.js";
 import { ApiResponse } from "./ApiResponse.js";
 import { asyncHandler } from "./asyncHandler.js";
 import config from "../config/env.js";
-import renderStorage from "../services/renderStorage.js";
+import railwayStorage from "../services/railwayStorage.js";
 
 // Supported document types for age verification
 const SUPPORTED_DOCUMENT_TYPES = [
@@ -768,15 +768,15 @@ export const uploadAgeVerificationDocument = async (file, userId) => {
       );
     }
 
-    // Upload to Render storage for secure storage
-    const uploadResult = await renderStorage.uploadFile(file, "documents");
+    // Upload to Railway storage for secure storage
+    const uploadResult = await railwayStorage.uploadFile(file, "documents");
 
     if (!uploadResult.success) {
       throw new Error(`Upload failed: ${uploadResult.error}`);
     }
 
     console.log(
-      `Document uploaded to Render storage: ${uploadResult.publicId}`
+      `Document uploaded to Railway storage: ${uploadResult.publicId}`
     );
 
     // Process document for age verification

@@ -24,7 +24,7 @@ function fixUserUrls(user) {
     if (fixed.avatar.includes("localhost:5000")) {
       fixed.avatar = fixed.avatar.replace(
         "http://localhost:5000",
-        "https://callgirls-api.onrender.com"
+        "https://api.epicescorts.live"
       );
       console.log(`   🔗 Fixed avatar: ${fixed.avatar}`);
     }
@@ -37,7 +37,7 @@ function fixUserUrls(user) {
         if (item.includes("localhost:5000")) {
           const fixedUrl = item.replace(
             "http://localhost:5000",
-            "https://callgirls-api.onrender.com"
+            "https://api.epicescorts.live"
           );
           console.log(`   🔗 Fixed gallery item: ${fixedUrl}`);
           return fixedUrl;
@@ -48,7 +48,7 @@ function fixUserUrls(user) {
         if (item.url.includes("localhost:5000")) {
           const fixedUrl = item.url.replace(
             "http://localhost:5000",
-            "https://callgirls-api.onrender.com"
+            "https://api.epicescorts.live"
           );
           console.log(`   🔗 Fixed gallery item URL: ${fixedUrl}`);
           return { ...item, url: fixedUrl };
@@ -66,7 +66,7 @@ function fixUserUrls(user) {
         if (item.includes("localhost:5000")) {
           const fixedUrl = item.replace(
             "http://localhost:5000",
-            "https://callgirls-api.onrender.com"
+            "https://api.epicescorts.live"
           );
           console.log(`   🔗 Fixed video: ${fixedUrl}`);
           return fixedUrl;
@@ -77,7 +77,7 @@ function fixUserUrls(user) {
         if (item.url.includes("localhost:5000")) {
           const fixedUrl = item.url.replace(
             "http://localhost:5000",
-            "https://callgirls-api.onrender.com"
+            "https://api.epicescorts.live"
           );
           console.log(`   🔗 Fixed video URL: ${fixedUrl}`);
           return { ...item, url: fixedUrl };

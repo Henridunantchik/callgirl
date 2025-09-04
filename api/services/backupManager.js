@@ -8,8 +8,8 @@ const __dirname = path.dirname(__filename);
 
 /**
  * ULTRA-AGGRESSIVE Backup Manager
- * Re-uploads files to Render every 30 seconds to counter deletion
- * This ensures files are ALWAYS available on Render
+ * Re-uploads files to Railway every 30 seconds to counter deletion
+ * This ensures files are ALWAYS available on Railway
  */
 class BackupManager {
   constructor() {
@@ -24,7 +24,7 @@ class BackupManager {
       syncedFiles: 0,
       failedFiles: 0,
       lastSyncTime: null,
-      renderStatus: "unknown",
+      railwayStatus: "unknown",
     };
 
     console.log(`🔧 Backup Manager - Local path: ${this.localBackupPath}`);
