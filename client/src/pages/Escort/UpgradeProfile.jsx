@@ -71,7 +71,7 @@ const UpgradeProfile = () => {
     }
   }, [user, navigate, getUserId, isAuthenticated]);
 
-  // Fetch upgrade requests and subscription status
+  // Fetch upgrade requests and subscription status (cache-first + timeout)
   useEffect(() => {
     const fetchData = async () => {
       if (!user || user.role !== "escort") return;
@@ -80,12 +80,13 @@ const UpgradeProfile = () => {
         setRequestsLoading(true);
         setSubscriptionLoading(true);
 
-        // Fetch upgrade requests
-        const requestsResponse = await upgradeAPI.getMyRequests();
-        setUpgradeRequests(requestsResponse.data.data || []);
+        // Fast path: short timeout, no batching
+        const [requestsResponse, statusResponse] = await Promise.all([
+          upgradeAPI.getMyRequests({ timeout: 1200, batch: false }),
+          upgradeAPI.getSubscriptionStatus({ timeout: 1200, batch: false }),
+        ]);
 
-        // Fetch subscription status
-        const statusResponse = await upgradeAPI.getSubscriptionStatus();
+        setUpgradeRequests(requestsResponse.data.data || []);
         setSubscriptionStatus(statusResponse.data.data);
       } catch (error) {
         console.error("Error fetching data:", error);

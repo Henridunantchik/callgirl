@@ -4,7 +4,7 @@ import axios from "axios";
 const computeBaseURL = () => {
   const envUrl = import.meta.env.VITE_API_URL?.trim();
 
-  // Helper to ensure we end up with .../api (single /)
+  // Helper to ensure we end up with .../api (single /) and trailing slash
   const ensureApiSuffix = (url) => {
     if (!url) return url;
     // Remove trailing slashes
@@ -12,6 +12,10 @@ const computeBaseURL = () => {
     // Append /api if missing
     if (!/\/(api)(\/)?$/.test(normalized)) {
       normalized = `${normalized}/api`;
+    }
+    // Ensure single trailing slash for axios joining
+    if (!normalized.endsWith("/")) {
+      normalized = `${normalized}/`;
     }
     return normalized;
   };
@@ -27,8 +31,8 @@ const computeBaseURL = () => {
     window.location.hostname === "127.0.0.1";
 
   return isLocal
-    ? "http://localhost:5000/api"
-    : "https://api.epicescorts.live/api";
+    ? "http://localhost:5000/api/"
+    : "https://api.epicescorts.live/api/";
 };
 
 // Create axios instance with base configuration
@@ -202,437 +206,166 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401) {
-      // Try to refresh token first
-      try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (refreshToken) {
-          const refreshResponse = await api.post("auth/refresh-token", {
-            refreshToken,
-          });
-
-          if (refreshResponse.data.token) {
-            localStorage.setItem("token", refreshResponse.data.token);
-            // Retry the original request
-            const originalRequest = error.config;
-            originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
-            return api(originalRequest);
-          }
-        }
-      } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
-      }
-
-      // If refresh fails, redirect to login
-      localStorage.removeItem("token");
-      localStorage.removeItem("auth");
-      localStorage.removeItem("user");
-      localStorage.removeItem("refreshToken");
-      window.location.href = "/sign-in";
-    }
     return Promise.reject(error);
   }
 );
 
-// Auth API
-export const authAPI = {
-  // Age verification
-  verifyAge: () => api.post("auth/verify-age"),
+export default api;
 
-  // Registration
-  register: (userData) => api.post("auth/register", userData),
+export { api };
 
-  // Login
-  login: (credentials) => api.post("auth/login", credentials),
-
-  // Google Login
-  googleLogin: (data) => api.post("auth/google-login", data),
-
-  // Logout
-  logout: () => api.post("auth/logout"),
-
-  // Refresh token
-  refreshToken: (refreshToken) =>
-    api.post("auth/refresh-token", { refreshToken }),
-
-  // Forgot password
-  forgotPassword: (email) => api.post("auth/forgot-password", { email }),
-
-  // Reset password
-  resetPassword: (token, newPassword) =>
-    api.post("auth/reset-password", { token, newPassword }),
-
-  // Verify email
-  verifyEmail: (token) => api.post("auth/verify-email", { token }),
-};
-
-// Escort API with batching and caching
+// Escort API
 export const escortAPI = {
-  // Get all escorts with optimized caching
-  getAllEscorts: (params = {}, options = {}) => {
-    const cacheKey = `escorts:${JSON.stringify(params)}`;
-
-    // Check cache first
-    if (!options.skipCache) {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const cacheData = JSON.parse(cached);
-          const now = Date.now();
-
-          if (now - cacheData.timestamp < 120000) {
-            // 2 minutes cache
-            console.log("🚀 Using cached escort data");
-            return Promise.resolve({
-              data: cacheData.data,
-              status: 200,
-              cached: true,
-            });
-          }
-        } catch (e) {
-          // Invalid cache data, ignore
-        }
-      }
-    }
-
-    return api.get("escort/all", { params, batch: false });
-  },
-
-  // Get escort by ID
-  getEscortById: (id) => api.get(`escort/profile/${id}`),
-
-  // Get escort profile by id or slug (server expects id; slug must be an id)
-  getEscortProfile: (idOrSlug) => api.get(`escort/profile/${idOrSlug}`),
-
-  // Search escorts
-  searchEscorts: (params) => api.get("escort/search", { params }),
-
-  // Create escort profile
+  getAllEscorts: (params = {}, options = {}) =>
+    api.get("escort/all", { params, batch: false }),
+  getEscortById: (id, config = {}) => api.get(`escort/profile/${id}`, config),
+  getEscortProfile: (idOrSlug, config = {}) =>
+    api.get(`escort/profile/${idOrSlug}`, config),
+  searchEscorts: (params, config = {}) =>
+    api.get("escort/search", { params, ...config }),
   createEscortProfile: (data) => api.post("escort/create", data),
-
-  // Update escort profile
   updateEscortProfile: (data) => api.put("escort/update", data),
-
-  // Get escort stats
-  getEscortStats: () => api.get("escort/stats"),
-
-  // Get individual escort stats
-  getIndividualEscortStats: (escortId) =>
-    api.get(`escort/individual-stats/${escortId}`),
-
-  // Upload gallery
+  getEscortStats: (config = {}) => api.get("escort/stats", config),
+  getIndividualEscortStats: (escortId, config = {}) =>
+    api.get(`escort/individual-stats/${escortId}`, config),
   uploadGallery: (id, formData) =>
     api.post(`escort/media/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
       batch: false,
     }),
-
-  // Upload video
   uploadVideo: (id, formData) =>
     api.post(`escort/video/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
       batch: false,
     }),
-
-  // Delete gallery image
   deleteGalleryImage: (id, imageId) =>
     api.delete(`escort/gallery/${id}/${imageId}`),
-
-  // Delete video
   deleteVideo: (id, videoId) => api.delete(`escort/video/${id}/${videoId}`),
-};
-
-// User API
-export const userAPI = {
-  // Get user profile
-  getProfile: () => api.get("user/profile"),
-
-  // Update user profile
-  updateProfile: (data) => api.put("user/profile", data),
-
-  // Update user avatar
-  updateAvatar: (formData) =>
-    api.put("user/profile", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-      batch: false,
-    }),
-
-  // Delete user account
-  deleteAccount: () => api.delete("user/account"),
-
-  // Get user stats
-  getUserStats: () => api.get("user/stats"),
-
-  // Update user location
-  updateLocation: (data) => api.put("user/location", data),
-
-  // Update user preferences
-  updatePreferences: (data) => api.put("user/preferences", data),
-};
-
-// Message API with real-time support
-export const messageAPI = {
-  // Get conversations
-  getConversations: (config = {}) => api.get("message/conversations", config),
-  // Alias used across components (client, escort, admin)
-  getUserConversations: (config = {}) =>
-    api.get("message/conversations", config),
-
-  // Get messages for a conversation
-  getMessages: (conversationId, page = 1, config = {}) =>
-    api.get(
-      `message/conversation/${conversationId}`,
-      Object.assign({ params: { page } }, config)
-    ),
-
-  // Explicit conversation helper
-  getConversation: (escortId, page = 1, config = {}) =>
-    api.get(
-      `message/conversation/${escortId}`,
-      Object.assign({ params: { page } }, config)
-    ),
-
-  // Send message
-  sendMessage: (data) => api.post("message/send", data),
-
-  // Mark message as read
-  markAsRead: (messageId) => api.put(`message/mark-read/${messageId}`),
-
-  // Mark entire conversation as read
-  markConversationAsRead: (escortId) =>
-    api.put(`message/mark-conversation-read/${escortId}`),
-
-  // Delete message
-  deleteMessage: (messageId) => api.delete(`message/delete/${messageId}`),
-
-  // Start conversation
-  startConversation: (data) => api.post("message/conversation", data),
-};
-
-// Booking API
-export const bookingAPI = {
-  // Get user bookings
-  getUserBookings: () => api.get("booking/user"),
-
-  // Get escort bookings
-  getEscortBookings: () => api.get("booking/escort"),
-
-  // Create booking
-  createBooking: (data) => api.post("booking/create", data),
-
-  // Update booking
-  updateBooking: (id, data) => api.put(`booking/${id}`, data),
-
-  // Cancel booking
-  cancelBooking: (id) => api.put(`booking/${id}/cancel`),
-
-  // Accept booking
-  acceptBooking: (id) => api.put(`booking/${id}/accept`),
-
-  // Reject booking
-  rejectBooking: (id) => api.put(`booking/${id}/reject`),
-
-  // Complete booking
-  completeBooking: (id) => api.put(`booking/${id}/complete`),
-};
-
-// Review API
-export const reviewAPI = {
-  // Get reviews for escort
-  getEscortReviews: (escortId, page = 1) =>
-    api.get(`review/escort/${escortId}`, { params: { page } }),
-
-  // Create review
-  createReview: (data) => api.post("review/create", data),
-
-  // Update review
-  updateReview: (id, data) => api.put(`review/${id}`, data),
-
-  // Delete review
-  deleteReview: (id) => api.delete(`review/${id}`),
-
-  // Get user reviews
-  getUserReviews: () => api.get("review/user"),
-};
-
-// Favorite API
-export const favoriteAPI = {
-  // Get user favorites
-  getUserFavorites: (config = {}) => api.get("favorite/user", config),
-
-  // Add to favorites
-  addToFavorites: (escortId) => api.post("favorite/add", { escortId }),
-
-  // Remove from favorites
-  removeFromFavorites: (escortId) => api.delete(`favorite/${escortId}`),
-
-  // Check if escort is favorited
-  checkFavorite: (escortId) => api.get(`favorite/check/${escortId}`),
 };
 
 // Stats API
 export const statsAPI = {
-  // Get global stats
-  getGlobalStats: () => api.get("stats/global"),
-
-  // Get country stats
-  getCountryStats: (countryCode) => api.get(`stats/country/${countryCode}`),
-
-  // Get escort stats
-  getEscortStats: () => api.get("stats/escort"),
-
-  // Get user stats
-  getUserStats: () => api.get("stats/user"),
-};
-
-// Category API
-export const categoryAPI = {
-  // Get all categories
-  getAllCategories: () => api.get("category/all-category"),
-
-  // Get category by ID
-  getCategoryById: (id) => api.get(`category/${id}`),
-
-  // Create category (admin only)
-  createCategory: (data) => api.post("category/create", data),
-
-  // Update category (admin only)
-  updateCategory: (id, data) => api.put(`category/${id}`, data),
-
-  // Delete category (admin only)
-  deleteCategory: (id) => api.delete(`category/${id}`),
+  getGlobalStats: (config = {}) => api.get("stats/global", config),
+  getCountryStats: (countryCode, config = {}) =>
+    api.get(`stats/country/${countryCode}`, config),
+  getEscortStats: (config = {}) => api.get("stats/escort", config),
+  getUserStats: (config = {}) => api.get("stats/user", config),
 };
 
 // Blog API
 export const blogAPI = {
-  // Get all blogs
-  getAllBlogs: (params = {}) => api.get("blog/all", { params }),
-
-  // Get blog by ID
-  getBlogById: (id) => api.get(`blog/${id}`),
-
-  // Create blog (admin only)
+  getAllBlogs: (params = {}, config = {}) =>
+    api.get("blog/all", { params, ...config }),
+  getBlogById: (id, config = {}) => api.get(`blog/${id}`, config),
   createBlog: (data) => api.post("blog/create", data),
-
-  // Update blog (admin only)
   updateBlog: (id, data) => api.put(`blog/${id}`, data),
-
-  // Delete blog (admin only)
   deleteBlog: (id) => api.delete(`blog/${id}`),
-
-  // Like blog
   likeBlog: (id) => api.post(`blog/${id}/like`),
-
-  // Unlike blog
   unlikeBlog: (id) => api.delete(`blog/${id}/like`),
 };
 
 // Payment API
 export const paymentAPI = {
-  // Check PesaPal payment status
+  createPaymentIntent: (data) => api.post("payment/create", data),
   checkPesaPalStatus: (orderId) => api.get(`payment/pesapal/status/${orderId}`),
-
-  // Create PesaPal payment
-  createPesaPalPayment: (data) => api.post("payment/pesapal/create", data),
-
-  // Process payment callback
-  processPaymentCallback: (data) => api.post("payment/callback", data),
-
-  // Get payment history
-  getPaymentHistory: () => api.get("payment/history"),
-
-  // Refund payment
-  refundPayment: (paymentId) => api.post(`payment/${paymentId}/refund`),
 };
 
 // Upgrade API
 export const upgradeAPI = {
-  // Get subscription status
-  getSubscriptionStatus: () => api.get("upgrade-request/status"),
+  // Escort side
+  getSubscriptionStatus: (config = {}) =>
+    api.get("upgrade-request/status", config),
+  getMyRequests: (config = {}) => api.get("upgrade-request/user", config),
+  createRequest: (data) => api.post("upgrade-request/create", data),
 
-  // Create upgrade request
-  createUpgradeRequest: (data) => api.post("upgrade-request/create", data),
-
-  // Get user upgrade requests
-  getUserUpgradeRequests: () => api.get("upgrade-request/user"),
-
-  // Cancel upgrade request
-  cancelUpgradeRequest: (id) => api.put(`upgrade-request/${id}/cancel`),
+  // Admin side
+  getAllRequests: (params = {}, config = {}) =>
+    api.get("upgrade-request/all", { params, ...config }),
+  getStats: (config = {}) => api.get("upgrade-request/stats", config),
+  approveRequest: (id, notes) =>
+    api.put(`upgrade-request/${id}/approve`, { notes }),
+  rejectRequest: (id, notes) =>
+    api.put(`upgrade-request/${id}/reject`, { notes }),
+  sendPaymentInstructions: (id, payload) =>
+    api.post(`upgrade-request/${id}/payment-instructions`, payload),
+  confirmPayment: (id, payload) =>
+    api.post(`upgrade-request/${id}/confirm-payment`, payload),
 };
 
-// Admin API
-export const adminAPI = {
-  // Get admin dashboard
-  getDashboard: () => api.get("admin/dashboard"),
-
-  // Get all users
-  getAllUsers: (params = {}) => api.get("admin/users", { params }),
-
-  // Update user role
-  updateUserRole: (userId, role) =>
-    api.put(`admin/users/${userId}/role`, { role }),
-
-  // Ban user
-  banUser: (userId) => api.put(`admin/users/${userId}/ban`),
-
-  // Unban user
-  unbanUser: (userId) => api.put(`admin/users/${userId}/unban`),
-
-  // Get upgrade requests
-  getUpgradeRequests: () => api.get("admin/upgrade-requests"),
-
-  // Approve upgrade request
-  approveUpgradeRequest: (id) =>
-    api.put(`admin/upgrade-requests/${id}/approve`),
-
-  // Reject upgrade request
-  rejectUpgradeRequest: (id) => api.put(`admin/upgrade-requests/${id}/reject`),
+// Auth API
+export const authAPI = {
+  login: (data) => api.post("auth/login", data),
+  register: (data) => api.post("auth/register", data),
+  logout: () => api.post("auth/logout"),
+  getCurrentUser: () => api.get("auth/me"),
+  googleLogin: (data) => api.post("auth/google", data),
+  verifyAge: () => api.post("auth/verify-age"),
+  forgotPassword: (email) => api.post("auth/forgot-password", { email }),
+  resetPassword: (token, password) =>
+    api.post("auth/reset-password", { token, password }),
 };
 
-// Utility functions
-export const apiUtils = {
-  // Clear all cached data
-  clearCache: () => {
-    const keys = Object.keys(localStorage);
-    keys.forEach((key) => {
-      if (key.startsWith("api:") || key.startsWith("escorts:")) {
-        localStorage.removeItem(key);
-      }
-    });
-    console.log("🧹 API cache cleared");
-  },
-
-  // Get cache statistics
-  getCacheStats: () => {
-    const keys = Object.keys(localStorage);
-    const apiKeys = keys.filter((key) => key.startsWith("api:"));
-    const escortKeys = keys.filter((key) => key.startsWith("escorts:"));
-
-    return {
-      total: keys.length,
-      api: apiKeys.length,
-      escorts: escortKeys.length,
-      totalSize: JSON.stringify(localStorage).length,
-    };
-  },
-
-  // Batch multiple API calls
-  batch: (requests) => {
-    return Promise.all(requests);
-  },
-
-  // Retry failed requests
-  retry: async (request, maxRetries = 3, delay = 1000) => {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        return await request();
-      } catch (error) {
-        if (i === maxRetries - 1) throw error;
-        await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
-      }
-    }
-  },
+// User API
+export const userAPI = {
+  getProfile: (config = {}) => api.get("user/profile", config),
+  updateUserProfile: (data) => api.put("user/profile", data),
+  uploadAvatar: (formData) =>
+    api.put("user/profile", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      batch: false,
+    }),
+  deleteAccount: () => api.delete("user/account"),
+  getUserStats: (config = {}) => api.get("user/stats", config),
+  updateOnlineStatus: () => api.put("user/online-status"),
+  getOnlineStatus: (userId, config = {}) =>
+    api.get(`user/online-status/${userId}`, config),
+  markOffline: () => api.put("user/offline"),
+  getMainAdmin: () => api.get("user/main-admin"),
 };
 
-// Export default API instance
-export default api;
+// Message API
+export const messageAPI = {
+  getUserConversations: (config = {}) =>
+    api.get("message/conversations", config),
+  getConversation: (escortId, page = 1, config = {}) =>
+    api.get(
+      `message/conversation/${escortId}`,
+      Object.assign({ params: { page } }, config)
+    ),
+  sendMessage: (data) => api.post("message/send", data),
+  markAsRead: (messageId) => api.put(`message/mark-read/${messageId}`),
+  markConversationAsRead: (escortId) =>
+    api.put(`message/mark-conversation-read/${escortId}`),
+  deleteMessage: (messageId) => api.delete(`message/delete/${messageId}`),
+  startConversation: (data) => api.post("message/conversation", data),
+};
+
+// Booking API
+export const bookingAPI = {
+  getUserBookings: (config = {}) => api.get("booking/user", config),
+  getEscortBookings: (config = {}) => api.get("booking/escort", config),
+};
+
+// Review API
+export const reviewAPI = {
+  getEscortReviews: (escortId, page = 1) =>
+    api.get(`review/escort/${escortId}`, { params: { page } }),
+  createReview: (data) => api.post("review/create", data),
+  updateReview: (id, data) => api.put(`review/${id}`, data),
+  deleteReview: (id) => api.delete(`review/${id}`),
+  getUserReviews: (config = {}) => api.get("review/user", config),
+};
+
+// Category API
+export const categoryAPI = {
+  getAllCategories: (config = {}) => api.get("category/all-category", config),
+};
+
+// Favorite API
+export const favoriteAPI = {
+  getUserFavorites: (config = {}) => api.get("favorite/user", config),
+  addToFavorites: (escortId) => api.post("favorite/add", { escortId }),
+  removeFromFavorites: (escortId) => api.delete(`favorite/${escortId}`),
+  checkFavorite: (escortId, config = {}) =>
+    api.get(`favorite/check/${escortId}`, config),
+};
