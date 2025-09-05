@@ -359,6 +359,8 @@ export const userAPI = {
 export const messageAPI = {
   // Get conversations
   getConversations: () => api.get("message/conversations"),
+  // Alias used across components (client, escort, admin)
+  getUserConversations: () => api.get("message/conversations"),
 
   // Get messages for a conversation
   getMessages: (conversationId, page = 1) =>
@@ -428,7 +430,7 @@ export const reviewAPI = {
 // Favorite API
 export const favoriteAPI = {
   // Get user favorites
-  getUserFavorites: () => api.get("favorite/user"),
+  getUserFavorites: (config = {}) => api.get("favorite/user", config),
 
   // Add to favorites
   addToFavorites: (escortId) => api.post("favorite/add", { escortId }),

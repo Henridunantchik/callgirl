@@ -1,0 +1,28 @@
+✅ Environment validation passed
+   Environment: development
+   Port: 5000
+   Frontend URL: http://localhost:5173
+🚀 Starting server...
+🔧 Environment: development
+📦 Node version: v22.14.0
+💾 Memory: 37MB
+🔧 Environment variables:
+   PORT: 5000
+   NODE_ENV: development
+   MONGODB_CONN: set
+   JWT_SECRET: set
+   FRONTEND_URL: http://localhost:5173
+🔌 Connecting to MongoDB...
+   Connection string: mongodb+srv://tusiwa...
+🚀 MongoDB connected with optimized settings
+📊 Connection pool size: 50
+✅ Connected to MongoDB
+📊 Creating database indexes...
+🔧 Creating advanced database indexes for unlimited performance...
+✅ Database indexes created
+🚀 Server running on port 5000
+📱 Frontend URL: http://localhost:5173
+🔧 Environment: development
+🌐 Health check: http://localhost:5000/health
+📊 Performance metrics: http://localhost:5000/api/performance
+✅ Server startup complete
