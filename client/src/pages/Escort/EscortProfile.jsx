@@ -335,6 +335,8 @@ const EscortProfile = () => {
             src={escort.gallery[0].url}
             alt="Cover"
             className="w-full h-full object-cover"
+            loading="eager"
+            decoding="async"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">

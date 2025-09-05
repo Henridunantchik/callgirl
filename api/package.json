@@ -9,6 +9,9 @@
     "build": "echo 'No build step required for Node.js API'",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:endpoints": "node ./test-all-endpoints.js",
+    "danger:delete-users": "node ./scripts/delete-users.js",
+    "clean:message-media": "node ./scripts/clean-message-media.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -23,6 +26,9 @@
   "author": "",
   "license": "ISC",
   "description": "Escort Directory API - A comprehensive platform for escort profiles and bookings",
+  "engines": {
+    "node": ">=18.20 <21"
+  },
   "dependencies": {
     "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",

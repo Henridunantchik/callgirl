@@ -3,6 +3,10 @@ import { authenticate } from "../middleware/authenticate.js";
 import { onlyEscort } from "../middleware/onlyEscort.js";
 import upload from "../config/multer.js";
 import {
+  uploadRateLimiter,
+  searchRateLimiter,
+} from "../middleware/rateLimiter.js";
+import {
   getAllEscorts,
   getEscortById,
   searchEscorts,
@@ -21,10 +25,11 @@ const router = express.Router();
 // ===== ESCORT ROUTES =====
 router.get("/all", getAllEscorts);
 router.get("/profile/:id", getEscortById);
-router.get("/search", searchEscorts);
+router.get("/search", searchRateLimiter, searchEscorts);
 router.post(
   "/create",
   authenticate,
+  uploadRateLimiter,
   upload.fields([
     { name: "gallery", maxCount: 10 },
     { name: "idDocument", maxCount: 1 },
@@ -45,6 +50,7 @@ router.post(
   "/media/:id",
   authenticate,
   onlyEscort,
+  uploadRateLimiter,
   upload.array("gallery", 10),
   uploadGallery
 );
@@ -53,6 +59,7 @@ router.post(
   "/video/:id",
   authenticate,
   onlyEscort,
+  uploadRateLimiter,
   upload.array("video", 5),
   uploadVideo
 );
@@ -65,11 +72,6 @@ router.delete(
   deleteGalleryImage
 );
 
-router.delete(
-  "/video/:id/:videoId",
-  authenticate,
-  onlyEscort,
-  deleteVideo
-);
+router.delete("/video/:id/:videoId", authenticate, onlyEscort, deleteVideo);
 
 export default router;

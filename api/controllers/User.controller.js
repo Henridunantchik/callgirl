@@ -38,7 +38,7 @@ export const getUser = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error in getUser:", error);
-    next(handleError(500, error.message));
+    next(error);
   }
 };
 
@@ -155,7 +155,7 @@ export const getAllUser = async (req, res, next) => {
       user: usersWithFixedUrls,
     });
   } catch (error) {
-    next(handleError(500, error.message));
+    next(error);
   }
 };
 export const deleteUser = async (req, res, next) => {
@@ -167,7 +167,7 @@ export const deleteUser = async (req, res, next) => {
       message: "Data deleted.",
     });
   } catch (error) {
-    next(handleError(500, error.message));
+    next(error);
   }
 };
 

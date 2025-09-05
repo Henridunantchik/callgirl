@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -96,6 +96,11 @@ const EscortList = () => {
   const [isMessengerOpen, setIsMessengerOpen] = useState(false);
   const [selectedEscort, setSelectedEscort] = useState(null);
 
+  // Simple in-memory cache for pages
+  const pageCacheRef = useRef(new Map());
+  const prefetchingRef = useRef(false);
+  const sentinelRef = useRef(null);
+
   // Debounced search function
   const debouncedSearch = useCallback(
     debounce((searchTerm, filters) => {
@@ -183,6 +188,16 @@ const EscortList = () => {
         ...(filterParams.featured && { featured: true }),
       };
 
+      const cacheKey = JSON.stringify({ params, sort });
+      if (pageCacheRef.current.has(cacheKey)) {
+        const cached = pageCacheRef.current.get(cacheKey);
+        setEscorts(cached.escorts);
+        setTotalResults(cached.totalResults);
+        setCurrentPage(cached.currentPage);
+        setTotalPages(cached.totalPages);
+        return;
+      }
+
       const response = await escortAPI.getAllEscorts(params);
       console.log("✅ Escorts fetched:", response.data);
 
@@ -208,10 +223,53 @@ const EscortList = () => {
         });
       }
 
+      const computedTotalPages = Math.ceil(total / escortsPerPage);
       setEscorts(escortData);
       setTotalResults(total);
       setCurrentPage(page);
-      setTotalPages(Math.ceil(total / escortsPerPage));
+      setTotalPages(computedTotalPages);
+
+      // Cache the result
+      pageCacheRef.current.set(cacheKey, {
+        escorts: escortData,
+        totalResults: total,
+        currentPage: page,
+        totalPages: computedTotalPages,
+        ts: Date.now(),
+      });
+
+      // Fire-and-forget prefetch of next page
+      const nextPage = page + 1;
+      if (nextPage <= computedTotalPages && !prefetchingRef.current) {
+        prefetchingRef.current = true;
+        const nextParams = { ...params, page: nextPage };
+        const nextKey = JSON.stringify({ params: nextParams, sort });
+        if (!pageCacheRef.current.has(nextKey)) {
+          escortAPI
+            .getAllEscorts(nextParams)
+            .then((resp) => {
+              const nextData =
+                resp.data?.data?.escorts ||
+                resp.data?.escorts ||
+                resp.data ||
+                [];
+              const nextTotal =
+                resp.data?.data?.total || resp.data?.total || nextData.length;
+              pageCacheRef.current.set(nextKey, {
+                escorts: nextData,
+                totalResults: nextTotal,
+                currentPage: nextPage,
+                totalPages: Math.ceil(nextTotal / escortsPerPage),
+                ts: Date.now(),
+              });
+            })
+            .finally(() => {
+              prefetchingRef.current = false;
+            });
+        } else {
+          prefetchingRef.current = false;
+        }
+      }
     } catch (error) {
       console.error("❌ Failed to fetch escorts:", error);
       const errorMessage =
@@ -224,6 +282,27 @@ const EscortList = () => {
       setLoading(false);
     }
   };
+
+  // Intersection observer to trigger prefetch when near bottom
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && !loading) {
+          const nextPage = currentPage + 1;
+          if (nextPage <= totalPages) {
+            // Touch cache by asking for next page; fetchEscorts will prefetch
+            fetchEscorts(searchTerm, filters, currentPage, sortBy);
+          }
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [currentPage, totalPages, loading, searchTerm, filters, sortBy]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -723,6 +802,8 @@ const EscortList = () => {
                           src={escort.gallery[0].url}
                           alt={escort.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-500">
@@ -825,7 +906,10 @@ const EscortList = () => {
                       )}
 
                       {/* Contact Buttons */}
-                      <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex gap-2 mt-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           variant="outline"
                           size="sm"
@@ -867,6 +951,9 @@ const EscortList = () => {
                 </Card>
               ))}
             </div>
+
+            {/* Sentinel for prefetching when near bottom */}
+            <div ref={sentinelRef} />
 
             {/* Enhanced Pagination */}
             {totalPages > 1 && (

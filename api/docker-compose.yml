@@ -9,8 +9,8 @@ services:
       - NODE_ENV=development
       - PORT=5000
       - FRONTEND_URL=http://localhost:5173
-      - MONGODB_CONN=mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau?retryWrites=true&w=majority&appName=Cluster0
-      - JWT_SECRET=88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca
+      - MONGODB_CONN=mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@<YOUR_CLUSTER>/<YOUR_DB>?retryWrites=true&w=majority&appName=<YOUR_APP_NAME>
+      - JWT_SECRET=<REPLACE_WITH_A_NEW_RANDOM_64+_CHAR_SECRET>
       - RAILWAY_STORAGE_PATH=/app/uploads
     volumes:
       - ./uploads:/app/uploads

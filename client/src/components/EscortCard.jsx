@@ -141,6 +141,8 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
             className="w-full h-full object-cover object-center transition-transform duration-300"
             style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
             onError={handleImageError}
+            loading="lazy"
+            decoding="async"
           />
 
           {/* Overlay with badges */}

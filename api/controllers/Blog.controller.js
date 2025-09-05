@@ -142,8 +142,18 @@ const getBlogBySlug = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Blog post not found");
   }
 
-  // Increment views
-  await blog.incrementViews();
+  // Increment views safely (schema method may not exist in some environments)
+  try {
+    if (typeof blog.incrementViews === "function") {
+      await blog.incrementViews();
+    } else {
+      blog.views = (blog.views || 0) + 1;
+      await blog.save();
+    }
+  } catch (e) {
+    // Do not block response if view increment fails
+    console.warn("Blog view increment failed:", e?.message);
+  }
 
   return res
     .status(200)
