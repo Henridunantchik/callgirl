@@ -252,7 +252,11 @@ const Messages = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const response = await messageAPI.getUserConversations();
+      // Short timeout and no batching for snappy UX
+      const response = await messageAPI.getUserConversations({
+        timeout: 1200,
+        batch: false,
+      });
 
       if (response.data && response.data.data) {
         setConversations(response.data.data);
@@ -265,7 +269,12 @@ const Messages = () => {
       }
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
-      showToast("error", "Failed to load conversations");
+      // Gracefully fallback on timeout
+      if (error.code === "ECONNABORTED") {
+        setConversations([]);
+      } else {
+        showToast("error", "Failed to load conversations");
+      }
     } finally {
       setLoading(false);
     }
@@ -273,7 +282,10 @@ const Messages = () => {
 
   const fetchMessages = async (escortId) => {
     try {
-      const response = await messageAPI.getConversation(escortId);
+      const response = await messageAPI.getConversation(escortId, 1, {
+        timeout: 1200,
+        batch: false,
+      });
 
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);

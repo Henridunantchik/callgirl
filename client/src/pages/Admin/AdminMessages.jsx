@@ -214,7 +214,10 @@ const AdminMessages = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const response = await messageAPI.getUserConversations();
+      const response = await messageAPI.getUserConversations({
+        timeout: 1200,
+        batch: false,
+      });
       console.log("📞 Admin Conversations response:", response);
 
       if (response.data && response.data.data) {
@@ -243,7 +246,10 @@ const AdminMessages = () => {
 
   const fetchMessages = async (escortId) => {
     try {
-      const response = await messageAPI.getConversation(escortId);
+      const response = await messageAPI.getConversation(escortId, 1, {
+        timeout: 1200,
+        batch: false,
+      });
       console.log("Messages:", response.data);
 
       if (response.data && response.data.data) {
