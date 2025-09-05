@@ -266,13 +266,13 @@ const Topbar = () => {
               {user?.user?.role === "client" && (
                 <>
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/client/favorites">
+                    <Link to={`/${countryCode || "ug"}/client/favorites`}>
                       <FaHeart className="mr-2" />
                       Favorites
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/client/bookings">
+                    <Link to={`/${countryCode || "ug"}/client/bookings`}>
                       <FaCalendarAlt className="mr-2" />
                       My Bookings
                     </Link>

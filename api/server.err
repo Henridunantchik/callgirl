@@ -1,0 +1,38 @@
+(node:31644) [MONGOOSE] Warning: `collection` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31644) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+❌ Error creating database indexes: MongoServerError: Index already exists with a different name: role_1_rates.hourly_1_isActive_1
+    at Connection.sendCommand (C:\Github\callgirls\api\node_modules\mongodb\lib\cmap\connection.js:305:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Connection.command (C:\Github\callgirls\api\node_modules\mongodb\lib\cmap\connection.js:333:26)
+    at async Server.command (C:\Github\callgirls\api\node_modules\mongodb\lib\sdam\server.js:171:29)
+    at async CreateIndexesOperation.executeCommand (C:\Github\callgirls\api\node_modules\mongodb\lib\operations\command.js:76:16)
+    at async CreateIndexesOperation.execute (C:\Github\callgirls\api\node_modules\mongodb\lib\operations\indexes.js:122:9)
+    at async tryOperation (C:\Github\callgirls\api\node_modules\mongodb\lib\operations\execute_operation.js:207:20)
+    at async executeOperation (C:\Github\callgirls\api\node_modules\mongodb\lib\operations\execute_operation.js:75:16)
+    at async Collection.createIndex (C:\Github\callgirls\api\node_modules\mongodb\lib\collection.js:329:25)
+    at async createDatabaseIndexes (file:///C:/Github/callgirls/api/utils/databaseOptimizer.js:44:5) {
+  errorLabelSet: Set(0) {},
+  errorResponse: {
+    ok: 0,
+    errmsg: 'Index already exists with a different name: role_1_rates.hourly_1_isActive_1',
+    code: 85,
+    codeName: 'IndexOptionsConflict',
+    '$clusterTime': {
+      clusterTime: new Timestamp({ t: 1757056061, i: 6 }),
+      signature: [Object]
+    },
+    operationTime: new Timestamp({ t: 1757056061, i: 6 })
+  },
+  ok: 0,
+  code: 85,
+  codeName: 'IndexOptionsConflict',
+  '$clusterTime': {
+    clusterTime: new Timestamp({ t: 1757056061, i: 6 }),
+    signature: {
+      hash: Binary.createFromBase64('P7KPoQ2yTeIifkvq+B1fNtzJpG4=', 0),
+      keyId: new Long('7512161133738852355')
+    }
+  },
+  operationTime: new Timestamp({ t: 1757056061, i: 6 })
+}

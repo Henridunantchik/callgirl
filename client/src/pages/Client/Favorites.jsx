@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -26,6 +26,7 @@ import Loading from "../../components/Loading";
 
 const Favorites = () => {
   const navigate = useNavigate();
+  const { countryCode } = useParams();
   const { user } = useAuth();
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,13 +40,22 @@ const Favorites = () => {
   const fetchFavorites = async () => {
     try {
       setLoading(true);
-      const response = await favoriteAPI.getUserFavorites();
+      // Fast response target: 2s timeout, no batching for snappier UX
+      const response = await favoriteAPI.getUserFavorites({
+        timeout: 2000,
+        batch: false,
+      });
       if (response.data && response.data.data) {
         setFavorites(response.data.data.favorites || []);
       }
     } catch (error) {
       console.error("Error fetching favorites:", error);
-      showToast("error", "Failed to load favorites");
+      // Gracefully fallback to empty on timeout or not found
+      if (error.code === "ECONNABORTED" || error?.response?.status === 404) {
+        setFavorites([]);
+      } else {
+        showToast("error", "Failed to load favorites");
+      }
     } finally {
       setLoading(false);
     }
@@ -66,11 +76,11 @@ const Favorites = () => {
   };
 
   const handleMessage = (escortId) => {
-    navigate(`/ug/client/messages?escort=${escortId}`);
+    navigate(`/${countryCode || "ug"}/client/messages?escort=${escortId}`);
   };
 
   const handleViewProfile = (escortId) => {
-    navigate(`/ug/escort/${escortId}`);
+    navigate(`/${countryCode || "ug"}/escort/${escortId}`);
   };
 
   return (

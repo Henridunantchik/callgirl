@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -33,6 +33,7 @@ import PremiumStats from "../../components/PremiumStats";
 
 const EscortDashboard = () => {
   const navigate = useNavigate();
+  const { countryCode } = useParams();
   const user = useSelector((state) => state.user);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -265,7 +266,9 @@ const EscortDashboard = () => {
                     </div>
                   </div>
                   <Button
-                    onClick={() => navigate("/ug/escort/upgrade")}
+                    onClick={() =>
+                      navigate(`/${countryCode || "ug"}/escort/upgrade`)
+                    }
                     className="bg-purple-600 hover:bg-purple-700 text-white"
                     size="sm"
                   >
@@ -305,7 +308,9 @@ const EscortDashboard = () => {
                     </div>
                   </div>
                   <Button
-                    onClick={() => navigate("/ug/escort/upgrade")}
+                    onClick={() =>
+                      navigate(`/${countryCode || "ug"}/escort/upgrade`)
+                    }
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                     size="sm"
                   >
@@ -385,7 +390,9 @@ const EscortDashboard = () => {
               <CardHeader>
                 <CardTitle
                   className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => navigate("/ug/escort/upgrade")}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/upgrade`)
+                  }
                 >
                   <TrendingUp className="h-5 w-5 text-blue-600" />
                   Upgrade Your Profile
@@ -396,7 +403,9 @@ const EscortDashboard = () => {
                   <UpgradeCard
                     plan="basic"
                     currentPlan={user.user?.subscriptionTier || "basic"}
-                    onUpgrade={() => navigate("/ug/escort/upgrade")}
+                    onUpgrade={() =>
+                      navigate(`/${countryCode || "ug"}/escort/upgrade`)
+                    }
                     isCurrent={
                       (user.user?.subscriptionTier || "basic") === "basic"
                     }
@@ -404,7 +413,9 @@ const EscortDashboard = () => {
                   <UpgradeCard
                     plan="featured"
                     currentPlan={user.user?.subscriptionTier || "basic"}
-                    onUpgrade={() => navigate("/ug/escort/upgrade")}
+                    onUpgrade={() =>
+                      navigate(`/${countryCode || "ug"}/escort/upgrade`)
+                    }
                     isCurrent={
                       (user.user?.subscriptionTier || "basic") === "featured"
                     }
@@ -412,7 +423,9 @@ const EscortDashboard = () => {
                   <UpgradeCard
                     plan="premium"
                     currentPlan={user.user?.subscriptionTier || "basic"}
-                    onUpgrade={() => navigate("/ug/escort/upgrade")}
+                    onUpgrade={() =>
+                      navigate(`/${countryCode || "ug"}/escort/upgrade`)
+                    }
                     isCurrent={
                       (user.user?.subscriptionTier || "basic") === "premium"
                     }
@@ -434,7 +447,9 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigate(`/ug/escort/profile`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/profile`)
+                  }
                 >
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
@@ -442,7 +457,9 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigate(`/ug/escort/upgrade`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/upgrade`)
+                  }
                 >
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Upgrade Profile
@@ -450,7 +467,9 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigate(`/ug/escort/availability`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/availability`)
+                  }
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   Manage Availability
@@ -458,7 +477,9 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigate(`/ug/escort/messages`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/messages`)
+                  }
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
                   View Messages
@@ -466,7 +487,9 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigate(`/ug/escort/reviews`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/reviews`)
+                  }
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   View Reviews
@@ -474,7 +497,9 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigate(`/ug/escort/earnings`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/earnings`)
+                  }
                 >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Earnings Report
@@ -482,7 +507,9 @@ const EscortDashboard = () => {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigate(`/ug/escort/settings`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/settings`)
+                  }
                 >
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
@@ -499,7 +526,9 @@ const EscortDashboard = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/ug/escort/bookings`)}
+                  onClick={() =>
+                    navigate(`/${countryCode || "ug"}/escort/bookings`)
+                  }
                 >
                   View All
                 </Button>
