@@ -272,3 +272,20 @@ All three critical systems have been successfully implemented and are working to
 The platform now provides a complete, professional escort directory experience with all essential features working correctly. Users can search, filter, chat, and see online status - creating a comprehensive and engaging platform.
 
 **Status: ✅ PRODUCTION READY**
+
+---
+
+## 🔒 Dependency and Lockfile Workflow
+
+To ensure deterministic, repeatable deployments for the API service:
+
+1. Add or update dependencies only via `api/package.json`.
+2. Regenerate the lockfile locally: `cd api` then `npm install --package-lock-only`.
+3. Commit both `api/package.json` and `api/package-lock.json` together.
+4. The API Docker build uses `npm ci --omit=dev`, which installs exactly what is in the lockfile.
+5. When removing dependencies, repeat steps 2–3 to keep the lockfile in sync.
+
+Notes:
+
+- Keep Node within the engines range in `api/package.json` for local/dev consistency.
+- CI/CD should avoid mutating the lockfile; treat it as a source-of-truth artifact.
