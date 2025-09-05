@@ -11,7 +11,8 @@ const root = createRoot(document.getElementById("root"));
 
 root.render(
   <Provider store={store}>
-    <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
+    {/* Avoid blocking UI on rehydration; render app immediately */}
+    <PersistGate loading={null} persistor={persistor}>
       <HelmetProvider>
         <ToastContainer />
         <App />

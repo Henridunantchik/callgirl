@@ -72,6 +72,10 @@ const io = new Server(server, {
 app.use(performanceMiddleware); // Performance monitoring
 app.use(
   helmet({
+    // Allow OAuth popups like Google to close themselves without COOP blocking
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    // Avoid cross-origin isolation which can interfere with third-party popups
+    crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: {
       useDefaults: true,
