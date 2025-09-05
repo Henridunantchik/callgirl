@@ -1,5 +1,4 @@
 import EscortCard from "@/components/EscortCard";
-import Loading from "@/components/Loading";
 import { getEvn } from "@/helpers/getEnv";
 import { useFetch } from "@/hooks/useFetch";
 import { escortAPI, statsAPI } from "@/services/api";
@@ -311,7 +310,8 @@ const Index = () => {
     console.log("Contacting escort:", escort.alias, "via", method);
   };
 
-  if (loading) return <Loading />;
+  // Render immediately; show skeleton text where needed instead of blocking overlay
+  // This avoids long spinner times on the home page
 
   return (
     <div className="space-y-6">
