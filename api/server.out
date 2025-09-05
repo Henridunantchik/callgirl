@@ -26,3 +26,6 @@
 🌐 Health check: http://localhost:5000/health
 📊 Performance metrics: http://localhost:5000/api/performance
 ✅ Server startup complete
+⚠️ MongoDB disconnected
+🚀 MongoDB connected with optimized settings
+📊 Connection pool size: 50
