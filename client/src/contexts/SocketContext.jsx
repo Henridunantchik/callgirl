@@ -23,16 +23,60 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (!user || !user._id) return;
 
-    // Initialize socket connection with better configuration
-    const socketUrl =
-      import.meta.env.VITE_API_URL?.replace("/api", "") ||
-      (window.location.hostname !== "localhost" &&
-      window.location.hostname !== "127.0.0.1"
-        ? "https://api.epicescorts.live" // Use correct API domain
-        : "http://localhost:5000");
+    // Initialize socket connection with robust URL computation
+    const computeSocketUrl = () => {
+      const envUrlRaw = (
+        import.meta.env.VITE_SOCKET_URL ||
+        import.meta.env.VITE_API_URL ||
+        ""
+      )
+        .toString()
+        .trim();
+
+      const toSafeOrigin = (urlString) => {
+        try {
+          const u = new URL(urlString);
+          const isHttp = u.protocol === "http:" || u.protocol === "https:";
+          const validHost =
+            u.hostname === "localhost" ||
+            u.hostname === "127.0.0.1" ||
+            u.hostname.includes(".");
+          if (!isHttp || !validHost) return null;
+          return `${u.protocol}//${u.host}`;
+        } catch {
+          return null;
+        }
+      };
+
+      if (envUrlRaw) {
+        // Ensure absolute form and drop path (e.g., /api)
+        const candidate = /^https?:\/\//i.test(envUrlRaw)
+          ? envUrlRaw
+          : `https://${envUrlRaw}`;
+        try {
+          const p = new URL(candidate);
+          const originOnly = `${p.protocol}//${p.host}`;
+          const safe = toSafeOrigin(originOnly);
+          if (safe) return safe;
+        } catch (e) {
+          console.warn("⚠️ Invalid socket env URL:", envUrlRaw, e?.message);
+        }
+      }
+
+      const isLocal =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+
+      return isLocal ? "http://localhost:5000" : "https://api.epicescorts.live";
+    };
+
+    const socketUrl = computeSocketUrl();
+    console.debug("[Socket] Using URL:", socketUrl);
+
     const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ["websocket", "polling"],
+      path: "/socket.io",
       timeout: 10000, // Reduced to 10 second timeout
       reconnection: true,
       reconnectionAttempts: 5,

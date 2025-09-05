@@ -1665,6 +1665,8 @@ const EscortProfileEdit = () => {
                             src={photo.url}
                             alt={`Gallery photo ${index + 1}`}
                             className="w-full h-24 object-contain rounded bg-gray-50"
+                            loading="lazy"
+                            decoding="async"
                           />
                           <Button
                             type="button"
@@ -1780,6 +1782,7 @@ const EscortProfileEdit = () => {
                             className="w-full h-48 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
                             controls
                             preload="metadata"
+                            playsInline
                           />
                           <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
                             Video {index + 1}

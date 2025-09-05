@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
 import firebaseStorage from "../services/firebaseStorage.js";
+import sharp from "sharp";
 import railwayStorage from "../services/railwayStorage.js";
 import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
@@ -598,8 +599,31 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
 
     try {
       // Upload to Firebase storage
+      let fileToUpload = mediaFile;
+      if (mediaType === "photo") {
+        try {
+          const optimizedBuffer = await sharp(mediaFile.buffer)
+            .rotate()
+            .resize({ width: 1920, withoutEnlargement: true })
+            .webp({ quality: 82 })
+            .toBuffer();
+          fileToUpload = {
+            ...mediaFile,
+            buffer: optimizedBuffer,
+            size: optimizedBuffer.length,
+            mimetype: "image/webp",
+            originalname: mediaFile.originalname.replace(/\.[^.]+$/, ".webp"),
+          };
+        } catch (e) {
+          console.warn(
+            "Photo optimization failed, uploading original:",
+            e?.message
+          );
+        }
+      }
+
       const result = await firebaseStorage.uploadFile(
-        mediaFile,
+        fileToUpload,
         mediaType === "photo" ? "gallery" : "video"
       );
 
@@ -628,8 +652,7 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
         );
       }
 
-      // Clean up local file
-      fs.unlinkSync(mediaFile.path);
+      // No local cleanup needed with memory storage
 
       await escort.save();
 

@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
+import { authRateLimiter } from "../middleware/rateLimiter.js";
 import {
   Register,
   Login,
@@ -12,11 +13,11 @@ import {
 const router = express.Router();
 
 // ===== AUTH ROUTES =====
-router.post("/register", Register);
-router.post("/login", Login);
-router.post("/google-login", GoogleLogin);
+router.post("/register", authRateLimiter, Register);
+router.post("/login", authRateLimiter, Login);
+router.post("/google-login", authRateLimiter, GoogleLogin);
 router.post("/logout", Logout);
-router.post("/refresh-token", RefreshToken);
+router.post("/refresh-token", authRateLimiter, RefreshToken);
 router.get("/me", authenticate, getCurrentUser);
 
 export default router;

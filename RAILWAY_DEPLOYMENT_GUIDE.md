@@ -20,8 +20,8 @@ Set these environment variables in your Railway dashboard:
 ```
 NODE_ENV=production
 PORT=5000
-MONGODB_CONN=mongodb+srv://tusiwawasahau:tusiwawasahau.cd@cluster0.kkkt6.mongodb.net/tusiwawasahau?retryWrites=true&w=majority&appName=Cluster0
-JWT_SECRET=your-super-secret-jwt-key-that-is-at-least-64-characters-long-for-security-and-production-use
+MONGODB_CONN=mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@<YOUR_CLUSTER>/<YOUR_DB>?retryWrites=true&w=majority&appName=<YOUR_APP_NAME>
+JWT_SECRET=<REPLACE_WITH_A_NEW_RANDOM_64+_CHAR_SECRET>
 FRONTEND_URL=https://epicescorts.live
 FRONTEND_URLS=https://epicescorts.live,https://callgirls.vercel.app,http://localhost:5173
 RAILWAY_STORAGE_PATH=/app/uploads

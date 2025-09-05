@@ -5,6 +5,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 import railwayStorage from "../services/railwayStorage.js";
+import sharp from "sharp";
 
 // Send a message
 const sendMessage = asyncHandler(async (req, res) => {
@@ -34,8 +35,14 @@ const sendMessage = asyncHandler(async (req, res) => {
   const message = await Message.create(messageData);
 
   const populatedMessage = await Message.findById(message._id)
-    .populate("sender", "name alias avatar subscriptionTier isVerified isOnline lastActive")
-    .populate("recipient", "name alias avatar subscriptionTier isVerified isOnline lastActive");
+    .populate(
+      "sender",
+      "name alias avatar subscriptionTier isVerified isOnline lastActive"
+    )
+    .populate(
+      "recipient",
+      "name alias avatar subscriptionTier isVerified isOnline lastActive"
+    );
 
   return res
     .status(201)
@@ -56,8 +63,14 @@ const getConversation = asyncHandler(async (req, res) => {
       { sender: escortId, recipient: userId },
     ],
   })
-    .populate("sender", "name alias avatar subscriptionTier isVerified isOnline lastActive")
-    .populate("recipient", "name alias avatar subscriptionTier isVerified isOnline lastActive")
+    .populate(
+      "sender",
+      "name alias avatar subscriptionTier isVerified isOnline lastActive"
+    )
+    .populate(
+      "recipient",
+      "name alias avatar subscriptionTier isVerified isOnline lastActive"
+    )
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit));
@@ -268,8 +281,37 @@ const uploadMessageImage = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Upload to Railway storage instead of Cloudinary
-    const result = await railwayStorage.uploadFile(req.file, "message-images");
+    let fileToUpload = req.file;
+
+    // Optimize images before upload (convert to webp, limit width)
+    if (req.file.mimetype && req.file.mimetype.startsWith("image/")) {
+      try {
+        const optimizedBuffer = await sharp(req.file.buffer)
+          .rotate()
+          .resize({ width: 1280, withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+
+        fileToUpload = {
+          ...req.file,
+          buffer: optimizedBuffer,
+          size: optimizedBuffer.length,
+          mimetype: "image/webp",
+          originalname: req.file.originalname.replace(/\.[^.]+$/, ".webp"),
+        };
+      } catch (optError) {
+        console.warn(
+          "Image optimization failed, uploading original:",
+          optError?.message
+        );
+      }
+    }
+
+    // Upload to Railway storage
+    const result = await railwayStorage.uploadFile(
+      fileToUpload,
+      "message-images"
+    );
 
     if (!result.success) {
       throw new Error(`Failed to upload file: ${result.error}`);

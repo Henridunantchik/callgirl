@@ -303,7 +303,7 @@ export const GoogleLogin = async (req, res, next) => {
       message: "Login successful.",
     });
   } catch (error) {
-    next(handleError(500, error.message));
+    next(error);
   }
 };
 
@@ -321,7 +321,7 @@ export const Logout = async (req, res, next) => {
       message: "Logout successful.",
     });
   } catch (error) {
-    next(handleError(500, error.message));
+    next(error);
   }
 };
 

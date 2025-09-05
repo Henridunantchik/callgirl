@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import compression from "compression";
 // import rateLimit from "express-rate-limit"; // Removed - no rate limiting needed
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -43,6 +44,10 @@ const __dirname = path.dirname(__filename);
 
 // Create Express app
 const app = express();
+// Trust proxy for correct secure cookies and req.secure behind Railway
+app.set("trust proxy", 1);
+// Hide tech stack header
+app.disable("x-powered-by");
 const server = createServer(app);
 
 // Configure CORS for multiple frontend URLs
@@ -57,6 +62,10 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  pingTimeout: 20000,
+  pingInterval: 25000,
+  transports: ["websocket", "polling"],
+  allowEIO3: false,
 });
 
 // Middleware
@@ -64,6 +73,35 @@ app.use(performanceMiddleware); // Performance monitoring
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdn.jsdelivr.net",
+          "https://js.stripe.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://api.epicescorts.live",
+          "https://callgirls.vercel.app",
+          "https://epicescorts.live",
+          "wss://api.epicescorts.live",
+        ],
+        imgSrc: ["'self'", "data:", "blob:", "https://*"],
+        mediaSrc: ["'self'", "data:", "blob:", "https://*"],
+        frameSrc: ["'self'", "https://js.stripe.com"],
+      },
+      reportOnly: true,
+    },
+  })
+);
+// Enable gzip compression for all responses
+app.use(
+  compression({
+    threshold: 1024,
   })
 );
 
@@ -139,6 +177,12 @@ import {
   serveFileWithFallback,
   fileStorageHealth,
 } from "./middleware/fileFallback.js";
+import {
+  apiRateLimiter,
+  authRateLimiter,
+  uploadRateLimiter,
+  searchRateLimiter,
+} from "./middleware/rateLimiter.js";
 
 // Static files with INTELLIGENT FALLBACK SYSTEM
 app.use(
@@ -168,6 +212,9 @@ app.use(
       res.status(200).end();
       return;
     }
+
+    // Cache static files aggressively
+    res.header("Cache-Control", "public, max-age=31536000, immutable");
 
     // NO AUTHENTICATION for static files - they should be publicly accessible
     next();
@@ -362,6 +409,12 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
+// Apply modest, non-breaking rate limiting
+if (config.NODE_ENV === "production") {
+  // Global API limiter
+  app.use("/api", apiRateLimiter);
+}
+
 // API routes (individual)
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
@@ -410,12 +463,20 @@ io.on("connection", (socket) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(500).json({
+  const status = err?.statusCode || err?.status || 500;
+  const message = err?.message || "Internal server error";
+  const errors = err?.errors || undefined;
+  if (status >= 500) {
+    console.error("Unhandled Error:", err);
+  }
+  res.status(status).json({
     success: false,
-    message: "Internal server error",
+    message,
+    errors,
     error:
-      config.NODE_ENV === "development" ? err.message : "Something went wrong",
+      config.NODE_ENV === "development"
+        ? err?.stack || err?.message
+        : undefined,
   });
 });
 

@@ -3,7 +3,7 @@ import Loading from "@/components/Loading";
 import { getEvn } from "@/helpers/getEnv";
 import { useFetch } from "@/hooks/useFetch";
 import { escortAPI, statsAPI } from "@/services/api";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +52,7 @@ const Index = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalEscorts, setTotalEscorts] = useState(0);
   const escortsPerPage = 24; // Show 24 escorts per page (4 rows of 6)
+  const [prefetchedImages, setPrefetchedImages] = useState([]);
 
   // Debug logging
   console.log("=== HOME PAGE DEBUG ===");
@@ -63,50 +64,27 @@ const Index = () => {
   const fetchEscortData = React.useCallback(async () => {
     try {
       setLoading(true);
-      console.log("Fetching featured escorts and stats from API...");
-
-      // Fetch escorts and stats in parallel with error handling
-      const [escortsResponse, statsResponse] = await Promise.allSettled([
-        escortAPI.getAllEscorts({
-          featured: "true", // Use string "true" instead of boolean true
-          countryCode: countryCode || "ug", // Add country code filter
-          _t: Date.now(), // Cache busting parameter
-        }),
-        statsAPI.getCountryStats(countryCode || "ug"),
-      ]);
-
-      // Handle escorts response
-      if (escortsResponse.status === "fulfilled") {
-        console.log("Escorts API response:", escortsResponse.value.data);
-      } else {
-        console.error("Error fetching escorts:", escortsResponse.reason);
-        // Render empty state instead of hanging
+      // Fetch escorts first; stats will be fetched in background
+      let escorts = [];
+      let escortsResponseData = null;
+      try {
+        const escortsResp = await escortAPI.getAllEscorts({
+          featured: "true",
+          countryCode: countryCode || "ug",
+        });
+        escortsResponseData = escortsResp.data;
+        escorts = escortsResp.data.data?.escorts || escortsResp.data.data || [];
+      } catch (e) {
+        console.error("Error fetching escorts:", e);
         setEscortData({ escorts: [] });
         setError("Failed to load escorts");
-      }
-
-      // Handle stats response
-      if (statsResponse.status === "fulfilled") {
-        console.log("Stats API response:", statsResponse.value.data);
-      } else {
-        console.error("Error fetching stats:", statsResponse.reason);
-        // Don't set error for stats, it's not critical
-      }
-
-      // Filter and sort escort data
-      let escorts = [];
-      if (escortsResponse.status === "fulfilled") {
-        escorts =
-          escortsResponse.value.data.data?.escorts ||
-          escortsResponse.value.data.data ||
-          [];
       }
 
       // Filter: Only Premium/Elite and Featured escorts
       console.log("All escorts before filtering:", escorts);
 
       // If no escorts found, try fetching all escorts and filter on frontend
-      if (escorts.length === 0 && escortsResponse.status === "fulfilled") {
+      if (escorts.length === 0) {
         console.log(
           "No escorts found with featured filter, trying to fetch all escorts..."
         );
@@ -114,7 +92,6 @@ const Index = () => {
           const allEscortsResponse = await escortAPI.getAllEscorts({
             countryCode: countryCode || "ug",
             limit: 100, // Get more escorts to filter from
-            _t: Date.now(),
           });
           escorts =
             allEscortsResponse.data.data?.escorts ||
@@ -159,21 +136,22 @@ const Index = () => {
       });
 
       // Set escort data with filtered and sorted results
-      setEscortData({ ...escortsResponse.value.data.data, escorts });
+      const baseData = escortsResponseData?.data || {};
+      setEscortData({ ...baseData, escorts });
       setTotalEscorts(escorts.length);
       setTotalPages(Math.ceil(escorts.length / escortsPerPage));
 
-      // Set stats data
-      if (
-        statsResponse.status === "fulfilled" &&
-        statsResponse.value.data?.data?.stats
-      ) {
-        setStatsData(statsResponse.value.data.data.stats);
-      }
+      // Background fetch stats (do not block rendering)
+      statsAPI
+        .getCountryStats(countryCode || "ug")
+        .then((resp) => {
+          if (resp?.data?.data?.stats) setStatsData(resp.data.data.stats);
+        })
+        .catch((err) => {
+          console.warn("Stats fetch failed:", err?.message);
+        });
 
-      if (escortsResponse.status === "fulfilled") {
-        setError(null);
-      }
+      setError(null);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err);
@@ -182,23 +160,40 @@ const Index = () => {
     }
   }, [countryCode]);
 
-  // Fetch escorts and stats on component mount
+  // Hydrate from session cache for instant paint, then revalidate
   React.useEffect(() => {
     let canceled = false;
-    // Safety timeout to ensure UI doesn't hang
-    const safety = setTimeout(() => {
-      if (!canceled) {
-        setLoading(false);
+    try {
+      const cacheKey = `home_escorts_${countryCode || "ug"}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (!canceled && parsed?.escorts?.length) {
+          setEscortData(parsed);
+          setTotalEscorts(parsed.escorts.length);
+          setTotalPages(Math.ceil(parsed.escorts.length / escortsPerPage));
+          setLoading(false);
+        }
       }
-    }, 8000);
+    } catch {}
 
     fetchEscortData();
 
+    // Save to cache whenever escorts change
     return () => {
       canceled = true;
-      clearTimeout(safety);
     };
   }, [countryCode]);
+
+  // Persist to session cache when escortData changes
+  useEffect(() => {
+    if (escortData?.escorts) {
+      const cacheKey = `home_escorts_${countryCode || "ug"}`;
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(escortData));
+      } catch {}
+    }
+  }, [escortData, countryCode]);
 
   // Note: Removed auto-refresh to prevent cards from reloading themselves
   // Online status will be updated through socket connections and user activity
@@ -240,6 +235,26 @@ const Index = () => {
     const endIndex = startIndex + escortsPerPage;
     return escortData.escorts.slice(startIndex, endIndex);
   };
+
+  // Prefetch next slice of images to improve perceived speed
+  useEffect(() => {
+    if (!escortData?.escorts || escortData.escorts.length === 0) return;
+    const startIndex = currentPage * escortsPerPage;
+    const endIndex = startIndex + escortsPerPage;
+    const nextSlice = escortData.escorts.slice(startIndex, endIndex);
+    const urls = nextSlice
+      .map((e) => e?.gallery?.[0]?.url)
+      .filter(Boolean)
+      .slice(0, 12); // cap prefetch count
+    const imgs = urls.map((src) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.loading = "eager";
+      img.src = src;
+      return img;
+    });
+    setPrefetchedImages(imgs);
+  }, [escortData?.escorts, currentPage]);
 
   const handleContact = (escort, method) => {
     console.log("=== CONTACT DEBUG (INDEX) ===");
