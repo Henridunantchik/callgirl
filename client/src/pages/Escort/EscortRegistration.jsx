@@ -571,12 +571,13 @@ const EscortRegistration = () => {
       // Test API connection first
       try {
         console.log("🧪 Testing API connection...");
-        const apiUrl =
-          import.meta.env.VITE_API_URL ||
-          (window.location.hostname !== "localhost" &&
-          window.location.hostname !== "127.0.0.1"
-            ? "https://api.epicescorts.live"
-            : "http://localhost:5000");
+        const envUrl = import.meta.env.VITE_API_URL?.trim();
+        const apiUrl = envUrl
+          ? envUrl.replace(/\/+$/, "")
+          : window.location.hostname !== "localhost" &&
+            window.location.hostname !== "127.0.0.1"
+          ? "https://api.epicescorts.live"
+          : "http://localhost:5000";
         const testResponse = await fetch(`${apiUrl}/health`);
         console.log("✅ API Health Check:", testResponse.status);
 
