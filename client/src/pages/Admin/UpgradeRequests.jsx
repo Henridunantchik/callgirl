@@ -78,10 +78,13 @@ const UpgradeRequests = () => {
   const fetchUpgradeRequests = async () => {
     try {
       setLoading(true);
-      const response = await upgradeAPI.getAllRequests({
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        countryCode: countryFilter !== "all" ? countryFilter : undefined,
-      });
+      const response = await upgradeAPI.getAllRequests(
+        {
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          countryCode: countryFilter !== "all" ? countryFilter : undefined,
+        },
+        { timeout: 1200, batch: false }
+      );
 
       if (response.data?.data?.requests) {
         setRequests(response.data.data.requests);
@@ -96,7 +99,10 @@ const UpgradeRequests = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await upgradeAPI.getStats();
+      const response = await upgradeAPI.getStats({
+        timeout: 1200,
+        batch: false,
+      });
 
       if (response.data?.data) {
         const apiData = response.data.data;
