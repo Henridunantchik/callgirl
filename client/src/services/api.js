@@ -358,24 +358,37 @@ export const userAPI = {
 // Message API with real-time support
 export const messageAPI = {
   // Get conversations
-  getConversations: () => api.get("message/conversations"),
+  getConversations: (config = {}) => api.get("message/conversations", config),
   // Alias used across components (client, escort, admin)
-  getUserConversations: () => api.get("message/conversations"),
+  getUserConversations: (config = {}) =>
+    api.get("message/conversations", config),
 
   // Get messages for a conversation
-  getMessages: (conversationId, page = 1) =>
-    api.get(`message/conversation/${conversationId}`, {
-      params: { page },
-    }),
+  getMessages: (conversationId, page = 1, config = {}) =>
+    api.get(
+      `message/conversation/${conversationId}`,
+      Object.assign({ params: { page } }, config)
+    ),
+
+  // Explicit conversation helper
+  getConversation: (escortId, page = 1, config = {}) =>
+    api.get(
+      `message/conversation/${escortId}`,
+      Object.assign({ params: { page } }, config)
+    ),
 
   // Send message
   sendMessage: (data) => api.post("message/send", data),
 
   // Mark message as read
-  markAsRead: (messageId) => api.put(`message/${messageId}/read`),
+  markAsRead: (messageId) => api.put(`message/mark-read/${messageId}`),
+
+  // Mark entire conversation as read
+  markConversationAsRead: (escortId) =>
+    api.put(`message/mark-conversation-read/${escortId}`),
 
   // Delete message
-  deleteMessage: (messageId) => api.delete(`message/${messageId}`),
+  deleteMessage: (messageId) => api.delete(`message/delete/${messageId}`),
 
   // Start conversation
   startConversation: (data) => api.post("message/conversation", data),
