@@ -301,6 +301,9 @@ export const escortAPI = {
   // Get escort by ID
   getEscortById: (id) => api.get(`escort/profile/${id}`),
 
+  // Get escort profile by id or slug (server expects id; slug must be an id)
+  getEscortProfile: (idOrSlug) => api.get(`escort/profile/${idOrSlug}`),
+
   // Search escorts
   searchEscorts: (params) => api.get("escort/search", { params }),
 
@@ -318,10 +321,18 @@ export const escortAPI = {
     api.get(`escort/individual-stats/${escortId}`),
 
   // Upload gallery
-  uploadGallery: (id, formData) => api.post(`escort/media/${id}`, formData),
+  uploadGallery: (id, formData) =>
+    api.post(`escort/media/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      batch: false,
+    }),
 
   // Upload video
-  uploadVideo: (id, formData) => api.post(`escort/video/${id}`, formData),
+  uploadVideo: (id, formData) =>
+    api.post(`escort/video/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      batch: false,
+    }),
 
   // Delete gallery image
   deleteGalleryImage: (id, imageId) =>
@@ -340,7 +351,11 @@ export const userAPI = {
   updateProfile: (data) => api.put("user/profile", data),
 
   // Update user avatar
-  updateAvatar: (formData) => api.put("user/avatar", formData),
+  updateAvatar: (formData) =>
+    api.put("user/profile", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      batch: false,
+    }),
 
   // Delete user account
   deleteAccount: () => api.delete("user/account"),

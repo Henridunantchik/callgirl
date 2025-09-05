@@ -96,10 +96,14 @@ const EscortProfile = () => {
       console.log("🔍 Fetching escort profile for slug:", slug);
 
       // Decode URL if needed
-      const decodedSlug = decodeURIComponent(slug);
-      console.log("🔍 Decoded slug:", decodedSlug);
+      const decoded = decodeURIComponent(slug);
+      console.log("🔍 Decoded slug:", decoded);
 
-      const response = await escortAPI.getEscortProfile(decodedSlug);
+      // Our API expects an ObjectId; if we get a non-Id slug, try fallback search
+      const looksLikeId = /^[a-f\d]{24}$/i.test(decoded);
+      const response = looksLikeId
+        ? await escortAPI.getEscortProfile(decoded)
+        : await escortAPI.searchEscorts({ q: decoded, limit: 1 });
       console.log("✅ Escort profile fetched:", response.data);
       console.log(
         "🔍 Full response structure:",
@@ -117,7 +121,7 @@ const EscortProfile = () => {
       // Try different response structures
       let escortData = null;
 
-      if (response.data && response.data.escort) {
+      if (looksLikeId && response.data && response.data.escort) {
         console.log("✅ Found escort in response.data.escort");
         escortData = response.data.escort;
       } else if (
@@ -127,9 +131,10 @@ const EscortProfile = () => {
       ) {
         console.log("✅ Found escort in response.data.data.escort");
         escortData = response.data.data.escort;
-      } else if (response.data && response.data.data) {
+      } else if (!looksLikeId && response.data && response.data.data) {
         console.log("✅ Found escort in response.data.data");
-        escortData = response.data.data;
+        const arr = response.data.data.escorts || response.data.data;
+        escortData = Array.isArray(arr) ? arr[0] : arr;
       } else if (response.data) {
         console.log("✅ Found escort in response.data");
         escortData = response.data;
