@@ -5,12 +5,21 @@ import config from "../config/env.js";
  * @returns {string} The base URL for media files
  */
 export const getBaseUrl = () => {
-  // In production, use the production URL
-  if (config.NODE_ENV === "production") {
-    return "https://api.epicescorts.live";
+  const envBase = config.BASE_URL || process.env.RAILWAY_EXTERNAL_URL;
+
+  if (envBase && typeof envBase === "string") {
+    return envBase.replace(/\/$/, "");
   }
 
-  // In development, use localhost
+  if (config.NODE_ENV === "production") {
+    return (
+      "https://" +
+      (process.env.RAILWAY_STATIC_URL ||
+        process.env.RAILWAY_PUBLIC_DOMAIN ||
+        "localhost")
+    );
+  }
+
   return "http://localhost:5000";
 };
 

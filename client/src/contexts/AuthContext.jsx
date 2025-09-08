@@ -91,20 +91,29 @@ export const AuthProvider = ({ children }) => {
 
             // Try to get fresh user data from server (optional)
             try {
-              console.log("Attempting to get fresh user data...");
-              const response = await authAPI.getCurrentUser();
-              console.log("Fresh user data received:", response.data.user);
-              setUser(response.data.user);
-              localStorage.setItem("user", JSON.stringify(response.data.user));
+              console.log("Attempting to get fresh user data (with timeout)...");
+              const withTimeout = (p, ms = 1200) =>
+                Promise.race([
+                  p,
+                  new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("timeout")), ms)
+                  ),
+                ]);
+              const response = await withTimeout(authAPI.getCurrentUser());
+              if (response?.data?.user) {
+                console.log("Fresh user data received:", response.data.user);
+                setUser(response.data.user);
+                localStorage.setItem("user", JSON.stringify(response.data.user));
+              }
 
               // Start online status updates for authenticated users
               startOnlineStatusUpdates();
             } catch (error) {
               console.error(
-                "Server auth check failed, using stored data:",
-                error
+                "Server auth check failed or timed out, using stored data:",
+                error?.message || error
               );
-              // Keep using stored data if server check fails
+              // Keep using stored data if server check fails or times out
               // Still start online status updates
               startOnlineStatusUpdates();
             }

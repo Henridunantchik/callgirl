@@ -32,7 +32,7 @@ const computeBaseURL = () => {
 
   return isLocal
     ? "http://localhost:5000/api/"
-    : "https://api.epicescorts.live/api/";
+    : ensureApiSuffix(window.location.origin);
 };
 
 // Create axios instance with base configuration

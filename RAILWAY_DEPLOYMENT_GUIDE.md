@@ -19,12 +19,12 @@ Set these environment variables in your Railway dashboard:
 
 ```
 NODE_ENV=production
-PORT=5000
+# DO NOT set PORT on Railway; it is injected
 MONGODB_CONN=mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@<YOUR_CLUSTER>/<YOUR_DB>?retryWrites=true&w=majority&appName=<YOUR_APP_NAME>
 JWT_SECRET=<REPLACE_WITH_A_NEW_RANDOM_64+_CHAR_SECRET>
 FRONTEND_URL=https://epicescorts.live
 FRONTEND_URLS=https://epicescorts.live,https://callgirls.vercel.app,http://localhost:5173
-RAILWAY_STORAGE_PATH=/app/uploads
+RAILWAY_STORAGE_PATH=/data/uploads
 RAILWAY_EXTERNAL_URL=https://api.epicescorts.live
 BASE_URL=https://api.epicescorts.live
 ```
@@ -70,15 +70,15 @@ TWILIO_PHONE_NUMBER=+1234567890
 
 ### File Storage
 
-Railway uses `/app/uploads` as the default storage path (different from Render's `/opt/render/project/src/uploads`)
+Attach a Railway Volume to the API service and set `RAILWAY_STORAGE_PATH=/data/uploads`. This path will persist across deploys.
 
 ### Port Configuration
 
-Railway automatically sets the `PORT` environment variable, so your app will use the correct port.
+Railway automatically sets the `PORT` environment variable. Do not set it manually.
 
 ### URL Structure
 
-Your custom domain: `https://api.epicescorts.live`
+Set `BASE_URL` to your custom domain, e.g. `https://api.epicescorts.live`.
 
 ### Multiple Frontend Support
 
@@ -96,7 +96,7 @@ After deployment, your app should:
 
 - ✅ Start successfully on Railway
 - ✅ Connect to MongoDB properly
-- ✅ Serve files from `/app/uploads`
+- ✅ Serve files from `/data/uploads` (Railway Volume)
 - ✅ Handle requests on Railway's assigned port
 - ✅ Connect properly with both your frontend domains (epicescorts.live and callgirls.vercel.app)
 
