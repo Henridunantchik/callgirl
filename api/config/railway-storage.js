@@ -9,12 +9,14 @@ const railwayStorageConfig = {
 
   // Directory structure
   directories: {
-    images: "/app/uploads/images",
-    gallery: "/app/uploads/gallery",
-    videos: "/app/uploads/videos",
-    avatars: "/app/uploads/avatars",
-    documents: "/app/uploads/documents",
-    temp: "/app/uploads/temp",
+    images: `${process.env.RAILWAY_STORAGE_PATH || "/data/uploads"}/images`,
+    gallery: `${process.env.RAILWAY_STORAGE_PATH || "/data/uploads"}/gallery`,
+    videos: `${process.env.RAILWAY_STORAGE_PATH || "/data/uploads"}/videos`,
+    avatars: `${process.env.RAILWAY_STORAGE_PATH || "/data/uploads"}/avatars`,
+    documents: `${
+      process.env.RAILWAY_STORAGE_PATH || "/data/uploads"
+    }/documents`,
+    temp: `${process.env.RAILWAY_STORAGE_PATH || "/data/uploads"}/temp`,
   },
 
   // Initialize directories

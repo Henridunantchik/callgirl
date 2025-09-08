@@ -19,19 +19,16 @@ console.log("🔍 Checking Environment Variables...\n");
 
 const requiredVars = {
   // Database
-  MONGODB_URI: "MongoDB connection string",
+  MONGODB_CONN: "MongoDB connection string",
   JWT_SECRET: "JWT secret key for authentication",
 
   // Environment
   NODE_ENV: "Environment (development/production)",
 
-  // Render specific
-  RENDER_STORAGE_PATH: "Render storage path for uploads",
-  RENDER_EXTERNAL_URL: "Render external URL for file serving",
-
-  // Optional but recommended
-  PORT: "Server port (defaults to 5000)",
-  CORS_ORIGIN: "CORS allowed origins",
+  // Railway specific
+  RAILWAY_STORAGE_PATH: "Storage path for uploads (e.g., /data/uploads)",
+  BASE_URL: "Backend base URL (e.g., https://api.example.com)",
+  FRONTEND_URLS: "Comma-separated list of allowed frontend URLs",
 };
 
 const missingVars = [];
@@ -66,19 +63,14 @@ for (const [varName, description] of Object.entries(requiredVars)) {
       );
     }
 
-    if (
-      varName === "RENDER_STORAGE_PATH" &&
-      !value.includes("/opt/render/project/src/uploads")
-    ) {
+    if (varName === "RAILWAY_STORAGE_PATH" && !value.startsWith("/")) {
       warningVars.push(
-        `${varName} should contain '/opt/render/project/src/uploads' for production`
+        `${varName} should be an absolute path like '/data/uploads'`
       );
     }
 
-    if (varName === "RENDER_EXTERNAL_URL" && !value.startsWith("https://")) {
-      warningVars.push(
-        `${varName} should start with 'https://' for production`
-      );
+    if (varName === "BASE_URL" && !/^https?:\/\//i.test(value)) {
+      warningVars.push(`${varName} should start with 'http://' or 'https://'`);
     }
   }
 }
@@ -98,27 +90,10 @@ if (missingVars.length === 0) {
   missingVars.forEach((varName) => console.log(`      - ${varName}`));
 }
 
-console.log("\n🔧 Next Steps:");
-if (missingVars.length > 0) {
-  console.log("   1. Create a .env file in your project root");
-  console.log("   2. Add the missing variables");
-  console.log(
-    "   3. For Render deployment, set these in your Render dashboard"
-  );
-  console.log("   4. Restart your application");
-} else {
-  console.log("   1. Your environment is properly configured!");
-  console.log(
-    "   2. Make sure to set the same variables in your production environment"
-  );
-  console.log("   3. Test your file uploads and serving");
-}
-
 console.log("\n📝 Example .env file:");
 console.log("NODE_ENV=development");
-console.log("MONGODB_URI=mongodb://localhost:27017/your-database");
+console.log("MONGODB_CONN=mongodb://localhost:27017/your-database");
 console.log("JWT_SECRET=your-super-secret-jwt-key");
-console.log("RENDER_STORAGE_PATH=/opt/render/project/src/uploads");
-console.log("RENDER_EXTERNAL_URL=https://your-app.onrender.com");
-console.log("PORT=5000");
-console.log("CORS_ORIGIN=http://localhost:3000");
+console.log("RAILWAY_STORAGE_PATH=/data/uploads");
+console.log("BASE_URL=http://localhost:5000");
+console.log("FRONTEND_URLS=http://localhost:5173");

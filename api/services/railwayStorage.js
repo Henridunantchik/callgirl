@@ -9,9 +9,12 @@ const __dirname = path.dirname(__filename);
 
 class RailwayStorage {
   constructor() {
-    this.uploadPath = process.env.RAILWAY_STORAGE_PATH || "/app/uploads";
+    this.uploadPath =
+      process.env.RAILWAY_STORAGE_PATH ||
+      process.env.UPLOADS_PATH ||
+      "/data/uploads";
     this.baseUrl =
-      process.env.RAILWAY_EXTERNAL_URL || "https://api.epicescorts.live";
+      process.env.RAILWAY_EXTERNAL_URL || process.env.BASE_URL || "";
 
     // Initialize directories
     this.initializeDirectories();
@@ -67,7 +70,10 @@ class RailwayStorage {
       fs.writeFileSync(filePath, file.buffer);
 
       // Generate public URL
-      const publicUrl = `${this.baseUrl}/uploads/${category}/${filename}`;
+      const publicUrl = `${(this.baseUrl || "").replace(
+        /\/$/,
+        ""
+      )}/uploads/${category}/${filename}`;
 
       return {
         success: true,
@@ -122,7 +128,7 @@ class RailwayStorage {
 
     // Convert file path to URL
     const relativePath = filePath.replace(this.uploadPath, "");
-    return `${this.baseUrl}/uploads${relativePath}`;
+    return `${(this.baseUrl || "").replace(/\/$/, "")}/uploads${relativePath}`;
   }
 
   /**

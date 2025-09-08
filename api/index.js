@@ -227,18 +227,24 @@ app.use(
   fileFallbackMiddleware,
   // Use production path for Railway, local path for development
   config.NODE_ENV === "production"
-    ? express.static(process.env.RAILWAY_STORAGE_PATH || "/app/uploads")
+    ? express.static(process.env.RAILWAY_STORAGE_PATH || "/data/uploads")
     : express.static(path.join(__dirname, "uploads"))
 );
 
 // Health check endpoints - NO RATE LIMITING
 app.get("/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Escort Directory API is running",
+  const dbConnected = mongoose.connection.readyState === 1;
+  const statusCode =
+    dbConnected || config.NODE_ENV !== "production" ? 200 : 503;
+  res.status(statusCode).json({
+    success: statusCode === 200,
+    message: dbConnected
+      ? "Escort Directory API is running"
+      : "Database not connected",
     timestamp: new Date().toISOString(),
     environment: config.NODE_ENV,
     port: config.PORT,
+    dbConnected,
   });
 });
 
@@ -335,13 +341,18 @@ app.get("/debug/files", async (req, res) => {
         environment: config.NODE_ENV,
         backupManager: backupStats,
         storageHealth: healthData?.data || null,
-        uploadPath: process.env.RAILWAY_STORAGE_PATH || "/app/uploads",
-        baseUrl:
-          process.env.RAILWAY_EXTERNAL_URL || "https://api.epicescorts.live",
+        uploadPath: process.env.RAILWAY_STORAGE_PATH || "/data/uploads",
+        baseUrl: process.env.RAILWAY_EXTERNAL_URL || process.env.BASE_URL || "",
         directories: {
-          images: "/app/uploads/images",
-          gallery: "/app/uploads/gallery",
-          videos: "/app/uploads/videos",
+          images: `${
+            process.env.RAILWAY_STORAGE_PATH || "/data/uploads"
+          }/images`,
+          gallery: `${
+            process.env.RAILWAY_STORAGE_PATH || "/data/uploads"
+          }/gallery`,
+          videos: `${
+            process.env.RAILWAY_STORAGE_PATH || "/data/uploads"
+          }/videos`,
         },
         envVars: {
           NODE_ENV: process.env.NODE_ENV,
@@ -532,8 +543,11 @@ const startServer = async () => {
       console.log("✅ Connected to MongoDB");
     } catch (dbError) {
       console.error("❌ MongoDB connection failed:", dbError.message);
-      console.log("⚠️ Continuing without database connection...");
-      // Don't exit, let the server start without DB for now
+      if (config.NODE_ENV === "production") {
+        console.error("Exiting: DB is required in production");
+        process.exit(1);
+      }
+      console.log("⚠️ Continuing without database connection (non-production)");
     }
 
     // Create database indexes for performance (only if connected)

@@ -280,7 +280,7 @@ export const GoogleLogin = async (req, res, next) => {
         email: user.email,
         avatar: user.avatar,
       },
-      "88fe387324347ce1cd8213b17241b52c204d4170800170770a305968db3e04ca"
+      config.JWT_SECRET
     );
 
     res.cookie("access_token", token, {
