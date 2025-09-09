@@ -77,7 +77,8 @@ class RequestBatcher {
         // Single request, execute directly
         const { resolve, reject, config } = requests[0];
         try {
-          const response = await api(config);
+          const sanitized = { ...config, batch: false, _fromBatcher: true };
+          const response = await api(sanitized);
           resolve(response);
         } catch (error) {
           reject(error);
@@ -86,7 +87,9 @@ class RequestBatcher {
         // Multiple requests, batch them
         try {
           const responses = await Promise.all(
-            requests.map(({ config }) => api(config))
+            requests.map(({ config }) =>
+              api({ ...config, batch: false, _fromBatcher: true })
+            )
           );
           requests.forEach(({ resolve }, index) => resolve(responses[index]));
         } catch (error) {
@@ -109,7 +112,11 @@ api.interceptors.request.use(
     }
 
     // Enable request batching for GET requests
-    if (config.method === "get" && config.batch !== false) {
+    if (
+      config.method === "get" &&
+      config.batch !== false &&
+      !config._fromBatcher
+    ) {
       const batchKey = `${config.method}:${config.url}:${JSON.stringify(
         config.params
       )}`;
