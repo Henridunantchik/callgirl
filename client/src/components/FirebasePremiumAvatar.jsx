@@ -123,7 +123,7 @@ const FirebasePremiumAvatar = ({
                 : "bg-gray-500"
             }`}
           >
-            {subscriptionTier.charAt(0).toUpperCase()}
+            {(subscriptionTier?.[0] || "B").toUpperCase()}
           </div>
         </div>
       )}

@@ -628,7 +628,10 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
       );
 
       if (!result.success) {
-        throw new Error(`Upload failed: ${result.error}`);
+        console.error("Upload failed:", result.error);
+        return res
+          .status(502)
+          .json(new ApiResponse(502, null, "Storage upload failed"));
       }
 
       // Add media to escort's gallery or videos
@@ -673,7 +676,7 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
       );
     } catch (uploadError) {
       console.error("Railway storage upload error:", uploadError);
-      throw new ApiError(500, "Failed to upload media to storage");
+      throw new ApiError(502, "Failed to upload media to storage");
     }
   } catch (error) {
     next(error);
