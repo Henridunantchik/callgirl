@@ -16,6 +16,8 @@ const router = express.Router();
 router.post("/register", authRateLimiter, Register);
 router.post("/login", authRateLimiter, Login);
 router.post("/google-login", authRateLimiter, GoogleLogin);
+// Backward/compat alias expected by some clients
+router.post("/google", authRateLimiter, GoogleLogin);
 router.post("/logout", Logout);
 router.post("/refresh-token", authRateLimiter, RefreshToken);
 router.get("/me", authenticate, getCurrentUser);
