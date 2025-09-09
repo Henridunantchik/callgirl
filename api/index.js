@@ -136,7 +136,8 @@ app.use(
       console.log(`CORS: Rejected origin: ${origin}`);
       console.log(`CORS: Allowed origins: ${allowedOrigins.join(", ")}`);
 
-      return callback(new Error("Not allowed by CORS"));
+      // Do not throw; respond without CORS headers (browser will block), avoiding 5xx/502
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -150,6 +151,36 @@ app.use(
     ],
     exposedHeaders: ["Content-Length", "X-Foo", "X-Bar"],
     optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  })
+);
+
+// Ensure all preflight requests are handled with the same dynamic CORS config
+app.options(
+  "*",
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      const isAllowed = allowedOrigins.some((allowedUrl) => {
+        if (allowedUrl.includes("localhost"))
+          return origin.includes("localhost");
+        return origin === allowedUrl;
+      });
+      if (isAllowed) return callback(null, true);
+      console.log(`CORS (OPTIONS): Rejected origin: ${origin}`);
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "Cache-Control",
+    ],
+    optionsSuccessStatus: 200,
   })
 );
 app.use(cookieParser());
