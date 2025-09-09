@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import FavoriteButton from "./FavoriteButton";
+import FirebaseImageDisplay from "./FirebaseImageDisplay";
 import { useAuth } from "../contexts/AuthContext";
 import {
   hasPremiumAccess,
@@ -131,18 +132,17 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
       <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white h-[500px] flex flex-col">
         {/* Image Section */}
         <div className="relative h-96 overflow-hidden">
-          <img
+          <FirebaseImageDisplay
             src={
               imageError
                 ? fixedEscort.avatar || "/default-escort.jpg"
-                : fixedEscort.gallery?.[0]?.url || fixedEscort.avatar
+                : fixedEscort.gallery?.[0]?.url ||
+                  fixedEscort.gallery?.[0]?.src ||
+                  fixedEscort.avatar
             }
             alt={fixedEscort.alias || fixedEscort.name}
             className="w-full h-full object-cover object-center transition-transform duration-300"
             style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
-            onError={handleImageError}
-            loading="lazy"
-            decoding="async"
           />
 
           {/* Overlay with badges */}

@@ -228,6 +228,9 @@ export const escortAPI = {
   getEscortById: (id, config = {}) => api.get(`escort/profile/${id}`, config),
   getEscortProfile: (idOrSlug, config = {}) =>
     api.get(`escort/profile/${encodeURIComponent(idOrSlug)}`, config),
+  // Public, no-auth stats endpoint
+  getPublicEscortStats: (escortId, config = {}) =>
+    api.get(`escort/public-stats/${escortId}`, config),
   searchEscorts: (params, config = {}) =>
     api.get("escort/search", { params, ...config }),
   createEscortProfile: (data) => api.post("escort/create", data),

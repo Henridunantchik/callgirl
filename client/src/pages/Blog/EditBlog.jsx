@@ -226,7 +226,7 @@ const EditBlog = () => {
                     <div {...getRootProps()}>
                       <input {...getInputProps()} />
                       <div className="flex justify-center items-center w-36 h-28 border-2 border-dashed rounded">
-                        <img src={filePreview} />
+                        <FirebaseImageDisplay src={filePreview} />
                       </div>
                     </div>
                   )}

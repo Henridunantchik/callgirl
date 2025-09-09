@@ -17,7 +17,8 @@ const GeolocationTest = () => {
 
       {countryCode && (
         <div className="text-green-600 mb-4">
-          ✅ Detected Country: <strong>{countryCode.toUpperCase()}</strong>
+          ✅ Detected Country:{" "}
+          <strong>{(countryCode || "ug").toUpperCase()}</strong>
         </div>
       )}
 

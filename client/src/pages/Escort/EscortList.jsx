@@ -42,6 +42,7 @@ import { showToast } from "../../helpers/showToast";
 import { useAuth } from "../../contexts/AuthContext";
 import { RouteSignIn } from "../../helpers/RouteName";
 import { debounce } from "lodash";
+import FirebaseImageDisplay from "../../components/FirebaseImageDisplay";
 import RealTimeMessenger from "../../components/RealTimeMessenger";
 import {
   canShowContactInfo,
@@ -800,12 +801,14 @@ const EscortList = () => {
                     {/* Image - Moderately taller */}
                     <div className="relative h-64 bg-gray-200 overflow-hidden">
                       {escort.gallery && escort.gallery.length > 0 ? (
-                        <img
-                          src={escort.gallery[0].url}
+                        <FirebaseImageDisplay
+                          src={
+                            escort.gallery[0].url ||
+                            escort.gallery[0].src ||
+                            escort.avatar
+                          }
                           alt={escort.name}
                           className="w-full h-full object-cover"
-                          loading="lazy"
-                          decoding="async"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-500">
