@@ -92,6 +92,7 @@ app.use(
           "https://api.epicescorts.live",
           "https://callgirls.vercel.app",
           "https://epicescorts.live",
+          "https://www.epicescorts.live",
           "wss://api.epicescorts.live",
         ],
         imgSrc: ["'self'", "data:", "blob:", "https://*"],
