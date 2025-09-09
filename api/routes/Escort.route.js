@@ -51,7 +51,8 @@ router.post(
   authenticate,
   onlyEscort,
   uploadRateLimiter,
-  upload.array("gallery", 10),
+  // Accept any field name; controller filters appropriately
+  upload.any(),
   uploadGallery
 );
 
@@ -60,7 +61,8 @@ router.post(
   authenticate,
   onlyEscort,
   uploadRateLimiter,
-  upload.array("video", 5),
+  // Accept any field name; controller filters appropriately
+  upload.any(),
   uploadVideo
 );
 

@@ -15,7 +15,28 @@ const router = express.Router();
 
 // ===== USER ROUTES =====
 router.get("/profile", authenticate, getUser);
-router.put("/profile", authenticate, upload.single("avatar"), updateUser);
+// Accept avatar under any plausible field names for compatibility
+router.put(
+  "/profile",
+  authenticate,
+  (req, res, next) => {
+    // Try common field names seamlessly
+    const possible = ["avatar", "file", "image", "photo"];
+    // Use multer's any() to accept any single file, controller reads req.file
+    return upload.any()(req, res, () => {
+      // If multiple files present, pick the first plausible one as req.file
+      if (!req.file && Array.isArray(req.files) && req.files.length > 0) {
+        const pick =
+          req.files.find((f) =>
+            possible.includes((f.fieldname || "").toLowerCase())
+          ) || req.files[0];
+        req.file = pick;
+      }
+      next();
+    });
+  },
+  updateUser
+);
 router.delete("/account", authenticate, deleteUser);
 
 // Online status routes

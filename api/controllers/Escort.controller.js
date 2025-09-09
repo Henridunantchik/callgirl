@@ -697,6 +697,12 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
       throw new ApiError(400, "Gallery files are required");
     }
 
+    // If upload.any() was used, filter images by mimetype
+    const imageFiles = (req.files || []).filter((f) =>
+      (f.mimetype || "").startsWith("image/")
+    );
+    const filesToProcess = imageFiles.length > 0 ? imageFiles : req.files;
+
     const escort = await User.findById(userId);
     if (!escort || escort.role !== "escort") {
       throw new ApiError(404, "Escort not found");
@@ -714,7 +720,7 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
 
     const uploadedFiles = [];
 
-    for (const file of req.files) {
+    for (const file of filesToProcess) {
       try {
         // Upload to Firebase storage
         const result = await firebaseStorage.uploadFile(file, "gallery");
@@ -736,14 +742,7 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
         escort.gallery.push(mediaItem);
         uploadedFiles.push(mediaItem);
 
-        // Clean up local file - check if exists first
-        try {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        } catch (cleanupError) {
-          console.log("File cleanup warning:", cleanupError.message);
-        }
+        // No local cleanup needed with memory storage
       } catch (uploadError) {
         console.error(
           "Railway storage upload error for file:",
@@ -789,6 +788,12 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
       throw new ApiError(400, "Video files are required");
     }
 
+    // If upload.any() was used, filter videos by mimetype
+    const videoFiles = (req.files || []).filter((f) =>
+      (f.mimetype || "").startsWith("video/")
+    );
+    const filesToProcess = videoFiles.length > 0 ? videoFiles : req.files;
+
     const escort = await User.findById(userId);
     if (!escort || escort.role !== "escort") {
       throw new ApiError(404, "Escort not found");
@@ -806,10 +811,9 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
 
     const uploadedFiles = [];
 
-    for (const file of req.files) {
+    for (const file of filesToProcess) {
       try {
         console.log("Attempting to upload file:", file.originalname);
-        console.log("File path:", file.path);
         console.log("File size:", file.size);
 
         // Upload to Firebase storage
@@ -834,24 +838,13 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
         escort.videos.push(mediaItem);
         uploadedFiles.push(mediaItem);
 
-        // Clean up local file - check if exists first
-        try {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        } catch (cleanupError) {
-          console.log("File cleanup warning:", cleanupError.message);
-        }
+        // No local cleanup needed with memory storage
       } catch (uploadError) {
         console.error(
           "Railway storage upload error for file:",
           file.originalname,
           uploadError
         );
-        // Clean up local file even if upload fails
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
         // Continue with other files even if one fails
       }
     }
