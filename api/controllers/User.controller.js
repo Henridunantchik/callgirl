@@ -111,13 +111,11 @@ export const updateUser = async (req, res, next) => {
 
       if (!uploadResult.success) {
         console.error("Avatar upload error:", uploadResult.error);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to upload avatar",
-        });
+        // Continue without failing the whole profile update
+        // Keep existing avatar if upload fails
+      } else {
+        user.avatar = uploadResult.url;
       }
-
-      user.avatar = uploadResult.url;
     }
 
     await user.save();

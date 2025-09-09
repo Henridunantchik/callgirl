@@ -227,7 +227,7 @@ export const escortAPI = {
     api.get("escort/all", { params, batch: false }),
   getEscortById: (id, config = {}) => api.get(`escort/profile/${id}`, config),
   getEscortProfile: (idOrSlug, config = {}) =>
-    api.get(`escort/profile/${idOrSlug}`, config),
+    api.get(`escort/profile/${encodeURIComponent(idOrSlug)}`, config),
   searchEscorts: (params, config = {}) =>
     api.get("escort/search", { params, ...config }),
   createEscortProfile: (data) => api.post("escort/create", data),
