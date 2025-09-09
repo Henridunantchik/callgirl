@@ -423,15 +423,22 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
 
     // If not found by ObjectId or id is not a valid ObjectId, try by alias or name
     if (!escort) {
-      // Decode URL-encoded string
-      const decodedId = decodeURIComponent(id);
+      // Decode and normalize slug/id (trim, collapse spaces, replace hyphens/underscores with spaces)
+      const decodedId = decodeURIComponent(id || "");
+      const normalized = decodedId
+        .trim()
+        .replace(/[\-_]+/g, " ")
+        .replace(/\s+/g, " ");
       console.log("🔍 Decoded ID:", decodedId);
+      console.log("🔍 Normalized ID:", normalized);
 
       // Try exact match first
       escort = await User.findOne({
         $or: [
           { alias: decodedId, role: "escort", isActive: true },
           { name: decodedId, role: "escort", isActive: true },
+          { alias: normalized, role: "escort", isActive: true },
+          { name: normalized, role: "escort", isActive: true },
         ],
       }).select("-password");
 
@@ -448,6 +455,16 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
             },
             {
               name: { $regex: new RegExp(`^${decodedId}$`, "i") },
+              role: "escort",
+              isActive: true,
+            },
+            {
+              alias: { $regex: new RegExp(`^${normalized}$`, "i") },
+              role: "escort",
+              isActive: true,
+            },
+            {
+              name: { $regex: new RegExp(`^${normalized}$`, "i") },
               role: "escort",
               isActive: true,
             },
@@ -471,6 +488,16 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
             },
             {
               name: { $regex: decodedId, $options: "i" },
+              role: "escort",
+              isActive: true,
+            },
+            {
+              alias: { $regex: normalized, $options: "i" },
+              role: "escort",
+              isActive: true,
+            },
+            {
+              name: { $regex: normalized, $options: "i" },
               role: "escort",
               isActive: true,
             },

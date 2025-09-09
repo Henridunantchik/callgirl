@@ -1661,12 +1661,10 @@ const EscortProfileEdit = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {user.gallery.map((photo, index) => (
                         <div key={index} className="relative group">
-                          <img
-                            src={photo.url}
+                          <FirebaseImageDisplay
+                            src={photo.url || photo.filePath || photo.src}
                             alt={`Gallery photo ${index + 1}`}
                             className="w-full h-24 object-contain rounded bg-gray-50"
-                            loading="lazy"
-                            decoding="async"
                           />
                           <Button
                             type="button"

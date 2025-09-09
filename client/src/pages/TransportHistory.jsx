@@ -22,6 +22,7 @@ import {
   Download,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import FirebaseImageDisplay from "../components/FirebaseImageDisplay";
 import { showToast } from "../helpers/showToast";
 
 const TransportHistory = () => {
@@ -281,7 +282,7 @@ const TransportHistory = () => {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <img
+                    <FirebaseImageDisplay
                       src={transport.escort?.profileImage || "/user.png"}
                       alt={transport.escort?.firstName}
                       className="w-12 h-12 rounded-full object-cover"

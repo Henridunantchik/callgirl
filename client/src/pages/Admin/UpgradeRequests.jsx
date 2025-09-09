@@ -41,6 +41,7 @@ import {
 import { upgradeAPI, messageAPI } from "../../services/api";
 import { showToast } from "../../helpers/showToast";
 import Loading from "../../components/Loading";
+import FirebaseImageDisplay from "../../components/FirebaseImageDisplay";
 import { useAuth } from "../../contexts/AuthContext";
 
 const UpgradeRequests = () => {
@@ -522,15 +523,10 @@ Admin Team`;
                       <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center">
                           {request.escort?.avatar ? (
-                            <img
+                            <FirebaseImageDisplay
                               src={request.escort.avatar}
                               alt={request.escortName}
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                // Fallback to initial if image fails to load
-                                e.target.style.display = "none";
-                                e.target.nextSibling.style.display = "flex";
-                              }}
                             />
                           ) : null}
                           <div
@@ -954,14 +950,10 @@ Admin Team`;
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center">
                     {quickRequest.escort?.avatar ? (
-                      <img
+                      <FirebaseImageDisplay
                         src={quickRequest.escort.avatar}
                         alt={quickRequest.escortName}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                          e.target.nextSibling.style.display = "flex";
-                        }}
                       />
                     ) : null}
                     <div

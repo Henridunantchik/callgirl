@@ -157,7 +157,9 @@ const FirebaseEscortCard = ({
                 <MapPin className="w-3 h-3 mr-1" />
                 <span className="truncate">{location}</span>
                 {country && (
-                  <span className="ml-1">({country.toUpperCase()})</span>
+                  <span className="ml-1">
+                    ({(country || "").toUpperCase()})
+                  </span>
                 )}
               </div>
             )}

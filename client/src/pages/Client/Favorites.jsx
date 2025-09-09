@@ -23,6 +23,7 @@ import { favoriteAPI } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { showToast } from "../../helpers/showToast";
 import Loading from "../../components/Loading";
+import FirebaseImageDisplay from "../../components/FirebaseImageDisplay";
 
 const Favorites = () => {
   const navigate = useNavigate();
@@ -137,17 +138,14 @@ const Favorites = () => {
                       className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                     >
                       <div className="relative">
-                        <img
+                        <FirebaseImageDisplay
                           src={
-                            escort.avatar ||
                             escort.gallery?.[0]?.url ||
-                            "/default-avatar.jpg"
+                            escort.gallery?.[0]?.src ||
+                            escort.avatar
                           }
                           alt={escort.name || escort.alias}
                           className="w-full h-64 object-cover"
-                          onError={(e) => {
-                            e.target.src = "/default-avatar.jpg";
-                          }}
                         />
                         <div className="absolute top-3 right-3">
                           <Button

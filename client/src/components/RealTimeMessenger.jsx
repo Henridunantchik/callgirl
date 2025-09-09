@@ -7,6 +7,7 @@ import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { FirebasePremiumAvatar } from "./firebase";
+import FirebaseImageDisplay from "./FirebaseImageDisplay";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import {
   MessageCircle,
@@ -920,31 +921,20 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                             }`}
                           >
                             {/* Check if content is an image URL */}
-                            {msg.content &&
-                            msg.content.startsWith("http") &&
-                            (msg.content.includes(
-                              "firebasestorage.googleapis.com"
-                            ) ||
-                              msg.content.includes(".jpg") ||
-                              msg.content.includes(".jpeg") ||
-                              msg.content.includes(".png") ||
-                              msg.content.includes(".gif") ||
-                              msg.content.includes(".webp")) ? (
+                            {msg.type === "image" ||
+                            (msg.content &&
+                              msg.content.startsWith("http") &&
+                              (msg.content.includes(
+                                "firebasestorage.googleapis.com"
+                              ) ||
+                                msg.content.match(
+                                  /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i
+                                ))) ? (
                               <div className="space-y-2">
-                                <img
+                                <FirebaseImageDisplay
                                   src={msg.content}
                                   alt="Message image"
                                   className="max-w-full max-h-48 rounded-lg object-cover"
-                                  onError={(e) => {
-                                    // If image fails to load, show as text
-                                    e.target.style.display = "none";
-                                    const textDiv =
-                                      document.createElement("div");
-                                    textDiv.className =
-                                      "text-sm leading-relaxed";
-                                    textDiv.textContent = msg.content;
-                                    e.target.parentNode.appendChild(textDiv);
-                                  }}
                                 />
                               </div>
                             ) : (

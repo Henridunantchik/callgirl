@@ -336,12 +336,12 @@ const EscortProfile = () => {
       {/* Cover Photo */}
       <div className="relative h-80 bg-gradient-to-r from-purple-500 to-pink-500">
         {escort.gallery && escort.gallery.length > 0 ? (
-          <img
-            src={escort.gallery[0].url}
-            alt="Cover"
-            className="w-full h-full object-cover"
-            loading="eager"
-            decoding="async"
+          <FirebaseGallery
+            images={escort.gallery}
+            videos={escort.videos || []}
+            className=""
+            maxDisplay={1}
+            showLightbox={false}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
@@ -556,8 +556,8 @@ const EscortProfile = () => {
                           className="relative group cursor-pointer"
                           onClick={() => handleImageClick(index)}
                         >
-                          <img
-                            src={photo.url}
+                          <FirebaseImageDisplay
+                            src={photo.url || photo.filePath || photo.src}
                             alt={`${escort.alias || escort.name} - Photo ${
                               index + 1
                             }`}
