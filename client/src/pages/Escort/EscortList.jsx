@@ -422,11 +422,13 @@ const EscortList = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             {category
-              ? `${
-                  category.charAt(0).toUpperCase() + category.slice(1)
+              ? `${(category?.[0] || "").toUpperCase()}${
+                  category?.slice?.(1) || ""
                 } Escorts`
               : city
-              ? `Escorts in ${city.charAt(0).toUpperCase() + city.slice(1)}`
+              ? `Escorts in ${(city?.[0] || "").toUpperCase()}${
+                  city?.slice?.(1) || ""
+                }`
               : "Find Escorts"}
           </h1>
           {(category || city) && (

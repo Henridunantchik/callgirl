@@ -226,7 +226,8 @@ const UpgradeProfile = () => {
             <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                 Current Plan:{" "}
-                {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
+                {(currentPlan?.[0] || "").toUpperCase() +
+                  (currentPlan?.slice?.(1) || "")}
               </Badge>
             </div>
 
@@ -340,13 +341,17 @@ const UpgradeProfile = () => {
                             </div>
                             <div className="text-sm text-gray-700">
                               <strong>Requested Plan:</strong>{" "}
-                              {request.requestedPlan.charAt(0).toUpperCase() +
-                                request.requestedPlan.slice(1)}
+                              {(
+                                request.requestedPlan?.[0] || ""
+                              ).toUpperCase() +
+                                (request.requestedPlan?.slice?.(1) || "")}
                             </div>
                             <div className="text-sm text-gray-700">
                               <strong>Contact Method:</strong>{" "}
-                              {request.contactMethod.charAt(0).toUpperCase() +
-                                request.contactMethod.slice(1)}
+                              {(
+                                request.contactMethod?.[0] || ""
+                              ).toUpperCase() +
+                                (request.contactMethod?.slice?.(1) || "")}
                             </div>
 
                             {/* Payment Required Status */}
