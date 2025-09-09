@@ -538,7 +538,7 @@ Admin Team`;
                               request.escort?.avatar ? "hidden" : ""
                             }`}
                           >
-                            {request.escortName?.charAt(0).toUpperCase() || "E"}
+                            {(request.escortName?.[0] || "E").toUpperCase()}
                           </div>
                         </div>
 
@@ -969,7 +969,7 @@ Admin Team`;
                         quickRequest.escort?.avatar ? "hidden" : ""
                       }`}
                     >
-                      {quickRequest.escortName?.charAt(0).toUpperCase() || "E"}
+                      {(quickRequest.escortName?.[0] || "E").toUpperCase()}
                     </div>
                   </div>
                   <div className="text-sm font-medium text-gray-700">

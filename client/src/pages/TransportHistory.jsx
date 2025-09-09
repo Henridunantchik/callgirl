@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
-import { 
-  Car, 
-  MapPin, 
-  Phone, 
-  Calendar, 
+import {
+  Car,
+  MapPin,
+  Phone,
+  Calendar,
   DollarSign,
   CheckCircle,
   Clock,
   XCircle,
   AlertCircle,
   Filter,
-  Download
+  Download,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { showToast } from "../helpers/showToast";
@@ -33,11 +38,14 @@ const TransportHistory = () => {
 
   const fetchTransportHistory = async () => {
     try {
-      const response = await fetch(`/api/transport/history?status=${filter !== 'all' ? filter : ''}`, {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await fetch(
+        `/api/transport/history?status=${filter !== "all" ? filter : ""}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       const data = await response.json();
 
@@ -58,7 +66,7 @@ const TransportHistory = () => {
     try {
       const response = await fetch("/api/transport/stats", {
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
@@ -87,7 +95,7 @@ const TransportHistory = () => {
     return (
       <Badge className={config.color}>
         <Icon className="w-3 h-3 mr-1" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {(status?.[0] || "").toUpperCase() + (status?.slice?.(1) || "")}
       </Badge>
     );
   };
@@ -117,7 +125,7 @@ const TransportHistory = () => {
       "Destination Location",
     ];
 
-    const csvData = transports.map(transport => [
+    const csvData = transports.map((transport) => [
       formatDate(transport.createdAt),
       `${transport.escort?.firstName} ${transport.escort?.lastName}`,
       transport.city,
@@ -132,14 +140,16 @@ const TransportHistory = () => {
     ]);
 
     const csvContent = [headers, ...csvData]
-      .map(row => row.map(cell => `"${cell}"`).join(","))
+      .map((row) => row.map((cell) => `"${cell}"`).join(","))
       .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `transport_history_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `transport_history_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -158,7 +168,9 @@ const TransportHistory = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Transport History</h1>
-        <p className="text-gray-600">View all your transport money transactions</p>
+        <p className="text-gray-600">
+          View all your transport money transactions
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -169,7 +181,9 @@ const TransportHistory = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Transports</p>
-                  <p className="text-2xl font-bold">{stats.summary.totalTransports}</p>
+                  <p className="text-2xl font-bold">
+                    {stats.summary.totalTransports}
+                  </p>
                 </div>
                 <Car className="h-8 w-8 text-blue-600" />
               </div>
@@ -181,7 +195,9 @@ const TransportHistory = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.summary.completedTransports}</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {stats.summary.completedTransports}
+                  </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
@@ -193,7 +209,9 @@ const TransportHistory = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Success Rate</p>
-                  <p className="text-2xl font-bold">{stats.summary.completionRate}%</p>
+                  <p className="text-2xl font-bold">
+                    {stats.summary.completionRate}%
+                  </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-yellow-600" />
               </div>
@@ -223,16 +241,18 @@ const TransportHistory = () => {
           <span className="text-sm font-medium">Filter:</span>
         </div>
         <div className="flex gap-2">
-          {["all", "pending", "processing", "completed", "failed"].map((status) => (
-            <Button
-              key={status}
-              variant={filter === status ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(status)}
-            >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </Button>
-          ))}
+          {["all", "pending", "processing", "completed", "failed"].map(
+            (status) => (
+              <Button
+                key={status}
+                variant={filter === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(status)}
+              >
+                {(status?.[0] || "").toUpperCase() + (status?.slice?.(1) || "")}
+              </Button>
+            )
+          )}
         </div>
       </div>
 
@@ -242,18 +262,22 @@ const TransportHistory = () => {
           <Card>
             <CardContent className="p-8 text-center">
               <Car className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No transport transactions found</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                No transport transactions found
+              </h3>
               <p className="text-gray-600">
-                {filter === "all" 
+                {filter === "all"
                   ? "You haven't made any transport payments yet."
-                  : `No ${filter} transport transactions found.`
-                }
+                  : `No ${filter} transport transactions found.`}
               </p>
             </CardContent>
           </Card>
         ) : (
           transports.map((transport) => (
-            <Card key={transport._id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={transport._id}
+              className="hover:shadow-md transition-shadow"
+            >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -264,7 +288,8 @@ const TransportHistory = () => {
                     />
                     <div>
                       <h3 className="font-semibold">
-                        {transport.escort?.firstName} {transport.escort?.lastName}
+                        {transport.escort?.firstName}{" "}
+                        {transport.escort?.lastName}
                       </h3>
                       <p className="text-sm text-gray-600">{transport.city}</p>
                     </div>
@@ -279,23 +304,42 @@ const TransportHistory = () => {
                       <span className="text-sm font-medium">Locations</span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p><strong>From:</strong> {transport.pickupLocation}</p>
-                      <p><strong>To:</strong> {transport.destinationLocation}</p>
+                      <p>
+                        <strong>From:</strong> {transport.pickupLocation}
+                      </p>
+                      <p>
+                        <strong>To:</strong> {transport.destinationLocation}
+                      </p>
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <DollarSign className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm font-medium">Amount Breakdown</span>
+                      <span className="text-sm font-medium">
+                        Amount Breakdown
+                      </span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p><strong>Transport:</strong> {transport.transportAmount.toLocaleString()} UGX</p>
-                      <p><strong>Platform Fee:</strong> {transport.platformCommission.toLocaleString()} UGX</p>
-                      <p><strong>PesaPal Fee:</strong> {transport.pesapalCommission.toLocaleString()} UGX</p>
-                      <p><strong>Total:</strong> {transport.totalAmount.toLocaleString()} UGX</p>
+                      <p>
+                        <strong>Transport:</strong>{" "}
+                        {transport.transportAmount.toLocaleString()} UGX
+                      </p>
+                      <p>
+                        <strong>Platform Fee:</strong>{" "}
+                        {transport.platformCommission.toLocaleString()} UGX
+                      </p>
+                      <p>
+                        <strong>PesaPal Fee:</strong>{" "}
+                        {transport.pesapalCommission.toLocaleString()} UGX
+                      </p>
+                      <p>
+                        <strong>Total:</strong>{" "}
+                        {transport.totalAmount.toLocaleString()} UGX
+                      </p>
                       <p className="text-green-600 font-medium">
-                        <strong>Escort Receives:</strong> {transport.escortAmount.toLocaleString()} UGX
+                        <strong>Escort Receives:</strong>{" "}
+                        {transport.escortAmount.toLocaleString()} UGX
                       </p>
                     </div>
                   </div>

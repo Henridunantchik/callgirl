@@ -77,7 +77,8 @@ const FirebaseEscortCard = ({
         className={`text-xs px-2 py-1 border-2 ${config.color}`}
       >
         <IconComponent className="w-3 h-3 mr-1" />
-        {tier.charAt(0).toUpperCase() + tier.slice(1)}
+        {(tier && tier[0] ? tier[0].toUpperCase() : "B") +
+          (tier?.slice ? tier.slice(1) : "")}
       </Badge>
     );
   };
