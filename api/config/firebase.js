@@ -8,7 +8,8 @@ const firebaseConfig = {
     process.env.FIREBASE_API_KEY || "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   authDomain: "tusiwawasahau.firebaseapp.com",
   projectId: "tusiwawasahau",
-  storageBucket: "tusiwawasahau.firebasestorage.app",
+  // Correct bucket domain for Firebase Storage (googleapis domain)
+  storageBucket: "tusiwawasahau.appspot.com",
   messagingSenderId: "404272240278",
   appId: "1:404272240278:web:6fe4c3058ee8b63a9dd4b7",
 };

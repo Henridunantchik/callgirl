@@ -20,6 +20,8 @@ const router = express.Router();
 // ===== UPGRADE REQUEST ROUTES =====
 router.post("/create", authenticate, onlyEscort, createUpgradeRequest);
 router.get("/my-requests", authenticate, onlyEscort, getEscortUpgradeRequests);
+// Backward-compat alias expected by some clients
+router.get("/user", authenticate, onlyEscort, getEscortUpgradeRequests);
 router.get("/all", authenticate, onlyAdmin, getAllUpgradeRequests);
 router.get("/stats", authenticate, onlyAdmin, getUpgradeStats);
 router.put("/approve/:id", authenticate, onlyAdmin, approveUpgradeRequest);
@@ -38,5 +40,7 @@ router.get(
   onlyEscort,
   getSubscriptionStatus
 );
+// Backward-compat alias expected by some clients
+router.get("/status", authenticate, onlyEscort, getSubscriptionStatus);
 
 export default router;
