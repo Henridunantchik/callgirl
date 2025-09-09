@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
 import firebaseStorage from "../services/firebaseStorage.js";
+import railwayStorage from "../services/railwayStorage.js";
 import sharp from "sharp";
 import railwayStorage from "../services/railwayStorage.js";
 import config from "../config/env.js";
@@ -649,16 +650,28 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
         }
       }
 
-      const result = await firebaseStorage.uploadFile(
+      let result = await firebaseStorage.uploadFile(
         fileToUpload,
         mediaType === "photo" ? "gallery" : "video"
       );
 
       if (!result.success) {
-        console.error("Upload failed:", result.error);
-        return res
-          .status(502)
-          .json(new ApiResponse(502, null, "Storage upload failed"));
+        console.warn(
+          "Firebase upload failed, attempting Railway fallback:",
+          result.error
+        );
+        const fallback = await railwayStorage.uploadFile(
+          fileToUpload,
+          mediaType === "photo" ? "gallery" : "videos"
+        );
+        if (fallback.success) {
+          result = fallback;
+        } else {
+          console.error("Upload failed:", result.error, fallback.error);
+          return res
+            .status(502)
+            .json(new ApiResponse(502, null, "Storage upload failed"));
+        }
       }
 
       // Add media to escort's gallery or videos

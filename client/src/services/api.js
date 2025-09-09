@@ -293,13 +293,13 @@ export const upgradeAPI = {
     api.get("upgrade-request/all", { params, ...config }),
   getStats: (config = {}) => api.get("upgrade-request/stats", config),
   approveRequest: (id, notes) =>
-    api.put(`upgrade-request/${id}/approve`, { notes }),
+    api.put(`upgrade-request/approve/${id}`, { adminNotes: notes }),
   rejectRequest: (id, notes) =>
-    api.put(`upgrade-request/${id}/reject`, { notes }),
+    api.put(`upgrade-request/reject/${id}`, { adminNotes: notes }),
   sendPaymentInstructions: (id, payload) =>
-    api.post(`upgrade-request/${id}/payment-instructions`, payload),
+    api.put(`upgrade-request/send-payment/${id}`, payload),
   confirmPayment: (id, payload) =>
-    api.post(`upgrade-request/${id}/confirm-payment`, payload),
+    api.put(`upgrade-request/confirm-payment/${id}`, payload),
 };
 
 // Auth API
