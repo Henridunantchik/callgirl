@@ -13,7 +13,7 @@ const FirebaseImageDisplay = ({
   ...props
 }) => {
   const [imageSrc, setImageSrc] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -23,7 +23,6 @@ const FirebaseImageDisplay = ({
       return;
     }
 
-    setLoading(true);
     setError(false);
 
     // Handle different URL formats
@@ -47,10 +46,16 @@ const FirebaseImageDisplay = ({
   }, [src, fallbackSrc]);
 
   const handleImageError = () => {
+    console.log("Image failed to load:", imageSrc);
     if (imageSrc !== fallbackSrc) {
       setError(true);
       setImageSrc(fallbackSrc);
     }
+  };
+
+  const handleImageLoad = () => {
+    console.log("Image loaded successfully:", imageSrc);
+    setError(false);
   };
 
   const handleClick = () => {
@@ -146,6 +151,7 @@ const FirebaseImageDisplay = ({
           }`}
           onClick={handleClick}
           onError={handleImageError}
+          onLoad={handleImageLoad}
         />
       )}
 

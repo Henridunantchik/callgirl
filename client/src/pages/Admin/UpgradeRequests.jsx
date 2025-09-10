@@ -46,7 +46,7 @@ import { useAuth } from "../../contexts/AuthContext";
 
 const UpgradeRequests = () => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState([]);
   const [stats, setStats] = useState({
     totalRequests: 0,

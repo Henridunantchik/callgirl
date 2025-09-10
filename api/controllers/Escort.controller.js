@@ -1193,8 +1193,8 @@ export const createEscortProfile = asyncHandler(async (req, res, next) => {
 
       for (const file of files) {
         try {
-          // Upload to Firebase storage
-          const result = await firebaseStorage.uploadFile(file, "gallery");
+          // Upload to Railway storage
+          const result = await railwayStorage.uploadFile(file, "gallery");
 
           if (!result.success) {
             throw new Error(`Upload failed: ${result.error}`);

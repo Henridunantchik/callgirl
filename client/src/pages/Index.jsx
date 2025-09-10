@@ -43,7 +43,7 @@ const Index = () => {
   // Fetch escort data from API
   const [escortData, setEscortData] = useState(null);
   const [statsData, setStatsData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Pagination state

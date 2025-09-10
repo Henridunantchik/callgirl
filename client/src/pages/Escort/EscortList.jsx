@@ -74,7 +74,7 @@ const EscortList = () => {
   const currencySymbol = getCurrencySymbol(countryCode);
 
   const [escorts, setEscorts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [filters, setFilters] = useState({
