@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Normalize and compute API base URL safely
 const computeBaseURL = () => {
-  const envUrl = import.meta.env.VITE_API_URL?.trim();
+  const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
   // Helper to ensure we end up with .../api (single /) and trailing slash
   const ensureApiSuffix = (url) => {
@@ -143,7 +143,9 @@ api.interceptors.request.use(
     // Always log the baseURL and URL for debugging
     console.log(`🔍 DEBUG - BaseURL: "${config.baseURL}"`);
     console.log(`🔍 DEBUG - URL: "${config.url}"`);
-    console.log(`🔍 DEBUG - VITE_API_URL: "${import.meta.env.VITE_API_URL}"`);
+    console.log(
+      `🔍 DEBUG - VITE_API_BASE_URL: "${import.meta.env.VITE_API_BASE_URL}"`
+    );
     console.log(`🔍 DEBUG - Final URL: "${config.baseURL}${config.url}"`);
 
     return config;

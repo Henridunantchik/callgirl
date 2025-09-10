@@ -3,10 +3,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
-import firebaseStorage from "../services/firebaseStorage.js";
 import railwayStorage from "../services/railwayStorage.js";
 import sharp from "sharp";
-import railwayStorage from "../services/railwayStorage.js";
 import config from "../config/env.js";
 import { generateToken } from "../utils/security.js";
 import fs from "fs";
@@ -650,28 +648,16 @@ export const uploadMedia = asyncHandler(async (req, res, next) => {
         }
       }
 
-      let result = await firebaseStorage.uploadFile(
+      const result = await railwayStorage.uploadFile(
         fileToUpload,
-        mediaType === "photo" ? "gallery" : "video"
+        mediaType === "photo" ? "gallery" : "videos"
       );
 
       if (!result.success) {
-        console.warn(
-          "Firebase upload failed, attempting Railway fallback:",
-          result.error
-        );
-        const fallback = await railwayStorage.uploadFile(
-          fileToUpload,
-          mediaType === "photo" ? "gallery" : "videos"
-        );
-        if (fallback.success) {
-          result = fallback;
-        } else {
-          console.error("Upload failed:", result.error, fallback.error);
-          return res
-            .status(502)
-            .json(new ApiResponse(502, null, "Storage upload failed"));
-        }
+        console.error("Upload failed:", result.error);
+        return res
+          .status(502)
+          .json(new ApiResponse(502, null, "Storage upload failed"));
       }
 
       // Add media to escort's gallery or videos
@@ -766,7 +752,7 @@ export const uploadGallery = asyncHandler(async (req, res, next) => {
     for (const file of filesToProcess) {
       try {
         // Upload to Firebase storage
-        const result = await firebaseStorage.uploadFile(file, "gallery");
+        const result = await railwayStorage.uploadFile(file, "gallery");
 
         if (!result.success) {
           throw new Error(`Failed to upload file: ${result.error}`);
@@ -860,7 +846,7 @@ export const uploadVideo = asyncHandler(async (req, res, next) => {
         console.log("File size:", file.size);
 
         // Upload to Firebase storage
-        const result = await firebaseStorage.uploadFile(file, "video");
+        const result = await railwayStorage.uploadFile(file, "videos");
 
         if (!result.success) {
           throw new Error(`Failed to upload file: ${result.error}`);
