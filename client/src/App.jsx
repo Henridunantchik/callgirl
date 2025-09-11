@@ -145,7 +145,7 @@ const App = () => {
               </Route>
 
               {/* Public Escort Profile Route - Must be AFTER authenticated routes */}
-              <Route path="escort/:slug" element={<EscortProfile />} />
+              <Route path="escort/:id" element={<EscortProfile />} />
 
               {/* Legal Pages */}
               <Route path="legal/privacy" element={<PrivacyPolicy />} />
@@ -510,8 +510,8 @@ const App = () => {
 
             {/* Dynamic Routes - These need to be last to catch any remaining patterns */}
             <Route
-              path="/escort/:slug"
-              element={<Navigate to="/ug/escort/:slug" replace />}
+              path="/escort/:id"
+              element={<Navigate to="/ug/escort/:id" replace />}
             />
             <Route
               path="/location/:city"

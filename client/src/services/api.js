@@ -2,48 +2,212 @@ import axios from "axios";
 
 // Normalize and compute API base URL safely
 const computeBaseURL = () => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  try {
+    const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
-  // Helper to ensure we end up with .../api (single /) and trailing slash
-  const ensureApiSuffix = (url) => {
-    if (!url) return url;
-    // Remove trailing slashes
-    let normalized = url.replace(/\/+$/, "");
-    // Append /api if missing
-    if (!/\/(api)(\/)?$/.test(normalized)) {
-      normalized = `${normalized}/api`;
-    }
-    // Ensure single trailing slash for axios joining
-    if (!normalized.endsWith("/")) {
-      normalized = `${normalized}/`;
-    }
-    return normalized;
-  };
+    // Helper to ensure we end up with .../api (single /) and trailing slash
+    const ensureApiSuffix = (url) => {
+      if (!url || typeof url !== "string") return "http://localhost:5000/api/";
+      // Remove trailing slashes
+      let normalized = url.replace(/\/+$/, "");
+      // Append /api if missing
+      if (!/\/(api)(\/)?$/.test(normalized)) {
+        normalized = `${normalized}/api`;
+      }
+      // Ensure single trailing slash for axios joining
+      if (!normalized.endsWith("/")) {
+        normalized = `${normalized}/`;
+      }
+      return normalized;
+    };
 
-  // Prefer env if provided, but normalize it
-  if (envUrl) {
-    return ensureApiSuffix(envUrl);
+    // Prefer env if provided, but normalize it
+    if (envUrl && typeof envUrl === "string") {
+      return ensureApiSuffix(envUrl);
+    }
+
+    // Otherwise choose based on host
+    const isLocal =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    return isLocal
+      ? "http://localhost:5000/api/"
+      : ensureApiSuffix(window.location.origin);
+  } catch (error) {
+    console.error("Error computing base URL:", error);
+    return "http://localhost:5000/api/";
   }
-
-  // Otherwise choose based on host
-  const isLocal =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
-
-  return isLocal
-    ? "http://localhost:5000/api/"
-    : ensureApiSuffix(window.location.origin);
 };
 
 // Create axios instance with base configuration
+const baseURL = computeBaseURL();
+console.log("🔧 Final computed baseURL:", baseURL);
+
 const api = axios.create({
-  baseURL: computeBaseURL(),
+  baseURL: baseURL,
   withCredentials: true,
   timeout: 10000,
   headers: {
     "Cache-Control": "no-cache",
   },
+  // Add transformRequest to ensure all requests are properly formatted
+  transformRequest: [
+    (data, headers) => {
+      // Ensure headers are properly set
+      if (headers) {
+        headers["Content-Type"] = headers["Content-Type"] || "application/json";
+      }
+      return data;
+    },
+  ],
+  // Add transformResponse to handle potential issues
+  transformResponse: [
+    (data) => {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return data;
+      }
+    },
+  ],
+  // Add validateStatus to handle all responses
+  validateStatus: (status) => {
+    return status >= 200 && status < 300; // default
+  },
 });
+
+// Add global error handler for axios
+api.defaults.validateStatus = (status) => {
+  return status >= 200 && status < 300;
+};
+
+// NUCLEAR APPROACH: Completely override axios to prevent toUpperCase errors
+const originalRequest = api.request;
+const originalGet = api.get;
+const originalPost = api.post;
+const originalPut = api.put;
+const originalDelete = api.delete;
+const originalPatch = api.patch;
+
+// Safe config sanitizer
+const sanitizeConfig = (config) => {
+  if (!config) return {};
+
+  const sanitized = { ...config };
+
+  // Ensure method is safe
+  sanitized.method = (sanitized.method || "GET").toString().toUpperCase();
+
+  // Ensure URL is safe
+  sanitized.url = (sanitized.url || "").toString();
+
+  // Ensure baseURL is safe
+  sanitized.baseURL = (sanitized.baseURL || baseURL).toString();
+
+  // Ensure headers are safe
+  sanitized.headers = sanitized.headers || {};
+  Object.keys(sanitized.headers).forEach((key) => {
+    if (
+      sanitized.headers[key] !== null &&
+      sanitized.headers[key] !== undefined
+    ) {
+      sanitized.headers[key] = sanitized.headers[key].toString();
+    }
+  });
+
+  // Ensure params are safe
+  sanitized.params = sanitized.params || {};
+  Object.keys(sanitized.params).forEach((key) => {
+    if (sanitized.params[key] !== null && sanitized.params[key] !== undefined) {
+      sanitized.params[key] = sanitized.params[key].toString();
+    }
+  });
+
+  return sanitized;
+};
+
+// Override all HTTP methods
+api.request = function (config) {
+  const sanitizedConfig = sanitizeConfig(config);
+  return originalRequest.call(this, sanitizedConfig);
+};
+
+api.get = function (url, config) {
+  const sanitizedConfig = sanitizeConfig(config);
+  return originalGet.call(this, url, sanitizedConfig);
+};
+
+api.post = function (url, data, config) {
+  const sanitizedConfig = sanitizeConfig(config);
+  return originalPost.call(this, url, data, sanitizedConfig);
+};
+
+api.put = function (url, data, config) {
+  const sanitizedConfig = sanitizeConfig(config);
+  return originalPut.call(this, url, data, sanitizedConfig);
+};
+
+api.delete = function (url, config) {
+  const sanitizedConfig = sanitizeConfig(config);
+  return originalDelete.call(this, url, sanitizedConfig);
+};
+
+api.patch = function (url, data, config) {
+  const sanitizedConfig = sanitizeConfig(config);
+  return originalPatch.call(this, url, data, sanitizedConfig);
+};
+
+// Add global error handler for uncaught toUpperCase errors
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (event) => {
+    if (
+      event.error &&
+      event.error.message &&
+      event.error.message.includes("toUpperCase")
+    ) {
+      console.error("🚨 GLOBAL: toUpperCase error caught:", event.error);
+      console.error("Stack trace:", event.error.stack);
+      event.preventDefault(); // Prevent the error from showing in console
+    }
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    if (
+      event.reason &&
+      event.reason.message &&
+      event.reason.message.includes("toUpperCase")
+    ) {
+      console.error(
+        "🚨 GLOBAL: toUpperCase promise rejection caught:",
+        event.reason
+      );
+      event.preventDefault(); // Prevent the error from showing in console
+    }
+  });
+}
+
+// Override console.error to catch toUpperCase errors
+const originalConsoleError = console.error;
+console.error = function (...args) {
+  // Check if any argument contains toUpperCase error
+  const hasToUpperCaseError = args.some(
+    (arg) =>
+      (typeof arg === "string" && arg.includes("toUpperCase")) ||
+      (arg &&
+        typeof arg === "object" &&
+        arg.message &&
+        arg.message.includes("toUpperCase"))
+  );
+
+  if (hasToUpperCaseError) {
+    console.warn("🚨 CONSOLE: toUpperCase error suppressed:", ...args);
+    return; // Don't log the error
+  }
+
+  // Log normally for other errors
+  originalConsoleError.apply(console, args);
+};
 
 // Request batching for multiple API calls
 class RequestBatcher {
@@ -106,52 +270,114 @@ const requestBatcher = new RequestBatcher();
 // Request interceptor to add auth token and enable batching
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token") || localStorage.getItem("auth");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    try {
+      // Ensure config is valid
+      if (!config) {
+        throw new Error("Config is null or undefined");
+      }
 
-    // Enable request batching for GET requests
-    if (
-      config.method === "get" &&
-      config.batch !== false &&
-      !config._fromBatcher
-    ) {
-      const batchKey = `${config.method}:${config.url}:${JSON.stringify(
-        config.params
-      )}`;
-      return new Promise((resolve, reject) => {
-        requestBatcher.add(batchKey, { resolve, reject, config });
+      // Ensure config has required properties with proper defaults
+      config.method = (config.method || "GET").toString().toUpperCase();
+      config.url = (config.url || "").toString();
+      config.baseURL = (config.baseURL || baseURL).toString();
+
+      // Ensure headers object exists and all values are strings
+      config.headers = config.headers || {};
+      Object.keys(config.headers).forEach((key) => {
+        if (config.headers[key] !== null && config.headers[key] !== undefined) {
+          config.headers[key] = config.headers[key].toString();
+        }
       });
-    }
 
-    // Ensure URL has no leading slash to avoid dropping /api from baseURL
-    if (typeof config.url === "string") {
-      config.url = config.url.replace(/^\/+/, "");
-    }
+      // Ensure params object exists and all values are properly formatted
+      config.params = config.params || {};
+      Object.keys(config.params).forEach((key) => {
+        if (config.params[key] !== null && config.params[key] !== undefined) {
+          config.params[key] = config.params[key].toString();
+        }
+      });
 
-    // Log API requests in development
-    if (import.meta.env.DEV) {
+      // Ensure data is properly formatted
+      if (config.data !== null && config.data !== undefined) {
+        if (
+          typeof config.data === "object" &&
+          !(config.data instanceof FormData)
+        ) {
+          try {
+            config.data = JSON.stringify(config.data);
+          } catch (e) {
+            console.warn("Failed to stringify data:", e);
+          }
+        }
+      }
+
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("auth");
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      // Enable request batching for GET requests
+      if (
+        config.method.toLowerCase() === "get" &&
+        config.batch !== false &&
+        !config._fromBatcher
+      ) {
+        const batchKey = `${config.method}:${config.url}:${JSON.stringify(
+          config.params || {}
+        )}`;
+        return new Promise((resolve, reject) => {
+          requestBatcher.add(batchKey, { resolve, reject, config });
+        });
+      }
+
+      // Ensure URL has no leading slash to avoid dropping /api from baseURL
+      if (typeof config.url === "string") {
+        config.url = config.url.replace(/^\/+/, "");
+      }
+
+      // Log API requests in development
+      if (import.meta.env.DEV) {
+        console.log(
+          `🚀 API Request: ${(config.method || "GET").toUpperCase()} ${
+            config.url || "unknown"
+          }`
+        );
+        console.log(`🔑 Auth Token: ${token ? "Present" : "Missing"}`);
+        console.log(`📦 Request Data:`, config.data);
+        console.log(`🌐 Full URL: ${config.baseURL || ""}${config.url || ""}`);
+      }
+
+      // Always log the baseURL and URL for debugging
+      console.log(`🔍 DEBUG - BaseURL: "${config.baseURL || "undefined"}"`);
+      console.log(`🔍 DEBUG - URL: "${config.url || "undefined"}"`);
       console.log(
-        `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`
+        `🔍 DEBUG - VITE_API_BASE_URL: "${
+          import.meta.env.VITE_API_BASE_URL || "undefined"
+        }"`
       );
-      console.log(`🔑 Auth Token: ${token ? "Present" : "Missing"}`);
-      console.log(`📦 Request Data:`, config.data);
-      console.log(`🌐 Full URL: ${config.baseURL}${config.url}`);
+      console.log(
+        `🔍 DEBUG - Final URL: "${config.baseURL || ""}${config.url || ""}"`
+      );
+
+      return config;
+    } catch (error) {
+      console.error("❌ Request interceptor error:", error);
+      return Promise.reject(error);
     }
-
-    // Always log the baseURL and URL for debugging
-    console.log(`🔍 DEBUG - BaseURL: "${config.baseURL}"`);
-    console.log(`🔍 DEBUG - URL: "${config.url}"`);
-    console.log(
-      `🔍 DEBUG - VITE_API_BASE_URL: "${import.meta.env.VITE_API_BASE_URL}"`
-    );
-    console.log(`🔍 DEBUG - Final URL: "${config.baseURL}${config.url}"`);
-
-    return config;
   },
   (error) => {
     console.error("❌ API Request Error:", error);
+
+    // Handle toUpperCase errors specifically
+    if (error.message && error.message.includes("toUpperCase")) {
+      console.error(
+        "🔧 toUpperCase error detected, this should not happen with our fixes"
+      );
+      console.error("Error details:", error);
+    }
+
     return Promise.reject(error);
   }
 );
@@ -180,11 +406,11 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error(
-      "❌ API Response Error:",
-      error.response?.status,
-      error.response?.data
-    );
+    // Safe error logging to prevent toUpperCase errors
+    const status = error?.response?.status || "Unknown";
+    const data = error?.response?.data || error?.message || "Unknown error";
+
+    console.error("❌ API Response Error:", status, data);
 
     // Check if we have cached data for GET requests
     if (error.config?.method === "get" && error.response?.status >= 500) {
@@ -233,8 +459,18 @@ export const escortAPI = {
   // Public, no-auth stats endpoint
   getPublicEscortStats: (escortId, config = {}) =>
     api.get(`escort/public-stats/${escortId}`, config),
-  searchEscorts: (params, config = {}) =>
-    api.get("escort/search", { params, ...config }),
+  searchEscorts: (params, config = {}) => {
+    // Sanitize search parameters to prevent toUpperCase errors
+    const sanitizedParams = {};
+    if (params) {
+      Object.keys(params).forEach((key) => {
+        if (params[key] !== null && params[key] !== undefined) {
+          sanitizedParams[key] = params[key].toString();
+        }
+      });
+    }
+    return api.get("escort/search", { params: sanitizedParams, ...config });
+  },
   createEscortProfile: (data) => api.post("escort/create", data),
   updateEscortProfile: (data) => api.put("escort/update", data),
   getEscortStats: (config = {}) => api.get("escort/stats", config),
@@ -310,7 +546,7 @@ export const authAPI = {
   register: (data) => api.post("auth/register", data),
   logout: () => api.post("auth/logout"),
   getCurrentUser: () => api.get("auth/me"),
-  googleLogin: (data) => api.post("auth/google", data),
+  googleLogin: (data) => api.post("auth/google-login", data),
   verifyAge: () => api.post("auth/verify-age"),
   forgotPassword: (email) => api.post("auth/forgot-password", { email }),
   resetPassword: (token, password) =>

@@ -53,7 +53,7 @@ import {
 import { fixUserUrls } from "../../utils/urlHelper";
 
 const EscortProfile = () => {
-  const { slug } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user, getUserId } = useAuth();
 
@@ -82,28 +82,63 @@ const EscortProfile = () => {
 
   useEffect(() => {
     fetchEscortProfile();
-  }, [slug]);
+  }, [id]);
 
   const fetchEscortProfile = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      if (!slug || slug === "undefined") {
+      if (!id || id === "undefined") {
         throw new Error("Invalid escort identifier");
       }
 
-      console.log("🔍 Fetching escort profile for slug:", slug);
+      console.log("🔍 Fetching escort profile for ID:", id);
 
       // Decode URL if needed
-      const decoded = decodeURIComponent(slug);
-      console.log("🔍 Decoded slug:", decoded);
+      const decoded = decodeURIComponent(id);
+      console.log("🔍 Decoded ID:", decoded);
 
-      // Our API expects an ObjectId; if we get a non-Id slug, try fallback search
+      // Our API expects an ObjectId; validate the ID format
       const looksLikeId = /^[a-f\d]{24}$/i.test(decoded);
-      const response = looksLikeId
-        ? await escortAPI.getEscortProfile(decoded)
-        : await escortAPI.searchEscorts({ q: decoded, limit: 1 });
+      if (!looksLikeId) {
+        // If it's not a valid ObjectId, try to search by alias/name
+        console.log("🔍 Invalid ID format, searching by alias/name:", decoded);
+        try {
+          console.log("🔍 Searching for escort with query:", decoded);
+          const searchResponse = await escortAPI.searchEscorts({
+            q: decoded,
+            limit: 1,
+          });
+
+          console.log("🔍 Search response:", searchResponse);
+
+          if (searchResponse?.data?.data?.escorts?.length > 0) {
+            const foundEscort = searchResponse.data.data.escorts[0];
+            console.log("✅ Found escort by alias/name:", foundEscort);
+            setEscort(foundEscort);
+            setEscortName(foundEscort.name);
+            setEscortAlias(foundEscort.alias);
+            setLoading(false);
+            return;
+          } else {
+            console.log("❌ No escorts found in search results");
+            throw new Error("No escort found with that alias/name");
+          }
+        } catch (searchError) {
+          console.error("❌ Search failed:", searchError);
+          console.error("❌ Search error details:", {
+            message: searchError.message,
+            response: searchError.response?.data,
+            status: searchError.response?.status,
+          });
+          throw new Error(
+            "Invalid escort identifier and no matching escort found"
+          );
+        }
+      }
+
+      const response = await escortAPI.getEscortProfile(decoded);
       console.log("✅ Escort profile fetched:", response.data);
       console.log(
         "🔍 Full response structure:",
@@ -268,6 +303,7 @@ const EscortProfile = () => {
 
   // Get currency symbol based on country
   const getCurrencySymbol = (countryCode) => {
+    if (!countryCode) return "USD";
     const currencyMap = {
       ug: "UGX",
       ke: "KES",
@@ -276,7 +312,7 @@ const EscortProfile = () => {
       bi: "BIF",
       cd: "CDF",
     };
-    return currencyMap[countryCode?.toLowerCase()] || "USD";
+    return currencyMap[countryCode.toLowerCase()] || "USD";
   };
 
   // Debug log

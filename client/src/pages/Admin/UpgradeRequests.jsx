@@ -534,7 +534,8 @@ Admin Team`;
                               request.escort?.avatar ? "hidden" : ""
                             }`}
                           >
-                            {(request.escortName?.[0] || "E").toUpperCase()}
+                            {(request.escortName?.[0] || "E")?.toUpperCase() ||
+                              "E"}
                           </div>
                         </div>
 
@@ -707,7 +708,7 @@ Admin Team`;
                     Country
                   </label>
                   <p className="text-gray-900">
-                    {selectedRequest.countryCode?.toUpperCase()}
+                    {selectedRequest.countryCode?.toUpperCase() || "N/A"}
                   </p>
                 </div>
                 <div>
@@ -961,7 +962,8 @@ Admin Team`;
                         quickRequest.escort?.avatar ? "hidden" : ""
                       }`}
                     >
-                      {(quickRequest.escortName?.[0] || "E").toUpperCase()}
+                      {(quickRequest.escortName?.[0] || "E")?.toUpperCase() ||
+                        "E"}
                     </div>
                   </div>
                   <div className="text-sm font-medium text-gray-700">

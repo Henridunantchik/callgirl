@@ -228,7 +228,7 @@ const userSchema = new mongoose.Schema(
       {
         url: {
           type: String,
-          required: true,
+          required: false, // Made optional to handle existing data
         },
         publicId: {
           type: String,

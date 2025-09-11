@@ -56,6 +56,7 @@ const AppSidebar = () => {
     bookings: 0,
     reviews: 0,
   });
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [categoryData, setCategoryData] = useState(null);
 
   // Fetch categories using the API service
@@ -91,21 +92,27 @@ const AppSidebar = () => {
         );
 
         // Fetch unread message count (for both clients and escorts)
-        const messagesResponse = await messageAPI.getUserConversations();
-        console.log("📨 Messages response:", messagesResponse.data);
-        console.log(
-          "📨 Messages data structure:",
-          JSON.stringify(messagesResponse.data, null, 2)
-        );
+        try {
+          const messagesResponse = await messageAPI.getUserConversations();
+          console.log("📨 Messages response:", messagesResponse.data);
+          console.log(
+            "📨 Messages data structure:",
+            JSON.stringify(messagesResponse.data, null, 2)
+          );
 
-        const unreadMessages =
-          messagesResponse.data?.data?.reduce((total, conv) => {
-            console.log("📨 Conversation:", conv);
-            console.log("📨 Unread count for this conv:", conv.unreadCount);
-            return total + (conv.unreadCount || 0);
-          }, 0) || 0;
+          const unreadMessages =
+            messagesResponse.data?.data?.reduce((total, conv) => {
+              console.log("📨 Conversation:", conv);
+              console.log("📨 Unread count for this conv:", conv.unreadCount);
+              return total + (conv.unreadCount || 0);
+            }, 0) || 0;
 
-        console.log("📨 Unread messages count:", unreadMessages);
+          console.log("📨 Unread messages count:", unreadMessages);
+          setUnreadMessages(unreadMessages);
+        } catch (error) {
+          console.warn("Failed to fetch message counts:", error.message);
+          setUnreadMessages(0);
+        }
 
         let pendingBookings = 0;
         let newReviews = 0;

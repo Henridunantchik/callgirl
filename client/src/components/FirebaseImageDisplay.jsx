@@ -5,7 +5,7 @@ const FirebaseImageDisplay = ({
   src,
   alt,
   className = "",
-  fallbackSrc = "/placeholder-image.jpg",
+  fallbackSrc = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzVMMTI1IDEwMEgxNzVMMTUwIDc1SDEwMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTEwMCAxMjVMMTI1IDEwMEgxNzVMMTUwIDEyNUgxMDBaIiBmaWxsPSIjOUNBM0FGIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNkI3MjgwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiPkltYWdlPC90ZXh0Pgo8L3N2Zz4K",
   type = "image", // "image", "video", "file"
   showFallbackIcon = true,
   onClick,
@@ -30,7 +30,14 @@ const FirebaseImageDisplay = ({
 
     // For Railway, backend already returns absolute URLs; use as-is
     if (src.startsWith("https://") || src.startsWith("http://")) {
-      processedSrc = src;
+      // Check if it's a production URL but we're in development
+      if (src.includes("api.epicescorts.live") && import.meta.env.DEV) {
+        // Keep production URL in development since local files don't exist
+        processedSrc = src;
+        console.log("🔄 Using production URL in development:", src);
+      } else {
+        processedSrc = src;
+      }
     } else if (src.startsWith("/")) {
       // Handle relative paths - try to construct full URL
       const baseUrl =
