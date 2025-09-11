@@ -10,7 +10,10 @@ import { getEvn } from "./getEnv";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: getEvn("VITE_FIREBASE_API"),
+  apiKey:
+    getEvn("VITE_FIREBASE_API") ||
+    getEvn("FIREBASE_API_KEY") ||
+    "AIzaSyDmVEk6cMIyYF5bLWdmzj4gslylqcCobcM",
   authDomain:
     getEvn("VITE_FIREBASE_AUTH_DOMAIN") || "tusiwawasahau.firebaseapp.com",
   projectId: getEvn("VITE_FIREBASE_PROJECT_ID") || "tusiwawasahau",

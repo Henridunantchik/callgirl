@@ -67,7 +67,9 @@ export const SocketProvider = ({ children }) => {
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1";
 
-      return isLocal ? "http://localhost:5000" : "https://api.epicescorts.live";
+      return isLocal
+        ? "http://localhost:5000"
+        : "https://epic-escorts-production.up.railway.app";
     };
 
     const socketUrl = computeSocketUrl();

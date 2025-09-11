@@ -65,6 +65,11 @@ export default defineConfig({
   preview: {
     port: process.env.PORT || 4173,
     host: "0.0.0.0",
+    allowedHosts: [
+      "epic-escorts-client-production.up.railway.app",
+      "www.epicescorts.live",
+      "epicescorts.live",
+    ],
   },
   build: {
     // Enable source maps for debugging

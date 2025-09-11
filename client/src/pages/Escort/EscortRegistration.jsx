@@ -576,7 +576,7 @@ const EscortRegistration = () => {
           ? envUrl.replace(/\/+$/, "")
           : window.location.hostname !== "localhost" &&
             window.location.hostname !== "127.0.0.1"
-          ? "https://api.epicescorts.live"
+          ? "https://epic-escorts-production.up.railway.app"
           : "http://localhost:5000";
         const testResponse = await fetch(`${apiUrl}/health`);
         console.log("✅ API Health Check:", testResponse.status);
