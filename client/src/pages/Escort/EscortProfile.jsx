@@ -151,8 +151,11 @@ const EscortProfile = () => {
               "🔄 Search failed due to toUpperCase error, trying direct API call..."
             );
             try {
+              const apiBase =
+                import.meta.env.VITE_API_BASE_URL ||
+                "https://epic-escorts-production.up.railway.app";
               const directResponse = await fetch(
-                `http://localhost:5000/api/escort/search?q=${encodeURIComponent(
+                `${apiBase}/api/escort/search?q=${encodeURIComponent(
                   decoded
                 )}&limit=1`
               );

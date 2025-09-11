@@ -3,7 +3,9 @@ import axios from "axios";
 // Normalize and compute API base URL safely
 const computeBaseURL = () => {
   try {
-    const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+    const envUrl =
+      import.meta.env.VITE_API_BASE_URL?.trim() ||
+      import.meta.env.VITE_API_URL?.trim();
 
     // Helper to ensure we end up with .../api (single /) and trailing slash
     const ensureApiSuffix = (url) => {

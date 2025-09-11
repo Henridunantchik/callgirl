@@ -14,7 +14,7 @@ export const useFetch = (url, options = {}, dependencies = []) => {
           import.meta.env.VITE_API_URL ||
           (window.location.hostname !== "localhost" &&
           window.location.hostname !== "127.0.0.1"
-            ? "https://api.epicescorts.live"
+            ? "https://epic-escorts-production.up.railway.app"
             : "http://localhost:5000");
         const fullUrl = url.startsWith("http")
           ? url

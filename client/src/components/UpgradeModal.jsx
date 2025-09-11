@@ -96,17 +96,17 @@ Price: ${planData.price}`;
         escortName: formData.escortName,
         escortPhone: formData.escortPhone,
         escortEmail: formData.escortEmail,
-        currentPlan: currentPlan,
         requestedPlan: selectedPlan,
         subscriptionPeriod:
           selectedPlan === "premium" ? subscriptionPeriod : undefined,
         contactMethod: "messenger",
+        paymentProof: "", // Optional field, can be empty
         paymentAmount:
           selectedPlan === "premium"
             ? subscriptionPeriod === "annual"
-              ? "60"
-              : "5"
-            : "12",
+              ? 60
+              : 5
+            : 12, // Send as number, not string
         countryCode: "ug",
       });
 
