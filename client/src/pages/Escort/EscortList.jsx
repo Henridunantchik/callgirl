@@ -74,7 +74,7 @@ const EscortList = () => {
   const currencySymbol = getCurrencySymbol(countryCode);
 
   const [escorts, setEscorts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [filters, setFilters] = useState({
@@ -423,11 +423,11 @@ const EscortList = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             {category
-              ? `${(category?.[0] || "").toUpperCase()}${
+              ? `${(category?.[0] || "")?.toUpperCase() || ""}${
                   category?.slice?.(1) || ""
                 } Escorts`
               : city
-              ? `Escorts in ${(city?.[0] || "").toUpperCase()}${
+              ? `Escorts in ${(city?.[0] || "")?.toUpperCase() || ""}${
                   city?.slice?.(1) || ""
                 }`
               : "Find Escorts"}

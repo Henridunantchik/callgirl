@@ -35,7 +35,7 @@ const AddBlog = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user);
   const [categoryData, setCategoryData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Fetch categories using the API service

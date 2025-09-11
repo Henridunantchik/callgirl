@@ -1,4 +1,3 @@
-import firebaseStorage from "../services/firebaseStorage.js";
 import railwayStorage from "../services/railwayStorage.js";
 import { handleError } from "../helpers/handleError.js";
 import User from "../models/user.model.js";
@@ -108,25 +107,13 @@ export const updateUser = async (req, res, next) => {
 
     // Avatar upload (if file provided)
     if (req.file) {
-      let uploadResult = await firebaseStorage.uploadFile(req.file, "avatars");
+      const uploadResult = await railwayStorage.uploadFile(req.file, "avatars");
 
       if (!uploadResult.success) {
-        console.error("Avatar upload error (Firebase):", uploadResult.error);
-        // Fallback to Railway storage
-        try {
-          const railwayResult = await railwayStorage.uploadFile(
-            req.file,
-            "avatars"
-          );
-          if (railwayResult.success) {
-            uploadResult = railwayResult;
-          }
-        } catch (e) {
-          console.error("Avatar upload fallback (Railway) failed:", e?.message);
-        }
-      }
-
-      if (uploadResult?.success && uploadResult.url) {
+        console.error("Avatar upload error:", uploadResult.error);
+        // Continue without failing the whole profile update
+        // Keep existing avatar if upload fails
+      } else {
         user.avatar = uploadResult.url;
       }
     }

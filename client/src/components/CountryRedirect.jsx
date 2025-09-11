@@ -1,10 +1,11 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { isValidCountryCode } from "../helpers/countries";
 
 const CountryRedirect = ({ children }) => {
   const { countryCode, loading, error } = useGeolocation();
+  const location = useLocation();
 
   // Choose a target country immediately without blocking the UI
   const fallbackCode = "ug";
@@ -13,12 +14,12 @@ const CountryRedirect = ({ children }) => {
     : fallbackCode;
 
   // If we're on the root path, redirect to country-specific path
-  if (window.location.pathname === "/") {
+  if (location.pathname === "/") {
     return <Navigate to={`/${targetCode}`} replace />;
   }
 
   // Check if current path has a valid country code
-  const pathParts = window.location.pathname.split("/");
+  const pathParts = location.pathname.split("/");
   const pathCountryCode = pathParts[1];
 
   if (pathCountryCode && isValidCountryCode(pathCountryCode)) {

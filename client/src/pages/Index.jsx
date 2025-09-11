@@ -43,7 +43,7 @@ const Index = () => {
   // Fetch escort data from API
   const [escortData, setEscortData] = useState(null);
   const [statsData, setStatsData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Pagination state
@@ -102,6 +102,7 @@ const Index = () => {
         }
       }
 
+      // Filter: Only Premium/Elite and Featured escorts
       escorts = escorts.filter((escort) => {
         const accessLevel = getEscortAccessLevel(escort);
         const isFeatured = escort.isFeatured === true;
@@ -141,14 +142,18 @@ const Index = () => {
       setTotalPages(Math.ceil(escorts.length / escortsPerPage));
 
       // Background fetch stats (do not block rendering)
-      statsAPI
-        .getCountryStats(countryCode || "ug")
-        .then((resp) => {
-          if (resp?.data?.data?.stats) setStatsData(resp.data.data.stats);
-        })
-        .catch((err) => {
-          console.warn("Stats fetch failed:", err?.message);
-        });
+      try {
+        statsAPI
+          .getCountryStats(countryCode || "ug")
+          .then((resp) => {
+            if (resp?.data?.data?.stats) setStatsData(resp.data.data.stats);
+          })
+          .catch((err) => {
+            console.warn("Stats fetch failed:", err?.message);
+          });
+      } catch (error) {
+        console.warn("Stats fetch error:", error?.message);
+      }
 
       setError(null);
     } catch (err) {

@@ -1,73 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import { Image, Video, File, AlertCircle } from 'lucide-react';
-import { getDownloadURL, ref } from 'firebase/storage';
-import { storage } from '../helpers/firebase';
+import React, { useState, useEffect } from "react";
+import { Image, Video, File } from "lucide-react";
 
-const FirebaseImageDisplay = ({ 
-  src, 
-  alt, 
-  className = "", 
-  fallbackSrc = "/placeholder-image.jpg",
+const FirebaseImageDisplay = ({
+  src,
+  alt,
+  className = "",
+  fallbackSrc = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzVMMTI1IDEwMEgxNzVMMTUwIDc1SDEwMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTEwMCAxMjVMMTI1IDEwMEgxNzVMMTUwIDEyNUgxMDBaIiBmaWxsPSIjOUNBM0FGIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNkI3MjgwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiPkltYWdlPC90ZXh0Pgo8L3N2Zz4K",
   type = "image", // "image", "video", "file"
   showFallbackIcon = true,
   onClick,
   children,
-  ...props 
+  ...props
 }) => {
   const [imageSrc, setImageSrc] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const loadImage = async () => {
-      if (!src) {
-        setImageSrc(fallbackSrc);
-        setLoading(false);
-        return;
+    if (!src) {
+      setImageSrc(fallbackSrc);
+      setLoading(false);
+      return;
+    }
+
+    setError(false);
+
+    // Handle different URL formats
+    let processedSrc = src;
+
+    // For Railway, backend already returns absolute URLs; use as-is
+    if (src.startsWith("https://") || src.startsWith("http://")) {
+      // Check if it's a production URL but we're in development
+      if (src.includes("api.epicescorts.live") && import.meta.env.DEV) {
+        // Keep production URL in development since local files don't exist
+        processedSrc = src;
+        console.log("🔄 Using production URL in development:", src);
+      } else {
+        processedSrc = src;
       }
+    } else if (src.startsWith("/")) {
+      // Handle relative paths - try to construct full URL
+      const baseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      processedSrc = `${baseUrl.replace("/api", "")}${src}`;
+    } else {
+      // If it's just a filename or path, try to use it directly
+      processedSrc = src;
+    }
 
-      try {
-        setLoading(true);
-        setError(false);
-
-        // Si c'est déjà une URL Firebase ou une URL externe valide
-        if (src.startsWith('https://') || src.startsWith('http://')) {
-          setImageSrc(src);
-          setLoading(false);
-          return;
-        }
-
-        // Si c'est un chemin Firebase, essayer de récupérer l'URL
-        if (src.startsWith('avatars/') || src.startsWith('gallery/') || src.startsWith('videos/')) {
-          try {
-            const storageRef = ref(storage, src);
-            const url = await getDownloadURL(storageRef);
-            setImageSrc(url);
-          } catch (firebaseError) {
-            console.warn('Firebase URL not found, using fallback:', firebaseError);
-            setImageSrc(fallbackSrc);
-          }
-        } else {
-          // Utiliser directement la source
-          setImageSrc(src);
-        }
-      } catch (err) {
-        console.error('Error loading image:', err);
-        setError(true);
-        setImageSrc(fallbackSrc);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadImage();
+    setImageSrc(processedSrc);
+    setLoading(false);
   }, [src, fallbackSrc]);
 
   const handleImageError = () => {
+    console.log("Image failed to load:", imageSrc);
     if (imageSrc !== fallbackSrc) {
       setError(true);
       setImageSrc(fallbackSrc);
     }
+  };
+
+  const handleImageLoad = () => {
+    console.log("Image loaded successfully:", imageSrc);
+    setError(false);
   };
 
   const handleClick = () => {
@@ -77,7 +72,7 @@ const FirebaseImageDisplay = ({
   };
 
   // Affichage selon le type de média
-  if (type === 'video') {
+  if (type === "video") {
     return (
       <div className={`relative ${className}`} {...props}>
         {loading && (
@@ -85,30 +80,32 @@ const FirebaseImageDisplay = ({
             <Video className="w-8 h-8 text-gray-400" />
           </div>
         )}
-        
+
         {!loading && imageSrc && (
           <video
             src={imageSrc}
             alt={alt}
-            className={`w-full h-full object-cover ${onClick ? 'cursor-pointer' : ''}`}
+            className={`w-full h-full object-cover ${
+              onClick ? "cursor-pointer" : ""
+            }`}
             onClick={handleClick}
             controls
             onError={handleImageError}
           />
         )}
-        
+
         {error && showFallbackIcon && (
           <div className="absolute inset-0 bg-gray-200 rounded flex items-center justify-center">
             <Video className="w-8 h-8 text-gray-400" />
           </div>
         )}
-        
+
         {children}
       </div>
     );
   }
 
-  if (type === 'file') {
+  if (type === "file") {
     return (
       <div className={`relative ${className}`} {...props}>
         {loading && (
@@ -116,13 +113,13 @@ const FirebaseImageDisplay = ({
             <File className="w-8 h-8 text-gray-400" />
           </div>
         )}
-        
+
         {!loading && imageSrc && (
           <a
             href={imageSrc}
             target="_blank"
             rel="noopener noreferrer"
-            className={`block w-full h-full ${onClick ? 'cursor-pointer' : ''}`}
+            className={`block w-full h-full ${onClick ? "cursor-pointer" : ""}`}
             onClick={handleClick}
           >
             <div className="w-full h-full bg-gray-100 rounded flex items-center justify-center">
@@ -131,13 +128,13 @@ const FirebaseImageDisplay = ({
             </div>
           </a>
         )}
-        
+
         {error && showFallbackIcon && (
           <div className="absolute inset-0 bg-gray-200 rounded flex items-center justify-center">
             <File className="w-8 h-8 text-gray-400" />
           </div>
         )}
-        
+
         {children}
       </div>
     );
@@ -151,23 +148,26 @@ const FirebaseImageDisplay = ({
           <Image className="w-8 h-8 text-gray-400" />
         </div>
       )}
-      
+
       {!loading && imageSrc && (
         <img
           src={imageSrc}
           alt={alt}
-          className={`w-full h-full object-cover ${onClick ? 'cursor-pointer' : ''}`}
+          className={`w-full h-full object-cover ${
+            onClick ? "cursor-pointer" : ""
+          }`}
           onClick={handleClick}
           onError={handleImageError}
+          onLoad={handleImageLoad}
         />
       )}
-      
+
       {error && showFallbackIcon && (
         <div className="absolute inset-0 bg-gray-200 rounded flex items-center justify-center">
           <Image className="w-8 h-8 text-gray-400" />
         </div>
       )}
-      
+
       {children}
     </div>
   );

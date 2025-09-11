@@ -91,7 +91,9 @@ export const AuthProvider = ({ children }) => {
 
             // Try to get fresh user data from server (optional)
             try {
-              console.log("Attempting to get fresh user data (with timeout)...");
+              console.log(
+                "Attempting to get fresh user data (with timeout)..."
+              );
               const withTimeout = (p, ms = 1200) =>
                 Promise.race([
                   p,
@@ -103,7 +105,10 @@ export const AuthProvider = ({ children }) => {
               if (response?.data?.user) {
                 console.log("Fresh user data received:", response.data.user);
                 setUser(response.data.user);
-                localStorage.setItem("user", JSON.stringify(response.data.user));
+                localStorage.setItem(
+                  "user",
+                  JSON.stringify(response.data.user)
+                );
               }
 
               // Start online status updates for authenticated users
@@ -134,6 +139,25 @@ export const AuthProvider = ({ children }) => {
           console.log("Token exists:", !!token);
           console.log("Stored user exists:", !!storedUser);
           console.log("Redux user exists:", !!reduxUser);
+
+          // If we have a token but no user data, try to fetch from server
+          if (token && !storedUser && !reduxUser) {
+            console.log(
+              "🔄 Token exists but no user data, attempting server fetch..."
+            );
+            try {
+              const response = await userAPI.getProfile();
+              if (response?.data?.data) {
+                const userData = response.data.data;
+                setUser(userData);
+                localStorage.setItem("user", JSON.stringify(userData));
+                console.log("✅ User data fetched from server:", userData);
+                return;
+              }
+            } catch (error) {
+              console.warn("Failed to fetch user from server:", error.message);
+            }
+          }
 
           // Check Redux store as final fallback
           if (reduxStore) {

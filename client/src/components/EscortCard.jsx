@@ -42,6 +42,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
 
   // Function to get currency symbol based on country
   const getCurrencySymbol = (countryCode) => {
+    if (!countryCode) return "USD";
     const currencies = {
       ug: "UGX",
       ke: "KES",
@@ -50,7 +51,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
       bi: "BIF",
       cd: "CDF",
     };
-    return currencies[countryCode?.toLowerCase()] || "USD";
+    return currencies[countryCode.toLowerCase()] || "USD";
   };
 
   const currencySymbol = getCurrencySymbol(countryCode);
@@ -198,9 +199,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           {/* Name and Age */}
           <div className="flex items-center justify-between mb-1">
             <Link
-              to={`/${countryCode}/escort/${
-                fixedEscort.alias || fixedEscort.name
-              }`}
+              to={`/${countryCode}/escort/${fixedEscort._id}`}
               className="hover:underline"
             >
               <h3 className="text-base font-semibold text-gray-900">

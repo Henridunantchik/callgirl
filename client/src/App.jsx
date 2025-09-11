@@ -133,10 +133,10 @@ const App = () => {
                     path="escort/profile"
                     element={<EscortProfileEdit />}
                   />
-                                     <Route path="escort/messages" element={<Messages />} />
-                   <Route path="escort/bookings" element={<ComingSoonPage />} />
-                   <Route path="escort/reviews" element={<EscortReviews />} />
-                   <Route path="escort/upgrade" element={<UpgradeProfile />} />
+                  <Route path="escort/messages" element={<Messages />} />
+                  <Route path="escort/bookings" element={<ComingSoonPage />} />
+                  <Route path="escort/reviews" element={<EscortReviews />} />
+                  <Route path="escort/upgrade" element={<UpgradeProfile />} />
                   <Route path="victime/add" element={<AddBlog />} />
                   <Route path="victimes" element={<BlogDetails />} />
                   <Route path="victime/edit/:blogid" element={<EditBlog />} />
@@ -145,7 +145,7 @@ const App = () => {
               </Route>
 
               {/* Public Escort Profile Route - Must be AFTER authenticated routes */}
-              <Route path="escort/:slug" element={<EscortProfile />} />
+              <Route path="escort/:id" element={<EscortProfile />} />
 
               {/* Legal Pages */}
               <Route path="legal/privacy" element={<PrivacyPolicy />} />
@@ -207,10 +207,335 @@ const App = () => {
               }
             />
 
-            {/* Fallback for direct escort registration access */}
+            {/* Fallback routes for direct access without country code */}
+            {/* Main Pages */}
+            <Route
+              path="/escorts"
+              element={<Navigate to="/ug/escorts" replace />}
+            />
+            <Route
+              path="/escort/list"
+              element={<Navigate to="/ug/escorts" replace />}
+            />
+            <Route
+              path="/search"
+              element={<Navigate to="/ug/search" replace />}
+            />
+            <Route
+              path="/profile"
+              element={<Navigate to="/ug/profile" replace />}
+            />
+
+            {/* Client Routes */}
+            <Route
+              path="/client/dashboard"
+              element={<Navigate to="/ug/client/dashboard" replace />}
+            />
+            <Route
+              path="/client/favorites"
+              element={<Navigate to="/ug/client/favorites" replace />}
+            />
+            <Route
+              path="/client/bookings"
+              element={<Navigate to="/ug/client/bookings" replace />}
+            />
+            <Route
+              path="/client/messages"
+              element={<Navigate to="/ug/client/messages" replace />}
+            />
+
+            {/* Escort Routes */}
             <Route
               path="/escort/registration"
               element={<Navigate to="/ug/escort/registration" replace />}
+            />
+            <Route
+              path="/escort/dashboard"
+              element={<Navigate to="/ug/escort/dashboard" replace />}
+            />
+            <Route
+              path="/escort/profile"
+              element={<Navigate to="/ug/escort/profile" replace />}
+            />
+            <Route
+              path="/escort/messages"
+              element={<Navigate to="/ug/escort/messages" replace />}
+            />
+            <Route
+              path="/escort/reviews"
+              element={<Navigate to="/ug/escort/reviews" replace />}
+            />
+            <Route
+              path="/escort/upgrade"
+              element={<Navigate to="/ug/escort/upgrade" replace />}
+            />
+            <Route
+              path="/escort/bookings"
+              element={<Navigate to="/ug/escort/bookings" replace />}
+            />
+            <Route
+              path="/escort/availability"
+              element={<Navigate to="/ug/escort/availability" replace />}
+            />
+            <Route
+              path="/escort/earnings"
+              element={<Navigate to="/ug/escort/earnings" replace />}
+            />
+            <Route
+              path="/escort/settings"
+              element={<Navigate to="/ug/escort/settings" replace />}
+            />
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin/dashboard"
+              element={<Navigate to="/ug/admin/dashboard" replace />}
+            />
+            <Route
+              path="/admin/users"
+              element={<Navigate to="/ug/admin/users" replace />}
+            />
+            <Route
+              path="/admin/moderation"
+              element={<Navigate to="/ug/admin/moderation" replace />}
+            />
+            <Route
+              path="/admin/payments"
+              element={<Navigate to="/ug/admin/payments" replace />}
+            />
+            <Route
+              path="/admin/analytics"
+              element={<Navigate to="/ug/admin/analytics" replace />}
+            />
+            <Route
+              path="/admin/upgrade-requests"
+              element={<Navigate to="/ug/admin/upgrade-requests" replace />}
+            />
+            <Route
+              path="/admin/messages"
+              element={<Navigate to="/ug/admin/messages" replace />}
+            />
+
+            {/* Category Routes */}
+            <Route
+              path="/category/in-call"
+              element={<Navigate to="/ug/category/in-call" replace />}
+            />
+            <Route
+              path="/category/out-call"
+              element={<Navigate to="/ug/category/out-call" replace />}
+            />
+            <Route
+              path="/category/massage"
+              element={<Navigate to="/ug/category/massage" replace />}
+            />
+            <Route
+              path="/category/gfe"
+              element={<Navigate to="/ug/category/gfe" replace />}
+            />
+            <Route
+              path="/category/pse"
+              element={<Navigate to="/ug/category/pse" replace />}
+            />
+            <Route
+              path="/category/travel"
+              element={<Navigate to="/ug/category/travel" replace />}
+            />
+            <Route
+              path="/category/overnight"
+              element={<Navigate to="/ug/category/overnight" replace />}
+            />
+            <Route
+              path="/category/duo"
+              element={<Navigate to="/ug/category/duo" replace />}
+            />
+            <Route
+              path="/category/dinner-date"
+              element={<Navigate to="/ug/category/dinner-date" replace />}
+            />
+            <Route
+              path="/category/weekend"
+              element={<Navigate to="/ug/category/weekend" replace />}
+            />
+            <Route
+              path="/category/party"
+              element={<Navigate to="/ug/category/party" replace />}
+            />
+            <Route
+              path="/category/companionship"
+              element={<Navigate to="/ug/category/companionship" replace />}
+            />
+            <Route
+              path="/category/bdsm"
+              element={<Navigate to="/ug/category/bdsm" replace />}
+            />
+            <Route
+              path="/category/role-play"
+              element={<Navigate to="/ug/category/role-play" replace />}
+            />
+            <Route
+              path="/category/fetish"
+              element={<Navigate to="/ug/category/fetish" replace />}
+            />
+            <Route
+              path="/category/couples"
+              element={<Navigate to="/ug/category/couples" replace />}
+            />
+
+            {/* Location Routes */}
+            <Route
+              path="/location/kampala"
+              element={<Navigate to="/ug/location/kampala" replace />}
+            />
+            <Route
+              path="/location/entebbe"
+              element={<Navigate to="/ug/location/entebbe" replace />}
+            />
+            <Route
+              path="/location/jinja"
+              element={<Navigate to="/ug/location/jinja" replace />}
+            />
+            <Route
+              path="/location/mbarara"
+              element={<Navigate to="/ug/location/mbarara" replace />}
+            />
+            <Route
+              path="/location/gulu"
+              element={<Navigate to="/ug/location/gulu" replace />}
+            />
+            <Route
+              path="/location/arua"
+              element={<Navigate to="/ug/location/arua" replace />}
+            />
+            <Route
+              path="/location/mbale"
+              element={<Navigate to="/ug/location/mbale" replace />}
+            />
+            <Route
+              path="/location/soroti"
+              element={<Navigate to="/ug/location/soroti" replace />}
+            />
+            <Route
+              path="/location/lira"
+              element={<Navigate to="/ug/location/lira" replace />}
+            />
+            <Route
+              path="/location/tororo"
+              element={<Navigate to="/ug/location/tororo" replace />}
+            />
+            <Route
+              path="/location/kabale"
+              element={<Navigate to="/ug/location/kabale" replace />}
+            />
+            <Route
+              path="/location/masaka"
+              element={<Navigate to="/ug/location/masaka" replace />}
+            />
+            <Route
+              path="/location/mukono"
+              element={<Navigate to="/ug/location/mukono" replace />}
+            />
+            <Route
+              path="/location/kasese"
+              element={<Navigate to="/ug/location/kasese" replace />}
+            />
+            <Route
+              path="/location/hoima"
+              element={<Navigate to="/ug/location/hoima" replace />}
+            />
+            <Route
+              path="/location/fort-portal"
+              element={<Navigate to="/ug/location/fort-portal" replace />}
+            />
+            <Route
+              path="/location/iganga"
+              element={<Navigate to="/ug/location/iganga" replace />}
+            />
+            <Route
+              path="/location/bushenyi"
+              element={<Navigate to="/ug/location/bushenyi" replace />}
+            />
+            <Route
+              path="/location/kisoro"
+              element={<Navigate to="/ug/location/kisoro" replace />}
+            />
+            <Route
+              path="/location/kitgum"
+              element={<Navigate to="/ug/location/kitgum" replace />}
+            />
+
+            {/* Legacy Routes */}
+            <Route path="/sexe" element={<Navigate to="/ug/sexe" replace />} />
+            <Route
+              path="/sexe/add"
+              element={<Navigate to="/ug/sexe/add" replace />}
+            />
+            <Route
+              path="/victime/add"
+              element={<Navigate to="/ug/victime/add" replace />}
+            />
+            <Route
+              path="/victimes"
+              element={<Navigate to="/ug/victimes" replace />}
+            />
+            <Route
+              path="/hommages"
+              element={<Navigate to="/ug/hommages" replace />}
+            />
+            <Route
+              path="/users"
+              element={<Navigate to="/ug/users" replace />}
+            />
+
+            {/* Legal Routes */}
+            <Route
+              path="/legal/privacy"
+              element={<Navigate to="/ug/legal/privacy" replace />}
+            />
+            <Route
+              path="/legal/terms"
+              element={<Navigate to="/ug/legal/terms" replace />}
+            />
+            <Route
+              path="/legal/age-disclaimer"
+              element={<Navigate to="/ug/legal/age-disclaimer" replace />}
+            />
+
+            {/* Test Routes */}
+            <Route path="/test" element={<Navigate to="/ug/test" replace />} />
+            <Route
+              path="/geolocation-test"
+              element={<Navigate to="/ug/geolocation-test" replace />}
+            />
+
+            {/* Dynamic Routes - These need to be last to catch any remaining patterns */}
+            <Route
+              path="/escort/:id"
+              element={<Navigate to="/ug/escort/:id" replace />}
+            />
+            <Route
+              path="/location/:city"
+              element={<Navigate to="/ug/location/:city" replace />}
+            />
+            <Route
+              path="/category/:category"
+              element={<Navigate to="/ug/category/:category" replace />}
+            />
+            <Route
+              path="/sexe/edit/:category_id"
+              element={<Navigate to="/ug/sexe/edit/:category_id" replace />}
+            />
+            <Route
+              path="/victime/edit/:blogid"
+              element={<Navigate to="/ug/victime/edit/:blogid" replace />}
+            />
+            <Route
+              path="/victimes/:sexe/:blog"
+              element={<Navigate to="/ug/victimes/:sexe/:blog" replace />}
+            />
+            <Route
+              path="/victimes/:category"
+              element={<Navigate to="/ug/victimes/:category" replace />}
             />
           </Routes>
         </BrowserRouter>

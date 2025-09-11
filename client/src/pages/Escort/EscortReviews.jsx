@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Card,
   CardContent,
@@ -20,8 +20,8 @@ import { showToast } from "../../helpers/showToast";
 
 const EscortReviews = () => {
   const navigate = useNavigate();
-  const user = useSelector((state) => state.user);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({
     totalReviews: 0,
@@ -29,7 +29,7 @@ const EscortReviews = () => {
   });
 
   useEffect(() => {
-    if (!user.user || user.user.role !== "escort") {
+    if (!user || user.role !== "escort") {
       showToast("Access denied. Escort profile required.", "error");
       navigate("/");
       return;
@@ -41,7 +41,7 @@ const EscortReviews = () => {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await reviewAPI.getEscortReviews(user.user._id);
+      const response = await reviewAPI.getEscortReviews(user._id);
 
       if (response.data && response.data.data) {
         const reviewsData = response.data.data.reviews || [];

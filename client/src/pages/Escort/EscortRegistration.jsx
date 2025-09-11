@@ -1397,6 +1397,17 @@ const EscortRegistration = () => {
                         const files = Array.from(e.target.files);
                         console.log("=== PHOTO UPLOAD DEBUG ===");
                         console.log("Files selected:", files.length);
+
+                        // Validate files
+                        const validFiles = [];
+                        const maxSize = 5 * 1024 * 1024; // 5MB
+                        const allowedTypes = [
+                          "image/jpeg",
+                          "image/jpg",
+                          "image/png",
+                          "image/webp",
+                        ];
+
                         files.forEach((file, index) => {
                           console.log(
                             `File ${index + 1}:`,
@@ -1404,8 +1415,35 @@ const EscortRegistration = () => {
                             file.size,
                             file.type
                           );
+
+                          // Check file size
+                          if (file.size > maxSize) {
+                            showToast(
+                              "error",
+                              `File ${file.name} is too large. Maximum size is 5MB.`
+                            );
+                            return;
+                          }
+
+                          // Check file type
+                          if (!allowedTypes.includes(file.type)) {
+                            showToast(
+                              "error",
+                              `File ${file.name} is not a supported image format. Please use JPG, PNG, or WebP.`
+                            );
+                            return;
+                          }
+
+                          validFiles.push(file);
                         });
-                        handleInputChange("photos", files);
+
+                        if (validFiles.length > 0) {
+                          handleInputChange("photos", validFiles);
+                          showToast(
+                            "success",
+                            `${validFiles.length} photo(s) selected successfully!`
+                          );
+                        }
                       }}
                       className="hidden"
                       id="photo-upload"

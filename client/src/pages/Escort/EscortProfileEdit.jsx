@@ -35,6 +35,7 @@ import Dropzone from "react-dropzone";
 import { showToast } from "@/helpers/showToast";
 import { userAPI, escortAPI } from "@/services/api";
 import { fixUserUrls } from "@/utils/urlHelper";
+import FirebaseImageDisplay from "@/components/FirebaseImageDisplay";
 import {
   ChevronDown,
   ChevronUp,
@@ -157,11 +158,11 @@ const EscortProfileEdit = () => {
         hourlyRate: user.rates?.hourly || 100,
         bio: user.bio || "",
         bodyType: user.bodyType || "",
+        hairColor: user.hairColor || "",
+        eyeColor: user.eyeColor || "",
         ethnicity: user.ethnicity || "",
         height: user.height ? parseInt(user.height) : 0,
         weight: user.weight ? parseInt(user.weight) : 0,
-        hairColor: user.hairColor || "",
-        eyeColor: user.eyeColor || "",
         experience: user.experience || "",
         languages: user.languages || [],
         services: user.services || [],

@@ -11,11 +11,17 @@ import { getEvn } from "./getEnv";
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: getEvn("VITE_FIREBASE_API"),
-  authDomain: "tusiwawasahau.firebaseapp.com",
-  projectId: "tusiwawasahau",
-  storageBucket: "tusiwawasahau.firebasestorage.app",
-  messagingSenderId: "404272240278",
-  appId: "1:404272240278:web:6fe4c3058ee8b63a9dd4b7",
+  authDomain:
+    getEvn("VITE_FIREBASE_AUTH_DOMAIN") || "tusiwawasahau.firebaseapp.com",
+  projectId: getEvn("VITE_FIREBASE_PROJECT_ID") || "tusiwawasahau",
+  storageBucket:
+    getEvn("VITE_FIREBASE_STORAGE_BUCKET") ||
+    "tusiwawasahau.firebasestorage.app",
+  messagingSenderId:
+    getEvn("VITE_FIREBASE_MESSAGING_SENDER_ID") || "404272240278",
+  appId:
+    getEvn("VITE_FIREBASE_APP_ID") ||
+    "1:404272240278:web:6fe4c3058ee8b63a9dd4b7",
 };
 
 // Initialize Firebase

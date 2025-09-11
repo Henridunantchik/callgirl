@@ -12,12 +12,12 @@ export const getBaseUrl = () => {
   }
 
   if (config.NODE_ENV === "production") {
-    return (
-      "https://" +
-      (process.env.RAILWAY_STATIC_URL ||
-        process.env.RAILWAY_PUBLIC_DOMAIN ||
-        "localhost")
-    );
+    const railUrl =
+      process.env.RAILWAY_EXTERNAL_URL ||
+      process.env.RAILWAY_STATIC_URL ||
+      process.env.RAILWAY_PUBLIC_DOMAIN;
+    if (railUrl) return railUrl.replace(/\/$/, "");
+    return "https://api.epicescorts.live";
   }
 
   return "http://localhost:5000";
