@@ -101,12 +101,6 @@ Price: ${planData.price}`;
           selectedPlan === "premium" ? subscriptionPeriod : undefined,
         contactMethod: "messenger",
         paymentProof: "", // Optional field, can be empty
-        paymentAmount:
-          selectedPlan === "premium"
-            ? subscriptionPeriod === "annual"
-              ? 60
-              : 5
-            : 12, // Send as number, not string
         countryCode: "ug",
       });
 

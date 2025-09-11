@@ -102,6 +102,11 @@ export const SocketProvider = ({ children }) => {
         token,
         userId: user._id,
       });
+
+      // Request notification permission
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
     });
 
     newSocket.on("disconnect", () => {
@@ -161,6 +166,29 @@ export const SocketProvider = ({ children }) => {
         newMap.delete(senderId);
         return newMap;
       });
+    });
+
+    // Global message handler for notifications
+    newSocket.on("new_message", (data) => {
+      const { message } = data;
+
+      // Only trigger notifications for messages received by current user
+      if (message.recipient === user._id) {
+        // Dispatch global event for notifications
+        window.dispatchEvent(
+          new CustomEvent("newMessageReceived", {
+            detail: { message, senderId: message.sender },
+          })
+        );
+
+        // Show browser notification if permission granted
+        if (Notification.permission === "granted") {
+          new Notification("New Message", {
+            body: message.content,
+            icon: "/favicon.ico",
+          });
+        }
+      }
     });
 
     // Cleanup on unmount

@@ -229,6 +229,16 @@ const Messages = () => {
             : conv
         )
       );
+
+      // Trigger global notification update if we received a new message
+      if (message.recipient === user._id) {
+        // Dispatch custom event to update notifications in sidebar and topbar
+        window.dispatchEvent(
+          new CustomEvent("newMessageReceived", {
+            detail: { message, senderId: message.sender },
+          })
+        );
+      }
     };
 
     // Listen for message read receipts
@@ -332,7 +342,7 @@ const Messages = () => {
             import.meta.env.VITE_API_URL ||
             (window.location.hostname !== "localhost" &&
             window.location.hostname !== "127.0.0.1"
-              ? "https://api.epicescorts.live/api"
+              ? "https://epic-escorts-production.up.railway.app/api"
               : "http://localhost:5000/api")
           }/message/upload-image`,
           {
