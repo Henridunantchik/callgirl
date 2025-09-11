@@ -62,6 +62,10 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: process.env.PORT || 4173,
+    host: "0.0.0.0",
+  },
   build: {
     // Enable source maps for debugging
     sourcemap: false,

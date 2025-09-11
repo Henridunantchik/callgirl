@@ -209,6 +209,37 @@ console.error = function (...args) {
   originalConsoleError.apply(console, args);
 };
 
+// Override XMLHttpRequest to catch toUpperCase errors at the source
+if (typeof window !== "undefined" && window.XMLHttpRequest) {
+  const OriginalXHR = window.XMLHttpRequest;
+  window.XMLHttpRequest = function () {
+    const xhr = new OriginalXHR();
+    const originalOpen = xhr.open;
+    const originalSend = xhr.send;
+
+    xhr.open = function (method, url, ...args) {
+      // Sanitize method and url to prevent toUpperCase errors
+      const safeMethod = (method || "GET").toString().toUpperCase();
+      const safeUrl = (url || "").toString();
+      return originalOpen.call(this, safeMethod, safeUrl, ...args);
+    };
+
+    xhr.send = function (data) {
+      try {
+        return originalSend.call(this, data);
+      } catch (error) {
+        if (error.message && error.message.includes("toUpperCase")) {
+          console.warn("🚨 XHR: toUpperCase error suppressed:", error);
+          return;
+        }
+        throw error;
+      }
+    };
+
+    return xhr;
+  };
+}
+
 // Request batching for multiple API calls
 class RequestBatcher {
   constructor() {

@@ -9,6 +9,7 @@ import {
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { FirebasePremiumAvatar } from "../../components/firebase";
+import FirebaseImageDisplay from "../../components/FirebaseImageDisplay";
 import {
   MapPin,
   Phone,
@@ -106,19 +107,27 @@ const EscortProfile = () => {
         console.log("🔍 Invalid ID format, searching by alias/name:", decoded);
         try {
           console.log("🔍 Searching for escort with query:", decoded);
-          const searchResponse = await escortAPI.searchEscorts({
+
+          // Try search with a timeout
+          const searchPromise = escortAPI.searchEscorts({
             q: decoded,
             limit: 1,
           });
 
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Search timeout")), 5000)
+          );
+
+          const searchResponse = await Promise.race([
+            searchPromise,
+            timeoutPromise,
+          ]);
           console.log("🔍 Search response:", searchResponse);
 
           if (searchResponse?.data?.data?.escorts?.length > 0) {
             const foundEscort = searchResponse.data.data.escorts[0];
             console.log("✅ Found escort by alias/name:", foundEscort);
             setEscort(foundEscort);
-            setEscortName(foundEscort.name);
-            setEscortAlias(foundEscort.alias);
             setLoading(false);
             return;
           } else {
@@ -132,6 +141,38 @@ const EscortProfile = () => {
             response: searchError.response?.data,
             status: searchError.response?.status,
           });
+
+          // If search fails due to toUpperCase error, try direct API call
+          if (
+            searchError.message &&
+            searchError.message.includes("toUpperCase")
+          ) {
+            console.log(
+              "🔄 Search failed due to toUpperCase error, trying direct API call..."
+            );
+            try {
+              const directResponse = await fetch(
+                `http://localhost:5000/api/escort/search?q=${encodeURIComponent(
+                  decoded
+                )}&limit=1`
+              );
+              const directData = await directResponse.json();
+
+              if (directData?.data?.escorts?.length > 0) {
+                const foundEscort = directData.data.escorts[0];
+                console.log(
+                  "✅ Found escort via direct API call:",
+                  foundEscort
+                );
+                setEscort(foundEscort);
+                setLoading(false);
+                return;
+              }
+            } catch (directError) {
+              console.error("❌ Direct API call also failed:", directError);
+            }
+          }
+
           throw new Error(
             "Invalid escort identifier and no matching escort found"
           );
