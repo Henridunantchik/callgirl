@@ -222,14 +222,30 @@ const AppSidebar = () => {
       console.log("📨 Sidebar - Messages read, notifications reset to 0");
     };
 
+    const handleNewMessageReceived = (event) => {
+      // Update notification count when new message is received
+      setNotificationCounts((prev) => ({
+        ...prev,
+        messages: prev.messages + 1,
+      }));
+      console.log(
+        "📨 Sidebar - New message received, incrementing notification count"
+      );
+    };
+
     window.addEventListener("conversationOpened", handleConversationOpened);
     window.addEventListener("messagesRead", handleMessagesRead);
+    window.addEventListener("newMessageReceived", handleNewMessageReceived);
     return () => {
       window.removeEventListener(
         "conversationOpened",
         handleConversationOpened
       );
       window.removeEventListener("messagesRead", handleMessagesRead);
+      window.removeEventListener(
+        "newMessageReceived",
+        handleNewMessageReceived
+      );
     };
   }, []);
 
