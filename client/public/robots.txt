@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://epicescorts.live/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /client/
+Disallow: /escort/dashboard/
+Disallow: /escort/profile/
+Disallow: /escort/registration/
+Disallow: /escort/upgrade/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /messages/
+Disallow: /favorites/
+Disallow: /bookings/
+
+# Allow public pages
+Allow: /ug/
+Allow: /ke/
+Allow: /tz/
+Allow: /rw/
+Allow: /bi/
+Allow: /escorts
+Allow: /location/
+Allow: /category/
+Allow: /escort/
+
+# Crawl delay
+Crawl-delay: 1

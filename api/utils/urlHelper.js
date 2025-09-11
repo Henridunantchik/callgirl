@@ -17,7 +17,7 @@ export const getBaseUrl = () => {
       process.env.RAILWAY_STATIC_URL ||
       process.env.RAILWAY_PUBLIC_DOMAIN;
     if (railUrl) return railUrl.replace(/\/$/, "");
-    return "https://api.epicescorts.live";
+    return "https://epic-escorts-production.up.railway.app";
   }
 
   return "http://localhost:5000";

@@ -527,29 +527,21 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
       const formData = new FormData();
       formData.append("image", selectedImage);
 
-      const uploadResponse = await fetch(
-        `${
-          import.meta.env.VITE_API_URL ||
-          (window.location.hostname !== "localhost" &&
-          window.location.hostname !== "127.0.0.1"
-            ? "https://epic-escorts-production.up.railway.app/api"
-            : "http://localhost:5000/api")
-        }/message/upload-image`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: formData,
-        }
-      );
+      // Use the centralized API service for upload
+      const uploadResponse = await messageAPI.uploadImage(formData);
 
-      if (!uploadResponse.ok) {
-        throw new Error("Image upload failed");
+      // Extract URL from response - handle different response structures
+      let imageUrl;
+      if (uploadResponse.data?.data?.url) {
+        imageUrl = uploadResponse.data.data.url;
+      } else if (uploadResponse.data?.url) {
+        imageUrl = uploadResponse.data.url;
+      } else if (typeof uploadResponse.data === "string") {
+        imageUrl = uploadResponse.data;
+      } else {
+        console.error("Unexpected upload response structure:", uploadResponse);
+        throw new Error("Invalid upload response");
       }
-
-      const uploadData = await uploadResponse.json();
-      const imageUrl = uploadData.data?.url || uploadData.url;
 
       // Create temporary message
       const tempMessage = {
@@ -920,16 +912,8 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                                 : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
                             }`}
                           >
-                            {/* Check if content is an image URL */}
-                            {msg.type === "image" ||
-                            (msg.content &&
-                              msg.content.startsWith("http") &&
-                              (msg.content.includes(
-                                "firebasestorage.googleapis.com"
-                              ) ||
-                                msg.content.match(
-                                  /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i
-                                ))) ? (
+                            {/* Check if message type is image */}
+                            {msg.type === "image" ? (
                               <div className="space-y-2">
                                 <FirebaseImageDisplay
                                   src={msg.content}

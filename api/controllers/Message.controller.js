@@ -276,6 +276,22 @@ const deleteMessage = asyncHandler(async (req, res) => {
 
 // Upload image for message
 const uploadMessageImage = asyncHandler(async (req, res) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log("📸 Upload request received:", {
+      method: req.method,
+      url: req.url,
+      hasFile: !!req.file,
+      fileInfo: req.file
+        ? {
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+          }
+        : null,
+    });
+  }
+
   if (!req.file) {
     throw new ApiError(400, "Image file is required");
   }

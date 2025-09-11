@@ -67,6 +67,7 @@ import AgeVerification from "./pages/Auth/AgeVerification";
 import PrivacyPolicy from "./pages/Legal/PrivacyPolicy";
 import TermsOfService from "./pages/Legal/TermsOfService";
 import AgeDisclaimer from "./pages/Legal/AgeDisclaimer";
+import Sitemap from "./pages/Sitemap";
 import TestPage from "./pages/TestPage";
 import GeolocationTest from "./components/GeolocationTest";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -151,6 +152,9 @@ const App = () => {
               <Route path="legal/privacy" element={<PrivacyPolicy />} />
               <Route path="legal/terms" element={<TermsOfService />} />
               <Route path="legal/age-disclaimer" element={<AgeDisclaimer />} />
+
+              {/* SEO Pages */}
+              <Route path="sitemap" element={<Sitemap />} />
 
               {/* Test Pages */}
               <Route path="test" element={<TestPage />} />

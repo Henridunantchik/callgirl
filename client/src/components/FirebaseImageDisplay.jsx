@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Image, Video, File } from "lucide-react";
+import { getBaseUrl } from "../utils/urlHelper";
 
 const FirebaseImageDisplay = ({
   src,
@@ -30,19 +31,19 @@ const FirebaseImageDisplay = ({
 
     // For Railway, backend already returns absolute URLs; use as-is
     if (src.startsWith("https://") || src.startsWith("http://")) {
-      // Check if it's a production URL but we're in development
-      if (src.includes("api.epicescorts.live") && import.meta.env.DEV) {
-        // Keep production URL in development since local files don't exist
-        processedSrc = src;
-        console.log("🔄 Using production URL in development:", src);
+      // Check if it's a localhost URL and we're in production
+      if (src.includes("localhost:5000") && !import.meta.env.DEV) {
+        // Replace localhost with production URL
+        const baseUrl = getBaseUrl();
+        processedSrc = src.replace("http://localhost:5000", baseUrl);
+        console.log("🔄 Fixed localhost URL for production:", processedSrc);
       } else {
         processedSrc = src;
       }
     } else if (src.startsWith("/")) {
       // Handle relative paths - try to construct full URL
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-      processedSrc = `${baseUrl.replace("/api", "")}${src}`;
+      const baseUrl = getBaseUrl();
+      processedSrc = `${baseUrl}${src}`;
     } else {
       // If it's just a filename or path, try to use it directly
       processedSrc = src;

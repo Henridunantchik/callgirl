@@ -315,30 +315,22 @@ const AdminMessages = () => {
         const formData = new FormData();
         formData.append("image", selectedImage);
 
-        // Upload image to server
-        const uploadResponse = await fetch(
-          `${
-            import.meta.env.VITE_API_URL ||
-            (window.location.hostname !== "localhost" &&
-            window.location.hostname !== "127.0.0.1"
-              ? "https://epic-escorts-production.up.railway.app/api"
-              : "http://localhost:5000/api")
-          }/message/upload-image`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: formData,
-          }
-        );
+        // Use the centralized API service for upload
+        const uploadResponse = await messageAPI.uploadImage(formData);
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json();
-          imageUrl = uploadData.data?.url || uploadData.url;
+        // Extract URL from response - handle different response structures
+        if (uploadResponse.data?.data?.url) {
+          imageUrl = uploadResponse.data.data.url;
+        } else if (uploadResponse.data?.url) {
+          imageUrl = uploadResponse.data.url;
+        } else if (typeof uploadResponse.data === "string") {
+          imageUrl = uploadResponse.data;
         } else {
-          const errorText = await uploadResponse.text();
-          throw new Error(`Image upload failed: ${uploadResponse.status}`);
+          console.error(
+            "Unexpected upload response structure:",
+            uploadResponse
+          );
+          throw new Error("Invalid upload response");
         }
       } catch (error) {
         showToast("error", `Failed to upload image: ${error.message}`);

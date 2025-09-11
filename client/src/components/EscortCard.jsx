@@ -25,6 +25,7 @@ import {
   hasPremiumAccess,
   canShowContactInfo,
   canShowDetailedInfo,
+  canShowPhotos,
   getEscortAccessLevel,
   getAccessLevelBadgeColor,
   getAccessLevelLabel,
@@ -137,9 +138,11 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
             src={
               imageError
                 ? fixedEscort.avatar || "/default-escort.jpg"
-                : fixedEscort.gallery?.[0]?.url ||
-                  fixedEscort.gallery?.[0]?.src ||
-                  fixedEscort.avatar
+                : canShowPhotos(fixedEscort) && fixedEscort.gallery?.[0]?.url
+                ? fixedEscort.gallery[0].url
+                : canShowPhotos(fixedEscort) && fixedEscort.gallery?.[0]?.src
+                ? fixedEscort.gallery[0].src
+                : fixedEscort.avatar || "/default-escort.jpg"
             }
             alt={fixedEscort.alias || fixedEscort.name}
             className="w-full h-full object-cover object-center transition-transform duration-300"

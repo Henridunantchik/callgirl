@@ -336,32 +336,41 @@ const Messages = () => {
         const formData = new FormData();
         formData.append("image", selectedImage);
 
-        // Upload image to server
-        const uploadResponse = await fetch(
-          `${
-            import.meta.env.VITE_API_URL ||
-            (window.location.hostname !== "localhost" &&
-            window.location.hostname !== "127.0.0.1"
-              ? "https://epic-escorts-production.up.railway.app/api"
-              : "http://localhost:5000/api")
-          }/message/upload-image`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: formData,
-          }
+        // Upload image using the centralized API service
+        console.log("🔍 DEBUG - Starting image upload...");
+        console.log("🔍 DEBUG - FormData contents:");
+        for (let [key, value] of formData.entries()) {
+          console.log(`  ${key}:`, value);
+        }
+
+        const token = localStorage.getItem("token");
+        console.log("🔍 DEBUG - Token exists:", !!token);
+        console.log(
+          "🔍 DEBUG - Token preview:",
+          token ? token.substring(0, 50) + "..." : "null"
         );
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json();
-          imageUrl = uploadData.data?.url || uploadData.url;
+        // Use the centralized API service for upload
+        console.log("🔍 DEBUG - Using messageAPI.uploadImage...");
+        const uploadResponse = await messageAPI.uploadImage(formData);
+        console.log("🔍 DEBUG - Upload response:", uploadResponse);
+
+        // Extract URL from response - handle different response structures
+        if (uploadResponse.data?.data?.url) {
+          imageUrl = uploadResponse.data.data.url;
+        } else if (uploadResponse.data?.url) {
+          imageUrl = uploadResponse.data.url;
+        } else if (typeof uploadResponse.data === "string") {
+          imageUrl = uploadResponse.data;
         } else {
-          const errorText = await uploadResponse.text();
-          console.error("📸 Upload failed:", errorText);
-          throw new Error("Image upload failed");
+          console.error(
+            "🔍 DEBUG - Unexpected upload response structure:",
+            uploadResponse
+          );
+          throw new Error("Invalid upload response");
         }
+
+        console.log("🔍 DEBUG - Extracted imageUrl:", imageUrl);
       } catch (error) {
         console.error("Image upload error:", error);
         showToast("error", "Failed to upload image");
@@ -937,18 +946,8 @@ const Messages = () => {
                                       : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
                                   }`}
                                 >
-                                  {/* Check if content is an image URL or if type is image */}
-                                  {msg.type === "image" ||
-                                  (msg.content &&
-                                    msg.content.startsWith("http") &&
-                                    (msg.content.includes(
-                                      "firebasestorage.googleapis.com"
-                                    ) ||
-                                      msg.content.includes(".jpg") ||
-                                      msg.content.includes(".jpeg") ||
-                                      msg.content.includes(".png") ||
-                                      msg.content.includes(".gif") ||
-                                      msg.content.includes(".webp"))) ? (
+                                  {/* Check if message type is image */}
+                                  {msg.type === "image" ? (
                                     <div className="space-y-2">
                                       <img
                                         src={msg.content}

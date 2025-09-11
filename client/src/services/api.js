@@ -35,7 +35,7 @@ const computeBaseURL = () => {
 
     return isLocal
       ? "http://localhost:5000/api/"
-      : ensureApiSuffix(window.location.origin);
+      : "https://epic-escorts-production.up.railway.app/api/";
   } catch (error) {
     console.error("Error computing base URL:", error);
     return "http://localhost:5000/api/";
@@ -619,6 +619,11 @@ export const messageAPI = {
     api.put(`message/mark-conversation-read/${escortId}`),
   deleteMessage: (messageId) => api.delete(`message/delete/${messageId}`),
   startConversation: (data) => api.post("message/conversation", data),
+  uploadImage: (formData) =>
+    api.post("message/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      batch: false,
+    }),
 };
 
 // Booking API
