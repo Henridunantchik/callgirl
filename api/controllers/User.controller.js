@@ -220,7 +220,7 @@ export const getMainAdmin = asyncHandler(async (req, res) => {
   try {
     // Find the first admin user (or create one if none exists)
     let admin = await User.findOne({ role: "admin" }).select(
-      "_id name email avatar"
+      "_id name email avatar role"
     );
 
     if (!admin) {

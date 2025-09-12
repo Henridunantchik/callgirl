@@ -540,6 +540,15 @@ const EscortProfile = () => {
                 fallbackSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM4QjVDRjYiLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjRUM0ODk5Ii8+CjwvbGluZWFyR3JhZGllbnQ+CjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZGllbnQpIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCI+Q292ZXI8L3RleHQ+Cjwvc3ZnPgo="
               />
             </div>
+          ) : escort.avatar ? (
+            <div className="w-full h-full">
+              <FirebaseImageDisplay
+                src={escort.avatar}
+                alt={`${escort.alias || escort.name} - Cover Photo`}
+                className="w-full h-full object-cover"
+                fallbackSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM4QjVDRjYiLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjRUM0ODk5Ii8+CjwvbGluZWFyR3JhZGllbnQ+CjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZGllbnQpIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCI+Q292ZXI8L3RleHQ+Cjwvc3ZnPgo="
+              />
+            </div>
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
               <Camera className="h-16 w-16 text-white/50" />
@@ -709,8 +718,8 @@ const EscortProfile = () => {
             </div>
           </div>
 
-          {/* Upgrade Banner for Basic Users */}
-          {!canShowPhotos(escort) && (
+          {/* Upgrade Banner for Basic Users - Only show for the escort themselves */}
+          {!canShowPhotos(escort) && user && user._id === escort._id && (
             <div className="bg-white rounded-lg shadow-lg mb-6 p-6">
               <UpgradePrompt
                 type="photos"
@@ -732,26 +741,38 @@ const EscortProfile = () => {
                   ...(canShowAbout(escort) ? ["about"] : []),
                   ...(canShowServices(escort) ? ["services"] : []),
                   ...(canShowRates(escort) ? ["rates"] : []),
-                ].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`py-4 px-6 font-medium text-sm capitalize transition-all duration-300 rounded-t-lg ${
-                      activeTab === tab
-                        ? "bg-white text-purple-600 shadow-lg border-b-2 border-purple-500"
-                        : "text-gray-600 hover:text-purple-600 hover:bg-white/50"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+                ]
+                  .filter((tab) => {
+                    // For Basic escorts, only show tabs to the escort themselves
+                    if (
+                      escort.subscriptionTier === "basic" &&
+                      (!user || user._id !== escort._id)
+                    ) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`py-4 px-6 font-medium text-sm capitalize transition-all duration-300 rounded-t-lg ${
+                        activeTab === tab
+                          ? "bg-white text-purple-600 shadow-lg border-b-2 border-purple-500"
+                          : "text-gray-600 hover:text-purple-600 hover:bg-white/50"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
               </nav>
             </div>
 
             <div className="p-6">
-              {/* Photos Tab - Only show for non-basic escorts */}
+              {/* Photos Tab - Only show for non-basic escorts or escort themselves */}
               {activeTab === "photos" &&
-                escort.subscriptionTier !== "basic" && (
+                (escort.subscriptionTier !== "basic" ||
+                  (user && user._id === escort._id)) && (
                   <div className="space-y-8">
                     {/* Gallery Section */}
                     <div>

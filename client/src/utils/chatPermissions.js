@@ -13,7 +13,6 @@ export const canSendPhotos = (user, recipient) => {
 
   // Premium users can send photos to anyone
   if (user.subscriptionTier === "premium") return true;
-
   // Basic/Featured escorts can only send photos to Admin
   if (
     user.subscriptionTier === "basic" ||

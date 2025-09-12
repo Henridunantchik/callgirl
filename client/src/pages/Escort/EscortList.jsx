@@ -931,7 +931,22 @@ const EscortList = () => {
                     <CardContent className="p-0">
                       {/* Image - Moderately taller */}
                       <div className="relative h-64 bg-gray-200 overflow-hidden">
-                        {escort.gallery && escort.gallery.length > 0 ? (
+                        {(() => {
+                          console.log(
+                            "🔍 Escort data for",
+                            escort.alias || escort.name,
+                            ":",
+                            {
+                              hasGallery:
+                                escort.gallery && escort.gallery.length > 0,
+                              galleryLength: escort.gallery?.length || 0,
+                              hasAvatar: !!escort.avatar,
+                              avatar: escort.avatar,
+                              subscriptionTier: escort.subscriptionTier,
+                            }
+                          );
+                          return escort.gallery && escort.gallery.length > 0;
+                        })() ? (
                           <FirebaseImageDisplay
                             src={
                               escort.gallery[0].url ||
@@ -948,8 +963,17 @@ const EscortList = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-500">
-                            No Photo
+                          <div className="w-full h-full flex items-center justify-center text-gray-500 bg-gradient-to-br from-purple-100 to-pink-100">
+                            <div className="text-center">
+                              <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <span className="text-2xl font-bold text-purple-600">
+                                  {(escort.alias || escort.name || "E")
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </span>
+                              </div>
+                              <span className="text-sm">No Photo</span>
+                            </div>
                           </div>
                         )}
 

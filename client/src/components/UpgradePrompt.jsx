@@ -2,7 +2,17 @@ import React from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Crown, Lock, Eye, Star, Zap } from "lucide-react";
+import {
+  Crown,
+  Lock,
+  Eye,
+  Star,
+  Zap,
+  Check,
+  Camera,
+  Video,
+  Sparkles,
+} from "lucide-react";
 
 const UpgradePrompt = ({
   type = "photos", // "photos", "videos", "details", "contact"
@@ -68,43 +78,127 @@ const UpgradePrompt = ({
   };
 
   return (
-    <Card
-      className={`bg-gradient-to-r ${
-        colorClasses[content.color]
-      } border-l-4 border-l-${content.color}-500`}
-    >
-      <CardContent className="p-6 text-center">
-        <div className="flex justify-center mb-4">{content.icon}</div>
-
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          {content.title}
-        </h3>
-
-        <p className="text-gray-600 mb-4">{content.description}</p>
-
-        <div className="flex flex-wrap justify-center gap-2 mb-6">
-          {content.benefits.map((benefit, index) => (
-            <Badge key={index} variant="outline" className="text-xs">
-              {benefit}
-            </Badge>
-          ))}
+    <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 rounded-2xl p-8 border border-purple-200 shadow-xl">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-4">
+          <Camera className="h-8 w-8 text-white" />
         </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Gallery Photos - Upgrade Required
+        </h2>
+        <p className="text-gray-600 text-lg">Upload Photos & Videos</p>
+        <p className="text-gray-500 mt-2">
+          Upgrade to Featured or Premium to upload gallery photos and videos
+        </p>
+      </div>
 
-        <div className="space-y-3">
-          <Button
-            onClick={onUpgrade}
-            className={`w-full bg-gradient-to-r from-${content.color}-600 to-${content.color}-700 hover:from-${content.color}-700 hover:to-${content.color}-800 text-white shadow-lg`}
-          >
-            <Crown className="h-4 w-4 mr-2" />
-            Upgrade to View
-          </Button>
+      {/* Pricing Cards */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Featured Plan */}
+        <Card className="relative overflow-hidden border-2 border-orange-200 hover:border-orange-300 transition-all duration-300 hover:shadow-lg">
+          <div className="absolute top-0 right-0 bg-gradient-to-l from-orange-500 to-yellow-500 text-white px-4 py-1 text-sm font-semibold rounded-bl-lg">
+            POPULAR
+          </div>
+          <CardContent className="p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full mb-3">
+                <Star className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Featured Plan
+              </h3>
+              <div className="text-3xl font-bold text-orange-600 mb-1">$12</div>
+              <p className="text-gray-500 text-sm">lifetime</p>
+            </div>
 
-          <p className="text-xs text-gray-500">
-            Unlock premium features and see more content
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">10 Gallery Photos</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">5 Videos</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">Featured Badge</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">Priority Listing</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={onUpgrade}
+              className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-semibold py-3 rounded-lg shadow-lg transition-all duration-300"
+            >
+              <Star className="h-5 w-5 mr-2" />
+              Choose Featured
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Premium Plan */}
+        <Card className="relative overflow-hidden border-2 border-purple-200 hover:border-purple-300 transition-all duration-300 hover:shadow-lg">
+          <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-500 to-pink-500 text-white px-4 py-1 text-sm font-semibold rounded-bl-lg">
+            BEST VALUE
+          </div>
+          <CardContent className="p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-3">
+                <Crown className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Premium Plan
+              </h3>
+              <div className="text-3xl font-bold text-purple-600 mb-1">$5</div>
+              <p className="text-gray-500 text-sm">per month</p>
+              <div className="text-lg font-bold text-green-600 mt-1">
+                or $60/year
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">30 Gallery Photos</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">15 Videos</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">Premium Badge</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-gray-700">All Features</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={onUpgrade}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 rounded-lg shadow-lg transition-all duration-300"
+            >
+              <Crown className="h-5 w-5 mr-2" />
+              Choose Premium
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center">
+        <p className="text-gray-500 text-sm">
+          <Sparkles className="h-4 w-4 inline mr-1" />
+          Unlock premium features and see more content
+        </p>
+      </div>
+    </div>
   );
 };
 
