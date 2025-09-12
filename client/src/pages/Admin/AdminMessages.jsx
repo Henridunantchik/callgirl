@@ -18,6 +18,13 @@ import {
 } from "../../components/ui/avatar";
 import { FirebasePremiumAvatar } from "../../components/firebase";
 import {
+  canSendPhotos,
+  canReceivePhotos,
+  canShowPhotoUpload,
+  canDisplayPhotos,
+  getPhotoRestrictionMessage,
+} from "../../utils/chatPermissions";
+import {
   MessageCircle,
   Send,
   User,
@@ -315,30 +322,22 @@ const AdminMessages = () => {
         const formData = new FormData();
         formData.append("image", selectedImage);
 
-        // Upload image to server
-        const uploadResponse = await fetch(
-          `${
-            import.meta.env.VITE_API_URL ||
-            (window.location.hostname !== "localhost" &&
-            window.location.hostname !== "127.0.0.1"
-              ? "https://epic-escorts-production.up.railway.app/api"
-              : "http://localhost:5000/api")
-          }/message/upload-image`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: formData,
-          }
-        );
+        // Use the centralized API service for upload
+        const uploadResponse = await messageAPI.uploadImage(formData);
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json();
-          imageUrl = uploadData.data?.url || uploadData.url;
+        // Extract URL from response - handle different response structures
+        if (uploadResponse.data?.data?.url) {
+          imageUrl = uploadResponse.data.data.url;
+        } else if (uploadResponse.data?.url) {
+          imageUrl = uploadResponse.data.url;
+        } else if (typeof uploadResponse.data === "string") {
+          imageUrl = uploadResponse.data;
         } else {
-          const errorText = await uploadResponse.text();
-          throw new Error(`Image upload failed: ${uploadResponse.status}`);
+          console.error(
+            "Unexpected upload response structure:",
+            uploadResponse
+          );
+          throw new Error("Invalid upload response");
         }
       } catch (error) {
         showToast("error", `Failed to upload image: ${error.message}`);
@@ -700,21 +699,35 @@ const AdminMessages = () => {
                                 }`}
                               >
                                 {msg.type === "image" ? (
-                                  <div className="space-y-2">
-                                    <img
-                                      src={msg.content}
-                                      alt="Message image"
-                                      className="max-w-full max-h-64 rounded-lg"
-                                      onError={(e) => {
-                                        e.target.style.display = "none";
-                                        e.target.nextSibling.style.display =
-                                          "block";
-                                      }}
-                                    />
-                                    <div className="hidden text-xs text-gray-500">
-                                      Image failed to load
+                                  canDisplayPhotos(user, msg.sender) ? (
+                                    <div className="space-y-2">
+                                      <img
+                                        src={msg.content}
+                                        alt="Message image"
+                                        className="max-w-full max-h-64 rounded-lg"
+                                        onError={(e) => {
+                                          e.target.style.display = "none";
+                                          e.target.nextSibling.style.display =
+                                            "block";
+                                        }}
+                                      />
+                                      <div className="hidden text-xs text-gray-500">
+                                        Image failed to load
+                                      </div>
                                     </div>
-                                  </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3 text-center">
+                                        <ImageIcon className="h-8 w-8 text-orange-400 mx-auto mb-2" />
+                                        <p className="text-sm text-orange-700 font-medium">
+                                          Photo Message
+                                        </p>
+                                        <p className="text-xs text-orange-600">
+                                          Upgrade to Premium to view photos
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
                                 ) : (
                                   <p className="text-sm leading-relaxed">
                                     {msg.content}
@@ -791,14 +804,44 @@ const AdminMessages = () => {
                         onChange={handleImageSelect}
                         className="hidden"
                       />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-gray-200"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <ImageIcon className="h-4 w-4 text-gray-600" />
-                      </Button>
+                      {(() => {
+                        const canUpload = canShowPhotoUpload(
+                          user,
+                          selectedChat?.user
+                        );
+                        console.log("🔍 Admin Photo upload check:", {
+                          user: user,
+                          recipient: selectedChat?.user,
+                          canUpload: canUpload,
+                          userRole: user?.role,
+                          userTier: user?.subscriptionTier,
+                          recipientRole: selectedChat?.user?.role,
+                        });
+                        return canUpload;
+                      })() ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-gray-200"
+                          onClick={() => fileInputRef.current?.click()}
+                          title="Send photo"
+                        >
+                          <ImageIcon className="h-4 w-4 text-gray-600" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-gray-200 opacity-50 cursor-not-allowed"
+                          disabled
+                          title={getPhotoRestrictionMessage(
+                            user,
+                            selectedChat?.user
+                          )}
+                        >
+                          <ImageIcon className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      )}
                       <Textarea
                         ref={textareaRef}
                         value={message}

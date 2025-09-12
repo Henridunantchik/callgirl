@@ -12,7 +12,7 @@ export const getBaseUrl = () => {
     window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1"
   ) {
-    return "https://apicallgirls.vercel.app"; // Use Vercel backend instead of Render
+    return "https://epic-escorts-production.up.railway.app"; // Use Railway backend
   }
 
   // In development, use localhost

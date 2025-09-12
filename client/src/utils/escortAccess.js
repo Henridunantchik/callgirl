@@ -7,18 +7,16 @@ export const hasPremiumAccess = (escort) => {
   if (!escort) return false;
 
   // Check subscription tier - only featured and premium have premium access
-  const hasPremiumTier = escort.subscriptionTier === "featured" || escort.subscriptionTier === "premium";
+  const hasPremiumTier =
+    escort.subscriptionTier === "featured" ||
+    escort.subscriptionTier === "premium";
 
   return hasPremiumTier;
 };
 
 // Check if escort can show contact information
 export const canShowContactInfo = (escort) => {
-  return hasPremiumAccess(escort);
-};
-
-// Check if escort can show detailed information
-export const canShowDetailedInfo = (escort) => {
+  // Contact info should be visible for premium escorts only
   return hasPremiumAccess(escort);
 };
 
@@ -39,6 +37,24 @@ export const canShowServices = (escort) => {
 
 // Check if escort can show about section
 export const canShowAbout = (escort) => {
+  return hasPremiumAccess(escort);
+};
+
+// Check if escort photos can be displayed (business strategy: only for premium users)
+export const canShowPhotos = (escort) => {
+  // Photos should only be visible to premium users to encourage upgrades
+  return hasPremiumAccess(escort);
+};
+
+// Check if escort basic info can be displayed (name, age, city - always visible)
+export const canShowBasicInfo = (escort) => {
+  // Basic info should always be visible to attract users
+  return true;
+};
+
+// Check if escort detailed info can be displayed (services, personal details, etc.)
+export const canShowDetailedInfo = (escort) => {
+  // Detailed info should only be visible to premium users
   return hasPremiumAccess(escort);
 };
 

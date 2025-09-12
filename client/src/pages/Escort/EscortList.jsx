@@ -44,6 +44,8 @@ import { RouteSignIn } from "../../helpers/RouteName";
 import { debounce } from "lodash";
 import FirebaseImageDisplay from "../../components/FirebaseImageDisplay";
 import RealTimeMessenger from "../../components/RealTimeMessenger";
+import { Helmet } from "react-helmet-async";
+import { getCountryByCode, getCitiesByCountry } from "../../helpers/countries";
 import {
   canShowContactInfo,
   canShowDetailedInfo,
@@ -416,669 +418,808 @@ const EscortList = () => {
     );
   }
 
+  // Get country and city information for SEO
+  const countryInfo = getCountryByCode(countryCode || "ug");
+  const cities = getCitiesByCountry(countryCode || "ug");
+  const countryName = countryInfo?.name || "Uganda";
+  const mainCity = cities[0] || "Kampala";
+
+  // Generate SEO content based on current filters
+  const pageTitle = category
+    ? `${category.charAt(0).toUpperCase() + category.slice(1)} Escorts in ${
+        city ? city.charAt(0).toUpperCase() + city.slice(1) : mainCity
+      }, ${countryName}`
+    : city
+    ? `Escorts in ${
+        city.charAt(0).toUpperCase() + city.slice(1)
+      }, ${countryName} - Verified Call Girls`
+    : `${countryName} Escorts - Verified Call Girls & Companions`;
+
+  const pageDescription = category
+    ? `Find verified ${category} escorts in ${
+        city ? city : mainCity
+      }, ${countryName}. Premium ${category} services, massage, companionship, and more. Safe, discreet, and professional.`
+    : city
+    ? `Find verified escorts and call girls in ${city}, ${countryName}. Premium escort services, massage, companionship, and more. Safe, discreet, and professional. Browse ${
+        totalResults || 0
+      }+ verified profiles.`
+    : `Find verified ${countryName} escorts and call girls. Premium escort services, massage, companionship, and more. Safe, discreet, and professional. Browse ${
+        totalResults || 0
+      }+ verified profiles.`;
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {category
-              ? `${(category?.[0] || "")?.toUpperCase() || ""}${
-                  category?.slice?.(1) || ""
-                } Escorts`
-              : city
-              ? `Escorts in ${(city?.[0] || "")?.toUpperCase() || ""}${
-                  city?.slice?.(1) || ""
-                }`
-              : "Find Escorts"}
-          </h1>
-          {(category || city) && (
-            <p className="text-gray-600 mb-4">
-              {category && city
-                ? `Showing ${category} escorts in ${city}`
-                : category
-                ? `Showing escorts offering ${category} services`
-                : `Showing escorts in ${city}`}
-            </p>
-          )}
+    <>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <meta
+          name="keywords"
+          content={`${countryName} escorts, ${
+            city || mainCity
+          } escorts, call girls ${countryName}, ${
+            city || mainCity
+          } call girls, escort services ${countryName}, verified escorts, massage ${
+            city || mainCity
+          }, companionship ${countryName}, adult services, hookup ${
+            city || mainCity
+          }, dating ${countryName}${category ? `, ${category} services` : ""}`}
+        />
+        <meta name="robots" content="index, follow" />
+        <meta name="googlebot" content="index, follow" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="mb-6">
-            <div className="flex gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Search escorts by name, location, or services..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta
+          property="og:url"
+          content={`https://epicescorts.live/${countryCode || "ug"}${
+            category ? `/category/${category}` : ""
+          }${city ? `/location/${city}` : ""}`}
+        />
+        <meta property="og:site_name" content="Epic Escorts" />
+        <meta
+          property="og:image"
+          content="https://epicescorts.live/og-image.jpg"
+        />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta
+          name="twitter:image"
+          content="https://epicescorts.live/og-image.jpg"
+        />
+
+        {/* Additional SEO */}
+        <meta name="author" content="Epic Escorts" />
+        <meta name="language" content="en" />
+        <meta name="revisit-after" content="1 days" />
+        <meta name="distribution" content="global" />
+        <meta name="rating" content="adult" />
+
+        {/* Canonical URL */}
+        <link
+          rel="canonical"
+          href={`https://epicescorts.live/${countryCode || "ug"}${
+            category ? `/category/${category}` : ""
+          }${city ? `/location/${city}` : ""}`}
+        />
+
+        {/* JSON-LD Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            name: pageTitle,
+            description: pageDescription,
+            url: `https://epicescorts.live/${countryCode || "ug"}${
+              category ? `/category/${category}` : ""
+            }${city ? `/location/${city}` : ""}`,
+            mainEntity: {
+              "@type": "ItemList",
+              numberOfItems: totalResults || 0,
+              itemListElement: escorts.slice(0, 10).map((escort, index) => ({
+                "@type": "Person",
+                position: index + 1,
+                name: escort.alias || escort.name,
+                description:
+                  escort.bio ||
+                  `Professional escort in ${city || mainCity}, ${countryName}`,
+                url: `https://epicescorts.live/${countryCode || "ug"}/escort/${
+                  escort._id
+                }`,
+              })),
+            },
+            publisher: {
+              "@type": "Organization",
+              name: "Epic Escorts",
+              url: "https://epicescorts.live",
+            },
+          })}
+        </script>
+      </Helmet>
+
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              {category
+                ? `${(category?.[0] || "")?.toUpperCase() || ""}${
+                    category?.slice?.(1) || ""
+                  } Escorts`
+                : city
+                ? `Escorts in ${(city?.[0] || "")?.toUpperCase() || ""}${
+                    city?.slice?.(1) || ""
+                  }`
+                : "Find Escorts"}
+            </h1>
+            {(category || city) && (
+              <p className="text-gray-600 mb-4">
+                {category && city
+                  ? `Showing ${category} escorts in ${city}`
+                  : category
+                  ? `Showing escorts offering ${category} services`
+                  : `Showing escorts in ${city}`}
+              </p>
+            )}
+
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="mb-6">
+              <div className="flex gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search escorts by name, location, or services..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    "Search"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="relative"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filters
+                  {getActiveFiltersCount() > 0 && (
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs">
+                      {getActiveFiltersCount()}
+                    </Badge>
+                  )}
+                </Button>
               </div>
-              <Button type="submit" disabled={loading}>
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  "Search"
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="relative"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-                {getActiveFiltersCount() > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs">
-                    {getActiveFiltersCount()}
-                  </Badge>
-                )}
-              </Button>
-            </div>
-          </form>
+            </form>
 
-          {/* Active Filters Display */}
-          {getActiveFiltersCount() > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              {Object.entries(filters).map(([key, value]) => {
-                if (
-                  value &&
-                  (typeof value === "string" ? value !== "" : value === true)
-                ) {
-                  return (
-                    <Badge
-                      key={key}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {key}: {typeof value === "boolean" ? "Yes" : value}
-                      <X
-                        className="h-3 w-3 cursor-pointer"
-                        onClick={() =>
-                          handleFilterChange(
-                            key,
-                            typeof value === "boolean" ? false : ""
-                          )
+            {/* Active Filters Display */}
+            {getActiveFiltersCount() > 0 && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {Object.entries(filters).map(([key, value]) => {
+                  if (
+                    value &&
+                    (typeof value === "string" ? value !== "" : value === true)
+                  ) {
+                    return (
+                      <Badge
+                        key={key}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        {key}: {typeof value === "boolean" ? "Yes" : value}
+                        <X
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() =>
+                            handleFilterChange(
+                              key,
+                              typeof value === "boolean" ? false : ""
+                            )
+                          }
+                        />
+                      </Badge>
+                    );
+                  }
+                  return null;
+                })}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Clear All
+                </Button>
+              </div>
+            )}
+
+            {/* Enhanced Filters */}
+            {showFilters && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Advanced Filters</span>
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      Clear All
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Location */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <MapPin className="h-4 w-4 inline mr-1" />
+                        Location
+                      </label>
+                      <Input
+                        placeholder="City or area"
+                        value={filters.location}
+                        onChange={(e) =>
+                          handleFilterChange("location", e.target.value)
                         }
                       />
-                    </Badge>
-                  );
-                }
-                return null;
-              })}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Clear All
-              </Button>
-            </div>
-          )}
+                    </div>
 
-          {/* Enhanced Filters */}
-          {showFilters && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Advanced Filters</span>
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    Clear All
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {/* Location */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <MapPin className="h-4 w-4 inline mr-1" />
-                      Location
-                    </label>
-                    <Input
-                      placeholder="City or area"
-                      value={filters.location}
-                      onChange={(e) =>
-                        handleFilterChange("location", e.target.value)
-                      }
-                    />
-                  </div>
+                    {/* Age Range */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Calendar className="h-4 w-4 inline mr-1" />
+                        Age Range
+                      </label>
+                      <Select
+                        value={filters.age}
+                        onValueChange={(value) =>
+                          handleFilterChange("age", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any Age" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any Age</SelectItem>
+                          <SelectItem value="18-25">18-25</SelectItem>
+                          <SelectItem value="26-35">26-35</SelectItem>
+                          <SelectItem value="36-45">36-45</SelectItem>
+                          <SelectItem value="46+">46+</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Age Range */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Calendar className="h-4 w-4 inline mr-1" />
-                      Age Range
-                    </label>
-                    <Select
-                      value={filters.age}
-                      onValueChange={(value) =>
-                        handleFilterChange("age", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any Age" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Any Age</SelectItem>
-                        <SelectItem value="18-25">18-25</SelectItem>
-                        <SelectItem value="26-35">26-35</SelectItem>
-                        <SelectItem value="36-45">36-45</SelectItem>
-                        <SelectItem value="46+">46+</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Services */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Users className="h-4 w-4 inline mr-1" />
+                        Services
+                      </label>
+                      <Select
+                        value={filters.services}
+                        onValueChange={(value) =>
+                          handleFilterChange("services", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any Service" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any Service</SelectItem>
+                          <SelectItem value="in-call">In-call</SelectItem>
+                          <SelectItem value="out-call">Out-call</SelectItem>
+                          <SelectItem value="massage">Massage</SelectItem>
+                          <SelectItem value="gfe">GFE</SelectItem>
+                          <SelectItem value="pse">PSE</SelectItem>
+                          <SelectItem value="duo">Duo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Services */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Users className="h-4 w-4 inline mr-1" />
-                      Services
-                    </label>
-                    <Select
-                      value={filters.services}
-                      onValueChange={(value) =>
-                        handleFilterChange("services", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any Service" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Any Service</SelectItem>
-                        <SelectItem value="in-call">In-call</SelectItem>
-                        <SelectItem value="out-call">Out-call</SelectItem>
-                        <SelectItem value="massage">Massage</SelectItem>
-                        <SelectItem value="gfe">GFE</SelectItem>
-                        <SelectItem value="pse">PSE</SelectItem>
-                        <SelectItem value="duo">Duo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Price Range */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <DollarSign className="h-4 w-4 inline mr-1" />
+                        Price Range
+                      </label>
+                      <Select
+                        value={filters.priceRange}
+                        onValueChange={(value) =>
+                          handleFilterChange("priceRange", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any Price" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any Price</SelectItem>
+                          <SelectItem value="0-50000">
+                            {currencySymbol} 0-50,000
+                          </SelectItem>
+                          <SelectItem value="50000-100000">
+                            {currencySymbol} 50,000-100,000
+                          </SelectItem>
+                          <SelectItem value="100000-200000">
+                            {currencySymbol} 100,000-200,000
+                          </SelectItem>
+                          <SelectItem value="200000+">
+                            {currencySymbol} 200,000+
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Price Range */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <DollarSign className="h-4 w-4 inline mr-1" />
-                      Price Range
-                    </label>
-                    <Select
-                      value={filters.priceRange}
-                      onValueChange={(value) =>
-                        handleFilterChange("priceRange", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any Price" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Any Price</SelectItem>
-                        <SelectItem value="0-50000">
-                          {currencySymbol} 0-50,000
-                        </SelectItem>
-                        <SelectItem value="50000-100000">
-                          {currencySymbol} 50,000-100,000
-                        </SelectItem>
-                        <SelectItem value="100000-200000">
-                          {currencySymbol} 100,000-200,000
-                        </SelectItem>
-                        <SelectItem value="200000+">
-                          {currencySymbol} 200,000+
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Body Type */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Body Type
+                      </label>
+                      <Select
+                        value={filters.bodyType}
+                        onValueChange={(value) =>
+                          handleFilterChange("bodyType", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any Body Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any Body Type</SelectItem>
+                          <SelectItem value="slim">Slim</SelectItem>
+                          <SelectItem value="athletic">Athletic</SelectItem>
+                          <SelectItem value="average">Average</SelectItem>
+                          <SelectItem value="curvy">Curvy</SelectItem>
+                          <SelectItem value="plus-size">Plus Size</SelectItem>
+                          <SelectItem value="bbw">BBW</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Body Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Body Type
-                    </label>
-                    <Select
-                      value={filters.bodyType}
-                      onValueChange={(value) =>
-                        handleFilterChange("bodyType", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any Body Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Any Body Type</SelectItem>
-                        <SelectItem value="slim">Slim</SelectItem>
-                        <SelectItem value="athletic">Athletic</SelectItem>
-                        <SelectItem value="average">Average</SelectItem>
-                        <SelectItem value="curvy">Curvy</SelectItem>
-                        <SelectItem value="plus-size">Plus Size</SelectItem>
-                        <SelectItem value="bbw">BBW</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Ethnicity */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Ethnicity
+                      </label>
+                      <Select
+                        value={filters.ethnicity}
+                        onValueChange={(value) =>
+                          handleFilterChange("ethnicity", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any Ethnicity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any Ethnicity</SelectItem>
+                          <SelectItem value="african">African</SelectItem>
+                          <SelectItem value="asian">Asian</SelectItem>
+                          <SelectItem value="caucasian">Caucasian</SelectItem>
+                          <SelectItem value="hispanic">Hispanic</SelectItem>
+                          <SelectItem value="indian">Indian</SelectItem>
+                          <SelectItem value="middle-eastern">
+                            Middle Eastern
+                          </SelectItem>
+                          <SelectItem value="mixed">Mixed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Ethnicity */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ethnicity
-                    </label>
-                    <Select
-                      value={filters.ethnicity}
-                      onValueChange={(value) =>
-                        handleFilterChange("ethnicity", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any Ethnicity" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Any Ethnicity</SelectItem>
-                        <SelectItem value="african">African</SelectItem>
-                        <SelectItem value="asian">Asian</SelectItem>
-                        <SelectItem value="caucasian">Caucasian</SelectItem>
-                        <SelectItem value="hispanic">Hispanic</SelectItem>
-                        <SelectItem value="indian">Indian</SelectItem>
-                        <SelectItem value="middle-eastern">
-                          Middle Eastern
-                        </SelectItem>
-                        <SelectItem value="mixed">Mixed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Checkboxes */}
-                  <div className="md:col-span-2 lg:col-span-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="verified"
-                          checked={filters.verified}
-                          onCheckedChange={() => handleFilterToggle("verified")}
-                        />
-                        <label
-                          htmlFor="verified"
-                          className="text-sm font-medium text-gray-700 flex items-center"
-                        >
-                          <Shield className="h-4 w-4 mr-1" />
-                          Verified Only
-                        </label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="online"
-                          checked={filters.online}
-                          onCheckedChange={() => handleFilterToggle("online")}
-                        />
-                        <label
-                          htmlFor="online"
-                          className="text-sm font-medium text-gray-700 flex items-center"
-                        >
-                          <Clock className="h-4 w-4 mr-1" />
-                          Online Now
-                        </label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="featured"
-                          checked={filters.featured}
-                          onCheckedChange={() => handleFilterToggle("featured")}
-                        />
-                        <label
-                          htmlFor="featured"
-                          className="text-sm font-medium text-gray-700 flex items-center"
-                        >
-                          <Star className="h-4 w-4 mr-1" />
-                          Featured Only
-                        </label>
+                    {/* Checkboxes */}
+                    <div className="md:col-span-2 lg:col-span-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="verified"
+                            checked={filters.verified}
+                            onCheckedChange={() =>
+                              handleFilterToggle("verified")
+                            }
+                          />
+                          <label
+                            htmlFor="verified"
+                            className="text-sm font-medium text-gray-700 flex items-center"
+                          >
+                            <Shield className="h-4 w-4 mr-1" />
+                            Verified Only
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="online"
+                            checked={filters.online}
+                            onCheckedChange={() => handleFilterToggle("online")}
+                          />
+                          <label
+                            htmlFor="online"
+                            className="text-sm font-medium text-gray-700 flex items-center"
+                          >
+                            <Clock className="h-4 w-4 mr-1" />
+                            Online Now
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="featured"
+                            checked={filters.featured}
+                            onCheckedChange={() =>
+                              handleFilterToggle("featured")
+                            }
+                          />
+                          <label
+                            htmlFor="featured"
+                            className="text-sm font-medium text-gray-700 flex items-center"
+                          >
+                            <Star className="h-4 w-4 mr-1" />
+                            Featured Only
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Results Summary */}
+          <div className="mb-6 flex items-center justify-between">
+            <p className="text-gray-600">
+              {loading ? "Loading..." : `${totalResults} escorts found`}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Sort by:</span>
+              <Select value={sortBy} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="relevance">
+                    Priority (Premium → Featured → Basic)
+                  </SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="rating">Rating</SelectItem>
+                  <SelectItem value="price-low">Price: Low to High</SelectItem>
+                  <SelectItem value="price-high">Price: High to Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Results */}
+          {error ? (
+            <Card>
+              <CardContent className="text-center p-6">
+                <h2 className="text-xl font-semibold mb-2">
+                  Error Loading Escorts
+                </h2>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <Button onClick={() => fetchEscorts(searchTerm, filters, 1)}>
+                  Try Again
+                </Button>
               </CardContent>
             </Card>
-          )}
-        </div>
+          ) : escorts.length === 0 && !loading ? (
+            <Card>
+              <CardContent className="text-center p-6">
+                <h2 className="text-xl font-semibold mb-2">No Escorts Found</h2>
+                <p className="text-gray-600 mb-4">
+                  Try adjusting your search criteria or filters.
+                </p>
+                <Button onClick={clearFilters}>Clear Filters</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {escorts.map((escort) => (
+                  <Card
+                    key={escort._id}
+                    className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white"
+                    onClick={() => handleEscortClick(escort)}
+                  >
+                    <CardContent className="p-0">
+                      {/* Image - Moderately taller */}
+                      <div className="relative h-64 bg-gray-200 overflow-hidden">
+                        {escort.gallery && escort.gallery.length > 0 ? (
+                          <FirebaseImageDisplay
+                            src={
+                              escort.gallery[0].url ||
+                              escort.gallery[0].src ||
+                              escort.avatar
+                            }
+                            alt={escort.alias || escort.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : escort.avatar ? (
+                          <FirebaseImageDisplay
+                            src={escort.avatar}
+                            alt={escort.alias || escort.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-500">
+                            No Photo
+                          </div>
+                        )}
 
-        {/* Results Summary */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-gray-600">
-            {loading ? "Loading..." : `${totalResults} escorts found`}
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Sort by:</span>
-            <Select value={sortBy} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="relevance">
-                  Priority (Premium → Featured → Basic)
-                </SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="rating">Rating</SelectItem>
-                <SelectItem value="price-low">Price: Low to High</SelectItem>
-                <SelectItem value="price-high">Price: High to Low</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Results */}
-        {error ? (
-          <Card>
-            <CardContent className="text-center p-6">
-              <h2 className="text-xl font-semibold mb-2">
-                Error Loading Escorts
-              </h2>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={() => fetchEscorts(searchTerm, filters, 1)}>
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
-        ) : escorts.length === 0 && !loading ? (
-          <Card>
-            <CardContent className="text-center p-6">
-              <h2 className="text-xl font-semibold mb-2">No Escorts Found</h2>
-              <p className="text-gray-600 mb-4">
-                Try adjusting your search criteria or filters.
-              </p>
-              <Button onClick={clearFilters}>Clear Filters</Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {escorts.map((escort) => (
-                <Card
-                  key={escort._id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white"
-                  onClick={() => handleEscortClick(escort)}
-                >
-                  <CardContent className="p-0">
-                    {/* Image - Moderately taller */}
-                    <div className="relative h-64 bg-gray-200 overflow-hidden">
-                      {escort.gallery && escort.gallery.length > 0 ? (
-                        <FirebaseImageDisplay
-                          src={
-                            escort.gallery[0].url ||
-                            escort.gallery[0].src ||
-                            escort.avatar
-                          }
-                          alt={escort.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500">
-                          No Photo
-                        </div>
-                      )}
-
-                      {/* Online Status */}
-                      {escort.isOnline && (
-                        <div className="absolute bottom-2 left-2">
-                          <Badge className="bg-green-500 text-white text-xs">
-                            <div className="w-2 h-2 bg-white rounded-full mr-1 animate-pulse"></div>
-                            Online
-                          </Badge>
-                        </div>
-                      )}
-
-                      {/* Only show tier badge (Featured/Premium) - not basic */}
-                      {escort.subscriptionTier &&
-                        escort.subscriptionTier !== "basic" && (
-                          <div className="absolute top-2 left-2">
-                            <Badge
-                              variant="secondary"
-                              className={`${getAccessLevelBadgeColor(
-                                getEscortAccessLevel(escort)
-                              )} text-white shadow-md text-xs`}
-                            >
-                              <Award className="h-3 w-3 mr-1" />
-                              {getAccessLevelLabel(
-                                getEscortAccessLevel(escort)
-                              )}
+                        {/* Online Status */}
+                        {escort.isOnline && (
+                          <div className="absolute bottom-2 left-2">
+                            <Badge className="bg-green-500 text-white text-xs">
+                              <div className="w-2 h-2 bg-white rounded-full mr-1 animate-pulse"></div>
+                              Online
                             </Badge>
                           </div>
                         )}
-                    </div>
 
-                    {/* Content */}
-                    <div className="p-3">
-                      {/* Name and Age - Aligned like EscortCard */}
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-base font-semibold text-gray-900 truncate">
-                          {escort.name}
-                        </h3>
-                        <span className="text-xs text-gray-500">
-                          {escort.age} years
-                        </span>
-                      </div>
-
-                      {/* Location */}
-                      <div className="flex items-center text-xs text-gray-600 mb-1">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        <span className="truncate">
-                          {escort.location?.city || "Location not specified"}
-                        </span>
-                      </div>
-
-                      {/* Services */}
-                      {canShowDetailedInfo(escort) &&
-                        escort.services &&
-                        escort.services.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {escort.services
-                              .slice(0, 3)
-                              .map((service, index) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {service}
-                                </Badge>
-                              ))}
-                            {escort.services.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{escort.services.length - 3} more
+                        {/* Only show tier badge (Featured/Premium) - not basic */}
+                        {escort.subscriptionTier &&
+                          escort.subscriptionTier !== "basic" && (
+                            <div className="absolute top-2 left-2">
+                              <Badge
+                                variant="secondary"
+                                className={`${getAccessLevelBadgeColor(
+                                  getEscortAccessLevel(escort)
+                                )} text-white shadow-md text-xs`}
+                              >
+                                <Award className="h-3 w-3 mr-1" />
+                                {getAccessLevelLabel(
+                                  getEscortAccessLevel(escort)
+                                )}
                               </Badge>
-                            )}
+                            </div>
+                          )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-3">
+                        {/* Name and Age - Aligned like EscortCard */}
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="text-base font-semibold text-gray-900 truncate">
+                            {escort.alias || escort.name}
+                          </h3>
+                          <span className="text-xs text-gray-500">
+                            {escort.age} years
+                          </span>
+                        </div>
+
+                        {/* Location */}
+                        <div className="flex items-center text-xs text-gray-600 mb-1">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          <span className="truncate">
+                            {escort.location?.city || "Location not specified"}
+                          </span>
+                        </div>
+
+                        {/* Services */}
+                        {canShowDetailedInfo(escort) &&
+                          escort.services &&
+                          escort.services.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {escort.services
+                                .slice(0, 3)
+                                .map((service, index) => (
+                                  <Badge
+                                    key={index}
+                                    variant="outline"
+                                    className="text-xs"
+                                  >
+                                    {service}
+                                  </Badge>
+                                ))}
+                              {escort.services.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{escort.services.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+
+                        {/* Rating */}
+                        {escort.rating && (
+                          <div className="flex items-center mb-3">
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < Math.floor(escort.rating)
+                                      ? "text-yellow-400 fill-current"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-600 ml-2">
+                              ({escort.reviewCount || 0} reviews)
+                            </span>
                           </div>
                         )}
 
-                      {/* Rating */}
-                      {escort.rating && (
-                        <div className="flex items-center mb-3">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i < Math.floor(escort.rating)
-                                    ? "text-yellow-400 fill-current"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-gray-600 ml-2">
-                            ({escort.reviewCount || 0} reviews)
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Contact Buttons */}
-                      <div
-                        className="flex gap-2 mt-3"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleContact(escort, "message");
-                          }}
+                        {/* Contact Buttons */}
+                        <div
+                          className="flex gap-2 mt-3"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <MessageCircle className="w-4 h-4 mr-1" />
-                          Message
-                        </Button>
-                        {canShowContactInfo(escort) ? (
                           <Button
-                            variant="default"
+                            variant="outline"
                             size="sm"
                             className="flex-1"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleContact(escort, "call");
+                              handleContact(escort, "message");
                             }}
                           >
-                            <Phone className="w-4 h-4 mr-1" />
-                            Call
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            Message
                           </Button>
-                        ) : // Only show premium access message to escorts (not clients)
-                        user?.user?.role === "escort" ? (
-                          <div className="flex-1 p-2 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
-                            <div className="text-center">
-                              <p className="text-orange-600 text-xs font-medium">
-                                Premium Required
-                              </p>
+                          {canShowContactInfo(escort) ? (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleContact(escort, "call");
+                              }}
+                            >
+                              <Phone className="w-4 h-4 mr-1" />
+                              Call
+                            </Button>
+                          ) : // Only show premium access message to escorts (not clients)
+                          user?.user?.role === "escort" ? (
+                            <div className="flex-1 p-2 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+                              <div className="text-center">
+                                <p className="text-orange-600 text-xs font-medium">
+                                  Premium Required
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        ) : null}
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-            {/* Sentinel for prefetching when near bottom */}
-            <div ref={sentinelRef} />
+              {/* Sentinel for prefetching when near bottom */}
+              <div ref={sentinelRef} />
 
-            {/* Enhanced Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-12">
-                {/* Results summary */}
-                <div className="text-center text-gray-600 mb-6">
-                  <span className="font-medium text-gray-800">
-                    Showing {(currentPage - 1) * escortsPerPage + 1} to{" "}
-                    {Math.min(currentPage * escortsPerPage, totalResults)} of{" "}
-                    {totalResults} escorts
-                  </span>
-                </div>
-
-                {/* Pagination Controls */}
-                <div className="flex justify-center items-center space-x-3">
-                  {/* Previous Button */}
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1 || loading}
-                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <svg
-                      className="w-4 h-4 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
-                    Previous
-                  </Button>
-
-                  {/* Page Numbers */}
-                  <div className="flex space-x-2">
-                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 7) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 4) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 3) {
-                        pageNum = totalPages - 6 + i;
-                      } else {
-                        if (i === 0) pageNum = 1;
-                        else if (i === 1) pageNum = currentPage - 1;
-                        else if (i === 2) pageNum = currentPage;
-                        else if (i === 3) pageNum = currentPage + 1;
-                        else if (i === 4) pageNum = totalPages;
-                      }
-
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={
-                            currentPage === pageNum ? "default" : "outline"
-                          }
-                          size="lg"
-                          onClick={() => handlePageChange(pageNum)}
-                          disabled={loading}
-                          className={`w-12 h-12 font-semibold ${
-                            currentPage === pageNum
-                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg"
-                              : "hover:bg-gray-50 border-2"
-                          }`}
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
+              {/* Enhanced Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-12">
+                  {/* Results summary */}
+                  <div className="text-center text-gray-600 mb-6">
+                    <span className="font-medium text-gray-800">
+                      Showing {(currentPage - 1) * escortsPerPage + 1} to{" "}
+                      {Math.min(currentPage * escortsPerPage, totalResults)} of{" "}
+                      {totalResults} escorts
+                    </span>
                   </div>
 
-                  {/* Next Button */}
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages || loading}
-                    className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                    <svg
-                      className="w-4 h-4 ml-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  {/* Pagination Controls */}
+                  <div className="flex justify-center items-center space-x-3">
+                    {/* Previous Button */}
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || loading}
+                      className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </Button>
-                </div>
+                      <svg
+                        className="w-4 h-4 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      Previous
+                    </Button>
 
-                {/* Page Info */}
-                <div className="text-center text-sm text-gray-500 mt-4">
-                  Page {currentPage} of {totalPages}
+                    {/* Page Numbers */}
+                    <div className="flex space-x-2">
+                      {Array.from(
+                        { length: Math.min(totalPages, 7) },
+                        (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 7) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 4) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 3) {
+                            pageNum = totalPages - 6 + i;
+                          } else {
+                            if (i === 0) pageNum = 1;
+                            else if (i === 1) pageNum = currentPage - 1;
+                            else if (i === 2) pageNum = currentPage;
+                            else if (i === 3) pageNum = currentPage + 1;
+                            else if (i === 4) pageNum = totalPages;
+                          }
+
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={
+                                currentPage === pageNum ? "default" : "outline"
+                              }
+                              size="lg"
+                              onClick={() => handlePageChange(pageNum)}
+                              disabled={loading}
+                              className={`w-12 h-12 font-semibold ${
+                                currentPage === pageNum
+                                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg"
+                                  : "hover:bg-gray-50 border-2"
+                              }`}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        }
+                      )}
+                    </div>
+
+                    {/* Next Button */}
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || loading}
+                      className="px-6 py-2 border-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                      <svg
+                        className="w-4 h-4 ml-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </Button>
+                  </div>
+
+                  {/* Page Info */}
+                  <div className="text-center text-sm text-gray-500 mt-4">
+                    Page {currentPage} of {totalPages}
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Real-time Messenger */}
+        <RealTimeMessenger
+          isOpen={isMessengerOpen}
+          onClose={() => setIsMessengerOpen(false)}
+          selectedEscort={selectedEscort}
+        />
       </div>
-
-      {/* Real-time Messenger */}
-      <RealTimeMessenger
-        isOpen={isMessengerOpen}
-        onClose={() => setIsMessengerOpen(false)}
-        selectedEscort={selectedEscort}
-      />
-    </div>
+    </>
   );
 };
 

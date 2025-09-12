@@ -36,6 +36,8 @@ import { showToast } from "@/helpers/showToast";
 import { userAPI, escortAPI } from "@/services/api";
 import { fixUserUrls } from "@/utils/urlHelper";
 import FirebaseImageDisplay from "@/components/FirebaseImageDisplay";
+import UploadButton from "@/components/UploadButton";
+import UpgradePrompt from "@/components/UpgradePrompt";
 import {
   ChevronDown,
   ChevronUp,
@@ -557,6 +559,19 @@ const EscortProfileEdit = () => {
   // Handle gallery upload
   const handleGalleryUpload = async (files) => {
     try {
+      // Check upload limits
+      const { getUploadLimits } = await import("@/utils/uploadLimits");
+      const limits = getUploadLimits(user.subscriptionTier);
+      const currentPhotos = user.gallery?.length || 0;
+
+      if (currentPhotos + files.length > limits.photos) {
+        showToast(
+          `You can only upload ${limits.photos} photos with your ${limits.label} plan. Upgrade to upload more!`,
+          "error"
+        );
+        return;
+      }
+
       setUploadingGallery(true);
       showToast("Uploading gallery photos...", "info");
 
@@ -595,6 +610,19 @@ const EscortProfileEdit = () => {
   // Handle video upload with real progress
   const handleVideoUpload = async (files) => {
     try {
+      // Check upload limits
+      const { getUploadLimits } = await import("@/utils/uploadLimits");
+      const limits = getUploadLimits(user.subscriptionTier);
+      const currentVideos = user.videos?.length || 0;
+
+      if (currentVideos + files.length > limits.videos) {
+        showToast(
+          `You can only upload ${limits.videos} videos with your ${limits.label} plan. Upgrade to upload more!`,
+          "error"
+        );
+        return;
+      }
+
       setUploadingVideos(true);
       setVideoUploadProgress(0);
       showToast("Uploading videos...", "info");
@@ -721,6 +749,12 @@ const EscortProfileEdit = () => {
     }
   };
 
+  // Handle upgrade button click
+  const handleUpgrade = () => {
+    // Navigate to upgrade page
+    window.open("https://epicescorts.live/ug/escort/upgrade", "_blank");
+  };
+
   // Toggle section expansion
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -761,10 +795,10 @@ const EscortProfileEdit = () => {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Escort Profile Management
+          Profile Management
         </h1>
         <p className="text-gray-600">
-          Manage your escort profile, gallery, services, and settings
+          Manage your profile, gallery, services, and subscription settings
         </p>
       </div>
 
@@ -1589,258 +1623,391 @@ const EscortProfileEdit = () => {
             )}
           </Card>
 
-          {/* Gallery */}
-          <Card>
-            <CardHeader>
-              <CardTitle
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => toggleSection("gallery")}
-              >
-                <div className="flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  Gallery Photos
-                </div>
-                {expandedSections.gallery ? (
-                  <ChevronUp className="w-5 h-5" />
-                ) : (
-                  <ChevronDown className="w-5 h-5" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            {expandedSections.gallery && (
-              <CardContent>
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    Public Gallery Photos (Max 10 photos)
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    💡 These photos will be visible to all clients in your
-                    public profile
-                  </p>
-                </div>
-
-                <Dropzone
-                  onDrop={handleGalleryUpload}
-                  accept={{ "image/*": [] }}
+          {/* Gallery - Only show for non-basic escorts */}
+          {user.subscriptionTier !== "basic" && (
+            <Card>
+              <CardHeader>
+                <CardTitle
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => toggleSection("gallery")}
                 >
-                  {({ getRootProps, getInputProps }) => (
-                    <div
-                      {...getRootProps()}
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
-                    >
-                      <input {...getInputProps()} />
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <div className="flex items-center gap-2">
+                    <Camera className="w-5 h-5" />
+                    Gallery Photos
+                  </div>
+                  {expandedSections.gallery ? (
+                    <ChevronUp className="w-5 h-5" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {expandedSections.gallery && (
+                <CardContent>
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-gray-600">
-                        {uploadingGallery
-                          ? "Uploading..."
-                          : "Click to upload gallery photos"}
+                        Public Gallery Photos
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Drag & drop or click to select photos
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <UploadButton
+                          type="photos"
+                          escort={user}
+                          onUpload={() => {
+                            // Trigger file input click
+                            const fileInput =
+                              document.querySelector('input[type="file"]');
+                            if (fileInput) fileInput.click();
+                          }}
+                          size="sm"
+                        />
+                        {user.subscriptionTier === "basic" && (
+                          <Button
+                            onClick={handleUpgrade}
+                            size="sm"
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                          >
+                            Upgrade for More
+                          </Button>
+                        )}
+                        {user.subscriptionTier === "featured" && (
+                          <Button
+                            onClick={handleUpgrade}
+                            size="sm"
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                          >
+                            Upgrade to Premium
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      💡 These photos will be visible to all clients in your
+                      public profile
+                    </p>
+                  </div>
+
+                  <Dropzone
+                    onDrop={handleGalleryUpload}
+                    accept={{ "image/*": [] }}
+                  >
+                    {({ getRootProps, getInputProps }) => (
+                      <div
+                        {...getRootProps()}
+                        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                      >
+                        <input {...getInputProps()} />
+                        <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-600">
+                          {uploadingGallery
+                            ? "Uploading..."
+                            : "Click to upload gallery photos"}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Drag & drop or click to select photos
+                        </p>
+                      </div>
+                    )}
+                  </Dropzone>
+
+                  {user.gallery && user.gallery.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium">
+                          {user.gallery.length}/10 photos
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={saveGallery}
+                          disabled={saving}
+                          className="flex items-center gap-2"
+                          size="sm"
+                        >
+                          <Save className="w-4 h-4" />
+                          {saving ? "Saving..." : "Save Photos"}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {user.gallery.map((photo, index) => (
+                          <div key={index} className="relative group">
+                            <FirebaseImageDisplay
+                              src={photo.url || photo.filePath || photo.src}
+                              alt={`Gallery photo ${index + 1}`}
+                              className="w-full h-24 object-contain rounded bg-gray-50"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => deleteGalleryImage(photo._id)}
+                              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              size="sm"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                </Dropzone>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-                {user.gallery && user.gallery.length > 0 && (
-                  <div className="mt-4">
+          {/* Upgrade Section for Basic Escorts */}
+          {user.subscriptionTier === "basic" && (
+            <Card className="border-2 border-dashed border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <Camera className="w-5 h-5" />
+                  Gallery Photos - Upgrade Required
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center py-8">
+                <div className="mb-6">
+                  <Camera className="w-16 h-16 text-orange-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-orange-800 mb-2">
+                    Upload Photos & Videos
+                  </h3>
+                  <p className="text-orange-600 mb-4">
+                    Upgrade to Featured or Premium to upload gallery photos and
+                    videos
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-white rounded-lg p-4 border border-orange-200">
+                    <h4 className="font-semibold text-blue-800 mb-2">
+                      Featured Plan
+                    </h4>
+                    <ul className="text-sm text-blue-600 space-y-1">
+                      <li>✅ 10 Gallery Photos</li>
+                      <li>✅ 5 Videos</li>
+                      <li>✅ Featured Badge</li>
+                      <li>✅ Priority Listing</li>
+                    </ul>
+                    <div className="mt-3">
+                      <span className="text-lg font-bold text-blue-800">
+                        $12
+                      </span>
+                      <span className="text-sm text-blue-600"> lifetime</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 border border-purple-200">
+                    <h4 className="font-semibold text-purple-800 mb-2">
+                      Premium Plan
+                    </h4>
+                    <ul className="text-sm text-purple-600 space-y-1">
+                      <li>✅ 30 Gallery Photos</li>
+                      <li>✅ 15 Videos</li>
+                      <li>✅ Premium Badge</li>
+                      <li>✅ All Features</li>
+                    </ul>
+                    <div className="mt-3">
+                      <span className="text-lg font-bold text-purple-800">
+                        $5
+                      </span>
+                      <span className="text-sm text-purple-600">/month</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleUpgrade}
+                  className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  size="lg"
+                >
+                  Upgrade Now
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Videos - Only show for Featured and above */}
+          {user.subscriptionTier !== "basic" && (
+            <Card>
+              <CardHeader>
+                <CardTitle
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => toggleSection("videos")}
+                >
+                  <div className="flex items-center gap-2">
+                    <Video className="w-5 h-5" />
+                    Videos
+                  </div>
+                  {expandedSections.videos ? (
+                    <ChevronUp className="w-5 h-5" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {expandedSections.videos && (
+                <CardContent>
+                  <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium">
-                        {user.gallery.length}/10 photos
-                      </p>
+                      <p className="text-sm text-gray-600">Public Videos</p>
+                      <div className="flex items-center gap-2">
+                        <UploadButton
+                          type="videos"
+                          escort={user}
+                          onUpload={() => {
+                            // Trigger file input click
+                            const fileInput =
+                              document.querySelector('input[type="file"]');
+                            if (fileInput) fileInput.click();
+                          }}
+                          size="sm"
+                        />
+                        {user.subscriptionTier === "featured" && (
+                          <Button
+                            onClick={handleUpgrade}
+                            size="sm"
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                          >
+                            Upgrade to Premium
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      💡 These videos will be visible to all clients in your
+                      public profile
+                    </p>
+                  </div>
+
+                  <Dropzone
+                    onDrop={handleVideoUpload}
+                    accept={{ "video/*": [] }}
+                  >
+                    {({ getRootProps, getInputProps }) => (
+                      <div
+                        {...getRootProps()}
+                        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                      >
+                        <input {...getInputProps()} />
+                        <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-600">
+                          {uploadingVideos
+                            ? "Uploading..."
+                            : "Click to upload videos"}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Drag & drop or click to select videos
+                        </p>
+                      </div>
+                    )}
+                  </Dropzone>
+
+                  {/* Progress bar for video upload */}
+                  {uploadingVideos && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-600">
+                          Uploading video...
+                        </span>
+                        <span className="text-sm font-medium text-blue-600">
+                          {videoUploadProgress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${videoUploadProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Video Gallery Display */}
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        Uploaded Videos ({user.videos ? user.videos.length : 0}
+                        /5)
+                      </h4>
                       <Button
                         type="button"
-                        onClick={saveGallery}
+                        onClick={saveVideos}
                         disabled={saving}
                         className="flex items-center gap-2"
                         size="sm"
                       >
                         <Save className="w-4 h-4" />
-                        {saving ? "Saving..." : "Save Photos"}
+                        {saving ? "Saving..." : "Save Videos"}
                       </Button>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {user.gallery.map((photo, index) => (
-                        <div key={index} className="relative group">
-                          <FirebaseImageDisplay
-                            src={photo.url || photo.filePath || photo.src}
-                            alt={`Gallery photo ${index + 1}`}
-                            className="w-full h-24 object-contain rounded bg-gray-50"
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => deleteGalleryImage(photo._id)}
-                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            size="sm"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            )}
-          </Card>
 
-          {/* Videos */}
-          <Card>
-            <CardHeader>
-              <CardTitle
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => toggleSection("videos")}
-              >
-                <div className="flex items-center gap-2">
-                  <Video className="w-5 h-5" />
-                  Videos
-                </div>
-                {expandedSections.videos ? (
-                  <ChevronUp className="w-5 h-5" />
-                ) : (
-                  <ChevronDown className="w-5 h-5" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            {expandedSections.videos && (
-              <CardContent>
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    Public Videos (Max 5 videos)
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    💡 These videos will be visible to all clients in your
-                    public profile
-                  </p>
-                </div>
-
-                <Dropzone onDrop={handleVideoUpload} accept={{ "video/*": [] }}>
-                  {({ getRootProps, getInputProps }) => (
-                    <div
-                      {...getRootProps()}
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
-                    >
-                      <input {...getInputProps()} />
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-sm text-gray-600">
-                        {uploadingVideos
-                          ? "Uploading..."
-                          : "Click to upload videos"}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Drag & drop or click to select videos
-                      </p>
-                    </div>
-                  )}
-                </Dropzone>
-
-                {/* Progress bar for video upload */}
-                {uploadingVideos && (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-600">
-                        Uploading video...
-                      </span>
-                      <span className="text-sm font-medium text-blue-600">
-                        {videoUploadProgress}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${videoUploadProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Video Gallery Display */}
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium text-gray-900">
-                      Uploaded Videos ({user.videos ? user.videos.length : 0}/5)
-                    </h4>
-                    <Button
-                      type="button"
-                      onClick={saveVideos}
-                      disabled={saving}
-                      className="flex items-center gap-2"
-                      size="sm"
-                    >
-                      <Save className="w-4 h-4" />
-                      {saving ? "Saving..." : "Save Videos"}
-                    </Button>
-                  </div>
-
-                  {user.videos && user.videos.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {user.videos.map((video, index) => (
-                        <div key={index} className="relative group">
-                          <video
-                            src={video.url}
-                            className="w-full h-48 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
-                            controls
-                            preload="metadata"
-                            playsInline
-                          />
-                          <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                            Video {index + 1}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              deleteVideo(
-                                video._id
+                    {user.videos && user.videos.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {user.videos.map((video, index) => (
+                          <div key={index} className="relative group">
+                            <video
+                              src={video.url}
+                              className="w-full h-48 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
+                              controls
+                              preload="metadata"
+                              playsInline
+                            />
+                            <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                              Video {index + 1}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                deleteVideo(
+                                  video._id
+                                    ? video._id.toString()
+                                    : index.toString()
+                                )
+                              }
+                              disabled={
+                                deletingVideo ===
+                                (video._id
                                   ? video._id.toString()
-                                  : index.toString()
-                              )
-                            }
-                            disabled={
-                              deletingVideo ===
+                                  : index.toString())
+                              }
+                              className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
+                                deletingVideo ===
+                                (video._id
+                                  ? video._id.toString()
+                                  : index.toString())
+                                  ? "bg-gray-400 cursor-not-allowed"
+                                  : "bg-red-500 cursor-pointer hover:bg-red-600"
+                              }`}
+                            >
+                              {deletingVideo ===
                               (video._id
                                 ? video._id.toString()
-                                : index.toString())
-                            }
-                            className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
-                              deletingVideo ===
-                              (video._id
-                                ? video._id.toString()
-                                : index.toString())
-                                ? "bg-gray-400 cursor-not-allowed"
-                                : "bg-red-500 cursor-pointer hover:bg-red-600"
-                            }`}
-                          >
-                            {deletingVideo ===
-                            (video._id
-                              ? video._id.toString()
-                              : index.toString()) ? (
-                              <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                <span>Deleting...</span>
-                              </div>
-                            ) : (
-                              "×"
-                            )}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                                : index.toString()) ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  <span>Deleting...</span>
+                                </div>
+                              ) : (
+                                "×"
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                  {/* No videos message */}
-                  {(!user.videos || user.videos.length === 0) && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Video className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                      <p className="text-sm">No videos uploaded yet</p>
-                      <p className="text-xs">
-                        Upload videos to showcase your profile
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            )}
-          </Card>
+                    {/* No videos message */}
+                    {(!user.videos || user.videos.length === 0) && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Video className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                        <p className="text-sm">No videos uploaded yet</p>
+                        <p className="text-xs">
+                          Upload videos to showcase your profile
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Save Button */}
           <div className="flex justify-end">

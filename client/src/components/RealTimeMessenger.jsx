@@ -8,6 +8,13 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { FirebasePremiumAvatar } from "./firebase";
 import FirebaseImageDisplay from "./FirebaseImageDisplay";
+import {
+  canSendPhotos,
+  canReceivePhotos,
+  canShowPhotoUpload,
+  canDisplayPhotos,
+  getPhotoRestrictionMessage,
+} from "../utils/chatPermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import {
   MessageCircle,
@@ -527,29 +534,21 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
       const formData = new FormData();
       formData.append("image", selectedImage);
 
-      const uploadResponse = await fetch(
-        `${
-          import.meta.env.VITE_API_URL ||
-          (window.location.hostname !== "localhost" &&
-          window.location.hostname !== "127.0.0.1"
-            ? "https://epic-escorts-production.up.railway.app/api"
-            : "http://localhost:5000/api")
-        }/message/upload-image`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: formData,
-        }
-      );
+      // Use the centralized API service for upload
+      const uploadResponse = await messageAPI.uploadImage(formData);
 
-      if (!uploadResponse.ok) {
-        throw new Error("Image upload failed");
+      // Extract URL from response - handle different response structures
+      let imageUrl;
+      if (uploadResponse.data?.data?.url) {
+        imageUrl = uploadResponse.data.data.url;
+      } else if (uploadResponse.data?.url) {
+        imageUrl = uploadResponse.data.url;
+      } else if (typeof uploadResponse.data === "string") {
+        imageUrl = uploadResponse.data;
+      } else {
+        console.error("Unexpected upload response structure:", uploadResponse);
+        throw new Error("Invalid upload response");
       }
-
-      const uploadData = await uploadResponse.json();
-      const imageUrl = uploadData.data?.url || uploadData.url;
 
       // Create temporary message
       const tempMessage = {
@@ -920,23 +919,29 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                                 : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 rounded-bl-md border border-gray-200"
                             }`}
                           >
-                            {/* Check if content is an image URL */}
-                            {msg.type === "image" ||
-                            (msg.content &&
-                              msg.content.startsWith("http") &&
-                              (msg.content.includes(
-                                "firebasestorage.googleapis.com"
-                              ) ||
-                                msg.content.match(
-                                  /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i
-                                ))) ? (
-                              <div className="space-y-2">
-                                <FirebaseImageDisplay
-                                  src={msg.content}
-                                  alt="Message image"
-                                  className="max-w-full max-h-48 rounded-lg object-cover"
-                                />
-                              </div>
+                            {/* Check if message type is image */}
+                            {msg.type === "image" ? (
+                              canDisplayPhotos(user, msg.sender) ? (
+                                <div className="space-y-2">
+                                  <FirebaseImageDisplay
+                                    src={msg.content}
+                                    alt="Message image"
+                                    className="max-w-full max-h-48 rounded-lg object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3 text-center">
+                                    <ImageIcon className="h-8 w-8 text-orange-400 mx-auto mb-2" />
+                                    <p className="text-sm text-orange-700 font-medium">
+                                      Photo Message
+                                    </p>
+                                    <p className="text-xs text-orange-600">
+                                      Upgrade to Premium to view photos
+                                    </p>
+                                  </div>
+                                </div>
+                              )
                             ) : (
                               <p className="text-sm leading-relaxed">
                                 {msg.content}
@@ -1002,14 +1007,44 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       accept="image/*"
                       className="hidden"
                     />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-gray-200"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <ImageIcon className="w-4 h-4 text-gray-600" />
-                    </Button>
+                    {(() => {
+                      const canUpload = canShowPhotoUpload(
+                        user,
+                        selectedChat?.user
+                      );
+                      console.log("🔍 RealTime Photo upload check:", {
+                        user: user,
+                        recipient: selectedChat?.user,
+                        canUpload: canUpload,
+                        userRole: user?.role,
+                        userTier: user?.subscriptionTier,
+                        recipientRole: selectedChat?.user?.role,
+                      });
+                      return canUpload;
+                    })() ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-gray-200"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Send photo"
+                      >
+                        <ImageIcon className="w-4 h-4 text-gray-600" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-gray-200 opacity-50 cursor-not-allowed"
+                        disabled
+                        title={getPhotoRestrictionMessage(
+                          user,
+                          selectedChat?.user
+                        )}
+                      >
+                        <ImageIcon className="w-4 h-4 text-gray-400" />
+                      </Button>
+                    )}
                     <Input
                       placeholder="Type a message..."
                       value={message}

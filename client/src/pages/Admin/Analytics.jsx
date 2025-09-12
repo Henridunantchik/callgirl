@@ -315,7 +315,7 @@ const Analytics = () => {
                   <div className="space-y-4">
                     {topEscorts.map((escort, index) => (
                       <div
-                        key={escort.name}
+                        key={escort.alias || escort.name}
                         className="flex items-center justify-between p-3 border rounded-lg"
                       >
                         <div className="flex items-center gap-3">
@@ -323,7 +323,9 @@ const Analytics = () => {
                             {index + 1}
                           </div>
                           <div>
-                            <p className="font-semibold">{escort.name}</p>
+                            <p className="font-semibold">
+                              {escort.alias || escort.name}
+                            </p>
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <span>{escort.views} views</span>
                               <span>•</span>

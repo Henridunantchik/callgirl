@@ -462,6 +462,14 @@ if (config.NODE_ENV === "production") {
   app.use("/api", apiRateLimiter);
 }
 
+// Debug middleware to log all API requests (development only)
+if (config.NODE_ENV === "development") {
+  app.use("/api", (req, res, next) => {
+    console.log(`🔍 API Request: ${req.method} ${req.url}`);
+    next();
+  });
+}
+
 // API routes (individual)
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);

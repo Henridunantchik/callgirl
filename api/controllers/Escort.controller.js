@@ -357,9 +357,12 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Calculate pagination info
     const totalPages = Math.ceil(total / pagination.limit);
 
+    // Fix URLs for all escorts
+    const escortsWithFixedUrls = fixUrlsInArray(escortsWithBenefits);
+
     // Prepare response
     const response = {
-      escorts: escortsWithBenefits,
+      escorts: escortsWithFixedUrls,
       totalEscorts: total,
       totalPages,
       currentPage: pagination.page,
@@ -368,7 +371,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       performance: {
         queryDuration: `${queryDuration}ms`,
         cacheHit: false,
-        totalResults: escortsWithBenefits.length,
+        totalResults: escortsWithFixedUrls.length,
       },
     };
 
@@ -520,6 +523,15 @@ export const getEscortById = asyncHandler(async (req, res, next) => {
 
     // Fix URLs for media files
     const escortWithFixedUrls = fixUrlsInObject(escort.toObject());
+
+    // Debug log for gallery data
+    if (process.env.NODE_ENV === "development") {
+      console.log("🔍 Escort gallery data:", {
+        hasGallery: !!escortWithFixedUrls.gallery,
+        galleryLength: escortWithFixedUrls.gallery?.length || 0,
+        galleryData: escortWithFixedUrls.gallery?.slice(0, 2) || [],
+      });
+    }
 
     return res.status(200).json(
       new ApiResponse(
