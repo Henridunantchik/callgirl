@@ -719,7 +719,7 @@ const Index = () => {
 
           {escortData?.escorts && escortData.escorts.length > 0 ? (
             <>
-              <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {console.log(
                   "Rendering escorts, count:",
                   getCurrentPageEscorts().length

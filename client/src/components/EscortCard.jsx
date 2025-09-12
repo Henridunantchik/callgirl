@@ -135,15 +135,34 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
         {/* Image Section */}
         <div className="relative h-96 overflow-hidden">
           <FirebaseImageDisplay
-            src={
-              imageError
+            src={(() => {
+              // For Basic escorts: Always use avatar (no gallery access)
+              if (fixedEscort.subscriptionTier === "basic") {
+                return fixedEscort.avatar || "/default-escort.jpg";
+              }
+
+              // For Featured/Premium: Use gallery first, then avatar
+              const imageSrc = imageError
                 ? fixedEscort.avatar || "/default-escort.jpg"
-                : canShowPhotos(fixedEscort) && fixedEscort.gallery?.[0]?.url
+                : fixedEscort.gallery?.[0]?.url
                 ? fixedEscort.gallery[0].url
-                : canShowPhotos(fixedEscort) && fixedEscort.gallery?.[0]?.src
+                : fixedEscort.gallery?.[0]?.src
                 ? fixedEscort.gallery[0].src
-                : fixedEscort.avatar || "/default-escort.jpg"
-            }
+                : fixedEscort.avatar || "/default-escort.jpg";
+
+              console.log("🔍 EscortCard Image Debug:", {
+                escortName: fixedEscort.alias || fixedEscort.name,
+                subscriptionTier: fixedEscort.subscriptionTier,
+                hasGallery: !!fixedEscort.gallery,
+                galleryLength: fixedEscort.gallery?.length || 0,
+                avatar: fixedEscort.avatar,
+                canShowPhotos: canShowPhotos(fixedEscort),
+                imageError: imageError,
+                finalImageSrc: imageSrc,
+              });
+
+              return imageSrc;
+            })()}
             alt={fixedEscort.alias || fixedEscort.name}
             className="w-full h-full object-cover object-center transition-transform duration-300"
             style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}

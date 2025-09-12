@@ -485,6 +485,71 @@ app.use("/api/transport", transportRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/blog", blogRoutes);
 
+// Handle 404 routes
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+    error: "API endpoint not found",
+  });
+});
+
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error("❌ Global Error Handler:", err);
+
+  // If response was already sent, delegate to default Express error handler
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  // Handle different types of errors
+  if (err.name === "ValidationError") {
+    return res.status(400).json({
+      success: false,
+      message: "Validation Error",
+      error: err.message,
+    });
+  }
+
+  if (err.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid ID format",
+      error: "Invalid ID provided",
+    });
+  }
+
+  if (err.name === "JsonWebTokenError") {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token",
+      error: "Authentication failed",
+    });
+  }
+
+  if (err.name === "TokenExpiredError") {
+    return res.status(401).json({
+      success: false,
+      message: "Token expired",
+      error: "Please login again",
+    });
+  }
+
+  // Default error response
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+
+  res.status(statusCode).json({
+    success: false,
+    message: message,
+    error:
+      process.env.NODE_ENV === "development"
+        ? err.stack
+        : "Something went wrong",
+  });
+});
+
 // Socket.io connection handling
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);

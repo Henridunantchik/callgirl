@@ -826,16 +826,15 @@ const EscortProfile = () => {
                           </div>
                         )
                       ) : (
-                        <UpgradePrompt
-                          type="photos"
-                          escort={escort}
-                          onUpgrade={handleUpgrade}
-                        />
+                        <div className="text-center py-8">
+                          <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                          <p className="text-gray-500">Photos not available</p>
+                        </div>
                       )}
                     </div>
 
-                    {/* Videos Section */}
-                    {canShowPhotos(escort) ? (
+                    {/* Videos Section - Only show for non-basic escorts */}
+                    {canShowPhotos(escort) &&
                       escort.videos &&
                       escort.videos.length > 0 && (
                         <div>
@@ -862,14 +861,7 @@ const EscortProfile = () => {
                             ))}
                           </div>
                         </div>
-                      )
-                    ) : (
-                      <UpgradePrompt
-                        type="videos"
-                        escort={escort}
-                        onUpgrade={handleUpgrade}
-                      />
-                    )}
+                      )}
                   </div>
                 )}
 
@@ -889,11 +881,10 @@ const EscortProfile = () => {
                       )}
                     </>
                   ) : (
-                    <UpgradePrompt
-                      type="details"
-                      escort={escort}
-                      onUpgrade={handleUpgrade}
-                    />
+                    <div className="text-center py-8">
+                      <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">Details not available</p>
+                    </div>
                   )}
 
                   {/* Experience Section - Moved to top */}

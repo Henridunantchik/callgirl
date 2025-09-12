@@ -150,9 +150,18 @@ const UpgradeRequests = () => {
       return;
     }
 
+    // Validate that the request is in the correct status for approval
+    if (selectedRequest.status !== "payment_confirmed") {
+      showToast(
+        "error",
+        `Cannot approve request. Current status: ${selectedRequest.status}. Payment must be confirmed first.`
+      );
+      return;
+    }
+
     try {
       setProcessing(true);
-      await upgradeAPI.approveRequest(selectedRequest._id, adminNotes);
+      await upgradeAPI.approveRequest(selectedRequest._id, { adminNotes });
       showToast("success", "Request approved successfully");
       setShowModal(false);
       fetchUpgradeRequests();
@@ -221,6 +230,15 @@ Admin Team`;
   };
 
   const handleQuickApprove = (request) => {
+    // Validate that the request is in the correct status for approval
+    if (request.status !== "payment_confirmed") {
+      showToast(
+        "error",
+        `Cannot approve request. Current status: ${request.status}. Payment must be confirmed first.`
+      );
+      return;
+    }
+
     setQuickAction("approve");
     setQuickRequest(request);
     setQuickNotes("");
@@ -228,6 +246,19 @@ Admin Team`;
   };
 
   const handleQuickReject = (request) => {
+    // Validate that the request can be rejected
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        request.status
+      )
+    ) {
+      showToast(
+        "error",
+        `Cannot reject request. Current status: ${request.status}. Request has already been processed.`
+      );
+      return;
+    }
+
     setQuickAction("reject");
     setQuickRequest(request);
     setQuickNotes("");
@@ -235,6 +266,15 @@ Admin Team`;
   };
 
   const handleQuickConfirmPayment = (request) => {
+    // Validate that the request is in the correct status for payment confirmation
+    if (request.status !== "payment_required") {
+      showToast(
+        "error",
+        `Cannot confirm payment. Current status: ${request.status}. Payment instructions must be sent first.`
+      );
+      return;
+    }
+
     setQuickAction("confirm_payment");
     setQuickRequest(request);
     setQuickNotes("");
@@ -255,26 +295,23 @@ Admin Team`;
 
       if (quickAction === "approve") {
         console.log("Calling approveRequest API...");
-        const response = await upgradeAPI.approveRequest(
-          quickRequest._id,
-          quickNotes
-        );
+        const response = await upgradeAPI.approveRequest(quickRequest._id, {
+          adminNotes: quickNotes,
+        });
         console.log("Approve response:", response);
         showToast("success", "Request approved");
       } else if (quickAction === "confirm_payment") {
         console.log("Calling confirmPayment API...");
-        const response = await upgradeAPI.confirmPayment(
-          quickRequest._id,
-          quickNotes
-        );
+        const response = await upgradeAPI.confirmPayment(quickRequest._id, {
+          adminNotes: quickNotes,
+        });
         console.log("Confirm payment response:", response);
         showToast("success", "Payment confirmed");
       } else if (quickAction === "reject") {
         console.log("Calling rejectRequest API...");
-        const response = await upgradeAPI.rejectRequest(
-          quickRequest._id,
-          quickNotes
-        );
+        const response = await upgradeAPI.rejectRequest(quickRequest._id, {
+          adminNotes: quickNotes,
+        });
         console.log("Reject response:", response);
         showToast("success", "Request rejected");
       }
@@ -303,9 +340,22 @@ Admin Team`;
       return;
     }
 
+    // Validate that the request can be rejected
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        selectedRequest.status
+      )
+    ) {
+      showToast(
+        "error",
+        `Cannot reject request. Current status: ${selectedRequest.status}. Request has already been processed.`
+      );
+      return;
+    }
+
     try {
       setProcessing(true);
-      await upgradeAPI.rejectRequest(selectedRequest._id, adminNotes);
+      await upgradeAPI.rejectRequest(selectedRequest._id, { adminNotes });
       showToast("success", "Request rejected");
       setShowModal(false);
       fetchUpgradeRequests();

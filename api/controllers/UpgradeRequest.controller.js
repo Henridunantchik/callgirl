@@ -357,18 +357,40 @@ const confirmPayment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { adminNotes } = req.body;
 
+  console.log("🔍 Confirm Payment Debug:", {
+    requestId: id,
+    adminNotes: adminNotes,
+    adminUser: req.user?.email,
+    adminRole: req.user?.role
+  });
+
   // Vérifier que l'utilisateur est admin
   if (req.user.role !== "admin") {
+    console.log("❌ Admin check failed:", req.user?.role);
     throw new ApiError(403, "Accès non autorisé");
   }
 
+  console.log("🔍 Looking for upgrade request with ID:", id);
   const upgradeRequest = await UpgradeRequest.findById(id);
+  console.log("🔍 Upgrade request found:", !!upgradeRequest);
+  
+  if (upgradeRequest) {
+    console.log("🔍 Upgrade request status:", upgradeRequest.status);
+    console.log("🔍 Upgrade request details:", {
+      id: upgradeRequest._id,
+      status: upgradeRequest.status,
+      escort: upgradeRequest.escort,
+      requestedPlan: upgradeRequest.requestedPlan
+    });
+  }
 
   if (!upgradeRequest) {
+    console.log("❌ Upgrade request not found for ID:", id);
     throw new ApiError(404, "Demande d'upgrade non trouvée");
   }
 
   if (upgradeRequest.status !== "payment_required") {
+    console.log("❌ Invalid status for payment confirmation:", upgradeRequest.status);
     throw new ApiError(
       400,
       "Cette demande n'est pas en attente de confirmation de paiement"
