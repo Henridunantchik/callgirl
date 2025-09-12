@@ -56,10 +56,10 @@ const FirebaseEscortList = ({
     if (searchTerm) {
       filtered = filtered.filter(
         (escort) =>
-          (escort.name &&
-            escort.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (escort.alias &&
-            escort.alias.toLowerCase().includes(searchTerm.toLowerCase()))
+            escort.alias.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (escort.name &&
+            escort.name.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 

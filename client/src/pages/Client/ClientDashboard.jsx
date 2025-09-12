@@ -203,12 +203,14 @@ const ClientDashboard = () => {
                   >
                     <img
                       src={escort.image}
-                      alt={escort.name}
+                      alt={escort.alias || escort.name}
                       className="w-full h-48 object-cover"
                     />
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">{escort.name}</h3>
+                        <h3 className="font-semibold">
+                          {escort.alias || escort.name}
+                        </h3>
                         <Badge
                           variant="outline"
                           className="flex items-center gap-1"

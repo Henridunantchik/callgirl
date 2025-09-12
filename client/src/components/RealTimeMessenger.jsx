@@ -8,6 +8,13 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { FirebasePremiumAvatar } from "./firebase";
 import FirebaseImageDisplay from "./FirebaseImageDisplay";
+import {
+  canSendPhotos,
+  canReceivePhotos,
+  canShowPhotoUpload,
+  canDisplayPhotos,
+  getPhotoRestrictionMessage,
+} from "../utils/chatPermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import {
   MessageCircle,
@@ -914,13 +921,27 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                           >
                             {/* Check if message type is image */}
                             {msg.type === "image" ? (
-                              <div className="space-y-2">
-                                <FirebaseImageDisplay
-                                  src={msg.content}
-                                  alt="Message image"
-                                  className="max-w-full max-h-48 rounded-lg object-cover"
-                                />
-                              </div>
+                              canDisplayPhotos(user, msg.sender) ? (
+                                <div className="space-y-2">
+                                  <FirebaseImageDisplay
+                                    src={msg.content}
+                                    alt="Message image"
+                                    className="max-w-full max-h-48 rounded-lg object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3 text-center">
+                                    <ImageIcon className="h-8 w-8 text-orange-400 mx-auto mb-2" />
+                                    <p className="text-sm text-orange-700 font-medium">
+                                      Photo Message
+                                    </p>
+                                    <p className="text-xs text-orange-600">
+                                      Upgrade to Premium to view photos
+                                    </p>
+                                  </div>
+                                </div>
+                              )
                             ) : (
                               <p className="text-sm leading-relaxed">
                                 {msg.content}
@@ -986,14 +1007,44 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                       accept="image/*"
                       className="hidden"
                     />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-gray-200"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <ImageIcon className="w-4 h-4 text-gray-600" />
-                    </Button>
+                    {(() => {
+                      const canUpload = canShowPhotoUpload(
+                        user,
+                        selectedChat?.user
+                      );
+                      console.log("🔍 RealTime Photo upload check:", {
+                        user: user,
+                        recipient: selectedChat?.user,
+                        canUpload: canUpload,
+                        userRole: user?.role,
+                        userTier: user?.subscriptionTier,
+                        recipientRole: selectedChat?.user?.role,
+                      });
+                      return canUpload;
+                    })() ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-gray-200"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Send photo"
+                      >
+                        <ImageIcon className="w-4 h-4 text-gray-600" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-gray-200 opacity-50 cursor-not-allowed"
+                        disabled
+                        title={getPhotoRestrictionMessage(
+                          user,
+                          selectedChat?.user
+                        )}
+                      >
+                        <ImageIcon className="w-4 h-4 text-gray-400" />
+                      </Button>
+                    )}
                     <Input
                       placeholder="Type a message..."
                       value={message}

@@ -357,9 +357,12 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
     // Calculate pagination info
     const totalPages = Math.ceil(total / pagination.limit);
 
+    // Fix URLs for all escorts
+    const escortsWithFixedUrls = fixUrlsInArray(escortsWithBenefits);
+
     // Prepare response
     const response = {
-      escorts: escortsWithBenefits,
+      escorts: escortsWithFixedUrls,
       totalEscorts: total,
       totalPages,
       currentPage: pagination.page,
@@ -368,7 +371,7 @@ export const getAllEscorts = asyncHandler(async (req, res, next) => {
       performance: {
         queryDuration: `${queryDuration}ms`,
         cacheHit: false,
-        totalResults: escortsWithBenefits.length,
+        totalResults: escortsWithFixedUrls.length,
       },
     };
 

@@ -144,7 +144,7 @@ const Favorites = () => {
                             escort.gallery?.[0]?.src ||
                             escort.avatar
                           }
-                          alt={escort.name || escort.alias}
+                          alt={escort.alias || escort.name}
                           className="w-full h-64 object-cover"
                         />
                         <div className="absolute top-3 right-3">
@@ -183,7 +183,7 @@ const Favorites = () => {
                             className="font-semibold text-lg cursor-pointer hover:text-blue-600"
                             onClick={() => handleViewProfile(escort._id)}
                           >
-                            {escort.name || escort.alias}
+                            {escort.alias || escort.name}
                           </h3>
                           <Badge
                             variant="outline"

@@ -1,5 +1,25 @@
 import mongoose from "mongoose";
 
+// Helper function to create index safely
+const createIndexSafely = async (collection, indexSpec, options) => {
+  try {
+    await collection.createIndex(indexSpec, options);
+    console.log(`✅ Created index: ${options.name || "unnamed"}`);
+  } catch (error) {
+    if (error.code === 85) {
+      console.log(
+        `⚠️ Index '${options.name || "unnamed"}' already exists, skipping...`
+      );
+    } else {
+      console.error(
+        `❌ Error creating index '${options.name || "unnamed"}':`,
+        error.message
+      );
+      throw error;
+    }
+  }
+};
+
 // Advanced database optimization utilities for unlimited scalability
 export const createDatabaseIndexes = async () => {
   try {
@@ -7,18 +27,21 @@ export const createDatabaseIndexes = async () => {
       "🔧 Creating advanced database indexes for unlimited performance..."
     );
 
+    const usersCollection = mongoose.connection.db.collection("users");
+
     // User collection - Comprehensive indexes for escort queries
-    await mongoose.connection.db
-      .collection("users")
-      .createIndex({ email: 1 }, { unique: true, background: true });
+    await createIndexSafely(
+      usersCollection,
+      { email: 1 },
+      { unique: true, background: true, name: "user_email" }
+    );
 
     // Compound indexes for escort filtering (most common queries)
-    await mongoose.connection.db
-      .collection("users")
-      .createIndex(
-        { role: 1, isActive: 1, isAvailable: 1 },
-        { background: true, name: "escort_availability" }
-      );
+    await createIndexSafely(
+      usersCollection,
+      { role: 1, isActive: 1, isAvailable: 1 },
+      { background: true, name: "escort_availability" }
+    );
 
     await mongoose.connection.db
       .collection("users")
@@ -41,12 +64,20 @@ export const createDatabaseIndexes = async () => {
         { background: true, name: "escort_services" }
       );
 
-    await mongoose.connection.db
-      .collection("users")
-      .createIndex(
-        { role: 1, "rates.hourly": 1, isActive: 1 },
-        { background: true, name: "escort_pricing" }
-      );
+    try {
+      await mongoose.connection.db
+        .collection("users")
+        .createIndex(
+          { role: 1, "rates.hourly": 1, isActive: 1 },
+          { background: true, name: "escort_pricing" }
+        );
+    } catch (error) {
+      if (error.code === 85) {
+        console.log("⚠️ Index 'escort_pricing' already exists, skipping...");
+      } else {
+        throw error;
+      }
+    }
 
     await mongoose.connection.db
       .collection("users")

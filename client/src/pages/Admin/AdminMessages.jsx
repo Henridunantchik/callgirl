@@ -18,6 +18,13 @@ import {
 } from "../../components/ui/avatar";
 import { FirebasePremiumAvatar } from "../../components/firebase";
 import {
+  canSendPhotos,
+  canReceivePhotos,
+  canShowPhotoUpload,
+  canDisplayPhotos,
+  getPhotoRestrictionMessage,
+} from "../../utils/chatPermissions";
+import {
   MessageCircle,
   Send,
   User,
@@ -692,21 +699,35 @@ const AdminMessages = () => {
                                 }`}
                               >
                                 {msg.type === "image" ? (
-                                  <div className="space-y-2">
-                                    <img
-                                      src={msg.content}
-                                      alt="Message image"
-                                      className="max-w-full max-h-64 rounded-lg"
-                                      onError={(e) => {
-                                        e.target.style.display = "none";
-                                        e.target.nextSibling.style.display =
-                                          "block";
-                                      }}
-                                    />
-                                    <div className="hidden text-xs text-gray-500">
-                                      Image failed to load
+                                  canDisplayPhotos(user, msg.sender) ? (
+                                    <div className="space-y-2">
+                                      <img
+                                        src={msg.content}
+                                        alt="Message image"
+                                        className="max-w-full max-h-64 rounded-lg"
+                                        onError={(e) => {
+                                          e.target.style.display = "none";
+                                          e.target.nextSibling.style.display =
+                                            "block";
+                                        }}
+                                      />
+                                      <div className="hidden text-xs text-gray-500">
+                                        Image failed to load
+                                      </div>
                                     </div>
-                                  </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3 text-center">
+                                        <ImageIcon className="h-8 w-8 text-orange-400 mx-auto mb-2" />
+                                        <p className="text-sm text-orange-700 font-medium">
+                                          Photo Message
+                                        </p>
+                                        <p className="text-xs text-orange-600">
+                                          Upgrade to Premium to view photos
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
                                 ) : (
                                   <p className="text-sm leading-relaxed">
                                     {msg.content}
@@ -783,14 +804,44 @@ const AdminMessages = () => {
                         onChange={handleImageSelect}
                         className="hidden"
                       />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-gray-200"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <ImageIcon className="h-4 w-4 text-gray-600" />
-                      </Button>
+                      {(() => {
+                        const canUpload = canShowPhotoUpload(
+                          user,
+                          selectedChat?.user
+                        );
+                        console.log("🔍 Admin Photo upload check:", {
+                          user: user,
+                          recipient: selectedChat?.user,
+                          canUpload: canUpload,
+                          userRole: user?.role,
+                          userTier: user?.subscriptionTier,
+                          recipientRole: selectedChat?.user?.role,
+                        });
+                        return canUpload;
+                      })() ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-gray-200"
+                          onClick={() => fileInputRef.current?.click()}
+                          title="Send photo"
+                        >
+                          <ImageIcon className="h-4 w-4 text-gray-600" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-gray-200 opacity-50 cursor-not-allowed"
+                          disabled
+                          title={getPhotoRestrictionMessage(
+                            user,
+                            selectedChat?.user
+                          )}
+                        >
+                          <ImageIcon className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      )}
                       <Textarea
                         ref={textareaRef}
                         value={message}

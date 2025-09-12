@@ -49,10 +49,13 @@ import {
   canShowServices,
   canShowAbout,
   canShowStats,
+  canShowPhotos,
+  canShowBasicInfo,
   getEscortAccessLevel,
   getAccessLevelBadgeColor,
   getAccessLevelLabel,
 } from "../../utils/escortAccess";
+import UpgradePrompt from "../../components/UpgradePrompt";
 import { fixUserUrls } from "../../utils/urlHelper";
 
 const EscortProfile = () => {
@@ -358,6 +361,11 @@ const EscortProfile = () => {
     setIsGalleryOpen(true);
   };
 
+  // Handle upgrade button click
+  const handleUpgrade = () => {
+    window.open("https://epicescorts.live/ug/escort/upgrade", "_blank");
+  };
+
   // Get currency symbol based on country
   const getCurrencySymbol = (countryCode) => {
     if (!countryCode) return "USD";
@@ -435,7 +443,7 @@ const EscortProfile = () => {
   const mainCity = cities[0] || "Kampala";
 
   // Generate SEO content
-  const escortName = escort?.name || "Escort";
+  const escortName = escort?.alias || escort?.name || "Escort";
   const escortAge = escort?.age ? `, ${escort.age} years old` : "";
   const escortLocation = escort?.city || mainCity;
   const escortServices = escort?.services?.join(", ") || "escort services";
@@ -522,15 +530,16 @@ const EscortProfile = () => {
 
       <div className="min-h-screen bg-gray-50">
         {/* Cover Photo */}
-        <div className="relative h-80 bg-gradient-to-r from-purple-500 to-pink-500">
+        <div className="relative h-96 bg-gradient-to-r from-purple-500 to-pink-500 overflow-hidden">
           {escort.gallery && escort.gallery.length > 0 ? (
-            <FirebaseGallery
-              images={escort.gallery}
-              videos={escort.videos || []}
-              className=""
-              maxDisplay={1}
-              showLightbox={false}
-            />
+            <div className="w-full h-full">
+              <FirebaseImageDisplay
+                src={escort.gallery[0]?.url || escort.gallery[0]?.src}
+                alt={`${escort.alias || escort.name} - Cover Photo`}
+                className="w-full h-full object-cover"
+                fallbackSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM4QjVDRjYiLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjRUM0ODk5Ii8+CjwvbGluZWFyR3JhZGllbnQ+CjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZGllbnQpIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCI+Q292ZXI8L3RleHQ+Cjwvc3ZnPgo="
+              />
+            </div>
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
               <Camera className="h-16 w-16 text-white/50" />
@@ -564,11 +573,7 @@ const EscortProfile = () => {
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               {/* Avatar */}
               <FirebasePremiumAvatar
-                src={
-                  escort.avatar ||
-                  escort.gallery?.[0]?.url ||
-                  "/default-escort.jpg"
-                }
+                src={escort.avatar || "/default-escort.jpg"}
                 alt={escort.alias || escort.name}
                 size="w-32 h-32"
                 showBadge={true}
@@ -704,12 +709,26 @@ const EscortProfile = () => {
             </div>
           </div>
 
+          {/* Upgrade Banner for Basic Users */}
+          {!canShowPhotos(escort) && (
+            <div className="bg-white rounded-lg shadow-lg mb-6 p-6">
+              <UpgradePrompt
+                type="photos"
+                escort={escort}
+                onUpgrade={handleUpgrade}
+              />
+            </div>
+          )}
+
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-lg mb-6 overflow-hidden">
             <div className="bg-gradient-to-r from-gray-50 to-gray-100">
               <nav className="flex space-x-1 px-6">
                 {[
-                  "photos",
+                  ...(canShowPhotos(escort) &&
+                  escort.subscriptionTier !== "basic"
+                    ? ["photos"]
+                    : []),
                   ...(canShowAbout(escort) ? ["about"] : []),
                   ...(canShowServices(escort) ? ["services"] : []),
                   ...(canShowRates(escort) ? ["rates"] : []),
@@ -730,74 +749,108 @@ const EscortProfile = () => {
             </div>
 
             <div className="p-6">
-              {/* Photos Tab */}
-              {activeTab === "photos" && (
-                <div className="space-y-8">
-                  {/* Gallery Section */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Photos</h3>
-                    {escort.gallery && escort.gallery.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {escort.gallery.map((photo, index) => (
-                          <div
-                            key={index}
-                            className="relative group cursor-pointer"
-                            onClick={() => handleImageClick(index)}
+              {/* Photos Tab - Only show for non-basic escorts */}
+              {activeTab === "photos" &&
+                escort.subscriptionTier !== "basic" && (
+                  <div className="space-y-8">
+                    {/* Gallery Section */}
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">Photos</h3>
+                        {escort.gallery && escort.gallery.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsGalleryOpen(true)}
+                            className="flex items-center gap-2"
                           >
-                            <FirebaseImageDisplay
-                              src={photo.url || photo.filePath || photo.src}
-                              alt={`${escort.alias || escort.name} - Photo ${
-                                index + 1
-                              }`}
-                              className="w-full h-48 object-contain rounded-lg bg-gray-50"
-                            />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                              <Eye className="h-8 w-8 text-white" />
-                            </div>
-                            {photo.caption && (
-                              <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-1 rounded">
-                                {photo.caption}
+                            <Eye className="h-4 w-4" />
+                            View All ({escort.gallery.length})
+                          </Button>
+                        )}
+                      </div>
+                      {canShowPhotos(escort) ? (
+                        escort.gallery && escort.gallery.length > 0 ? (
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                            {escort.gallery.map((photo, index) => (
+                              <div
+                                key={index}
+                                className="relative group cursor-pointer aspect-square overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                                onClick={() => handleImageClick(index)}
+                              >
+                                <FirebaseImageDisplay
+                                  src={photo.url || photo.filePath || photo.src}
+                                  alt={`${
+                                    escort.alias || escort.name
+                                  } - Photo ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                                    <Eye className="h-6 w-6 text-white" />
+                                  </div>
+                                </div>
+                                {photo.caption && (
+                                  <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-2 rounded-lg backdrop-blur-sm">
+                                    {photo.caption}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                            <p className="text-gray-500">No photos available</p>
+                          </div>
+                        )
+                      ) : (
+                        <UpgradePrompt
+                          type="photos"
+                          escort={escort}
+                          onUpgrade={handleUpgrade}
+                        />
+                      )}
+                    </div>
+
+                    {/* Videos Section */}
+                    {canShowPhotos(escort) ? (
+                      escort.videos &&
+                      escort.videos.length > 0 && (
+                        <div>
+                          <h3 className="text-lg font-semibold mb-4">Videos</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {escort.videos.map((video, index) => (
+                              <div
+                                key={index}
+                                className="relative group cursor-pointer rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                              >
+                                <video
+                                  src={video.url}
+                                  className="w-full h-64 object-cover"
+                                  poster={video.thumbnail}
+                                  controls
+                                  preload="metadata"
+                                />
+                                {video.caption && (
+                                  <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-2 rounded-lg backdrop-blur-sm">
+                                    {video.caption}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
                     ) : (
-                      <div className="text-center py-12">
-                        <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500">No photos available</p>
-                      </div>
+                      <UpgradePrompt
+                        type="videos"
+                        escort={escort}
+                        onUpgrade={handleUpgrade}
+                      />
                     )}
                   </div>
-
-                  {/* Videos Section */}
-                  {escort.videos && escort.videos.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4">Videos</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {escort.videos.map((video, index) => (
-                          <div
-                            key={index}
-                            className="relative group cursor-pointer"
-                          >
-                            <video
-                              src={video.url}
-                              className="w-full h-48 object-contain rounded-lg bg-gray-50"
-                              poster={video.thumbnail}
-                              controls
-                            />
-                            {video.caption && (
-                              <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-1 rounded">
-                                {video.caption}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
 
               {/* About Tab */}
               {activeTab === "about" && (
@@ -814,25 +867,12 @@ const EscortProfile = () => {
                         </div>
                       )}
                     </>
-                  ) : // Only show premium access message to escorts (not clients)
-                  user?.user?.role === "escort" ? (
-                    <div className="text-center py-12">
-                      <Award className="h-16 w-16 text-orange-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-orange-800 mb-2">
-                        Premium Access Required
-                      </h3>
-                      <p className="text-orange-600">
-                        Upgrade to Premium to view detailed information about
-                        this escort
-                      </p>
-                    </div>
                   ) : (
-                    // For clients, show a simple message
-                    <div className="text-center py-12">
-                      <p className="text-gray-500">
-                        Detailed information is not available for this escort.
-                      </p>
-                    </div>
+                    <UpgradePrompt
+                      type="details"
+                      escort={escort}
+                      onUpgrade={handleUpgrade}
+                    />
                   )}
 
                   {/* Experience Section - Moved to top */}
@@ -1346,14 +1386,26 @@ const EscortProfile = () => {
           selectedEscort={escort}
         />
 
-        {/* Firebase Gallery */}
-        {escort.gallery && escort.gallery.length > 0 && (
-          <FirebaseGallery
-            images={escort.gallery}
-            maxDisplay={6}
-            showLightbox={true}
-            onImageClick={(media, index) => setSelectedImageIndex(index)}
-          />
+        {/* Firebase Gallery Modal */}
+        {isGalleryOpen && escort.gallery && escort.gallery.length > 0 && (
+          <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+            <div className="relative w-full max-w-6xl max-h-full">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsGalleryOpen(false)}
+                className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm z-10"
+              >
+                ✕ Close
+              </Button>
+              <FirebaseGallery
+                images={escort.gallery}
+                maxDisplay={12}
+                showLightbox={true}
+                onImageClick={(media, index) => setSelectedImageIndex(index)}
+              />
+            </div>
+          </div>
         )}
       </div>
     </>

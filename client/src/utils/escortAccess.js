@@ -20,11 +20,6 @@ export const canShowContactInfo = (escort) => {
   return hasPremiumAccess(escort);
 };
 
-// Check if escort can show detailed information
-export const canShowDetailedInfo = (escort) => {
-  return hasPremiumAccess(escort);
-};
-
 // Check if escort can show reviews
 export const canShowReviews = (escort) => {
   return hasPremiumAccess(escort);
@@ -45,10 +40,22 @@ export const canShowAbout = (escort) => {
   return hasPremiumAccess(escort);
 };
 
-// Check if escort photos can be displayed (should be visible to all users)
+// Check if escort photos can be displayed (business strategy: only for premium users)
 export const canShowPhotos = (escort) => {
-  // Photos should be visible to everyone, not just premium users
+  // Photos should only be visible to premium users to encourage upgrades
+  return hasPremiumAccess(escort);
+};
+
+// Check if escort basic info can be displayed (name, age, city - always visible)
+export const canShowBasicInfo = (escort) => {
+  // Basic info should always be visible to attract users
   return true;
+};
+
+// Check if escort detailed info can be displayed (services, personal details, etc.)
+export const canShowDetailedInfo = (escort) => {
+  // Detailed info should only be visible to premium users
+  return hasPremiumAccess(escort);
 };
 
 // Check if escort can show stats

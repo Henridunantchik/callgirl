@@ -113,7 +113,9 @@ const Index = () => {
           escort.subscriptionTier === "premium";
 
         console.log(
-          `Escort ${escort.name}: subscriptionTier=${escort.subscriptionTier}, isFeatured=${isFeatured}, accessLevel=${accessLevel}`
+          `Escort ${escort.alias || escort.name}: subscriptionTier=${
+            escort.subscriptionTier
+          }, isFeatured=${isFeatured}, accessLevel=${accessLevel}`
         );
 
         return (
@@ -148,13 +150,50 @@ const Index = () => {
         statsAPI
           .getCountryStats(countryCode || "ug")
           .then((resp) => {
-            if (resp?.data?.data?.stats) setStatsData(resp.data.data.stats);
+            if (resp?.data?.data?.stats) {
+              setStatsData(resp.data.data.stats);
+            } else {
+              // Use demo data if API returns empty stats
+              console.log("Using demo stats for homepage");
+              setStatsData({
+                totalEscorts: 1,
+                verifiedEscorts: 1,
+                onlineEscorts: 1,
+                featuredEscorts: 0,
+                premiumEscorts: 0,
+                citiesCovered: 1,
+                topCities: [{ _id: "Kampala", escortCount: 1 }],
+                countryCode: countryCode || "ug",
+              });
+            }
           })
           .catch((err) => {
             console.warn("Stats fetch failed:", err?.message);
+            // Use demo data when API fails
+            setStatsData({
+              totalEscorts: 1,
+              verifiedEscorts: 1,
+              onlineEscorts: 1,
+              featuredEscorts: 0,
+              premiumEscorts: 0,
+              citiesCovered: 1,
+              topCities: [{ _id: "Kampala", escortCount: 1 }],
+              countryCode: countryCode || "ug",
+            });
           });
       } catch (error) {
         console.warn("Stats fetch error:", error?.message);
+        // Use demo data when API fails
+        setStatsData({
+          totalEscorts: 1,
+          verifiedEscorts: 1,
+          onlineEscorts: 1,
+          featuredEscorts: 0,
+          premiumEscorts: 0,
+          citiesCovered: 1,
+          topCities: [{ _id: "Kampala", escortCount: 1 }],
+          countryCode: countryCode || "ug",
+        });
       }
 
       setError(null);
@@ -310,11 +349,16 @@ const Index = () => {
       }
     } else if (method === "message") {
       // Open the floating messenger directly
-      console.log("Opening messenger for:", escort.alias);
+      console.log("Opening messenger for:", escort.alias || escort.name);
       setSelectedEscort(escort);
       setIsMessengerOpen(true);
     }
-    console.log("Contacting escort:", escort.alias, "via", method);
+    console.log(
+      "Contacting escort:",
+      escort.alias || escort.name,
+      "via",
+      method
+    );
   };
 
   // Render immediately; show skeleton text where needed instead of blocking overlay
@@ -330,18 +374,18 @@ const Index = () => {
     <>
       <Helmet>
         <title>
-          {countryName} Escorts - Verified Call Girls & Companions | {mainCity}{" "}
-          Escort Services
+          🔥 Epic Escorts - {countryName} Call Girls, Massage & GFE | Premium{" "}
+          {mainCity} Escort Services | Book Now!
         </title>
         <meta
           name="description"
-          content={`Find verified ${countryName} escorts and call girls in ${mainCity}. Premium escort services, massage, companionship, and more. Safe, discreet, and professional. Browse ${
+          content={`🔥 Epic Escorts - Find verified ${countryName} escorts, call girls & sexy companions in ${mainCity}! Premium escort services, sensual massage, girlfriend experience (GFE), dating & adult entertainment. 100% discreet, verified profiles, outcall/incall available. Book elite escorts, luxury companions & beautiful girls for dinner dates, travel, business trips. Browse ${
             escortData?.escorts?.length || 0
-          }+ verified profiles.`}
+          }+ verified profiles. WhatsApp booking available! Best escort site in ${countryName}.`}
         />
         <meta
           name="keywords"
-          content={`${countryName} escorts, ${mainCity} escorts, call girls ${countryName}, ${mainCity} call girls, escort services ${countryName}, verified escorts, massage ${mainCity}, companionship ${countryName}, adult services, hookup ${mainCity}, dating ${countryName}`}
+          content={`epic, epic escorts, epicescorts, epicescorts.live, epic escort, epic call girls, epic massage, epic companions, escort, escorts, call girl, call girls, ${countryName} escorts, ${mainCity} escorts, sexy girls, hot girls, beautiful girls, massage, massage service, sexy massage, erotic massage, sensual massage, girlfriend experience, GFE, companion, companionship, dating service, adult services, adult entertainment, intimate services, personal services, outcall, incall, travel companion, dinner date, business trip, weekend getaway, verified escort, premium escort, elite escort, high-class escort, luxury escort, discreet service, confidential service, private service, exclusive service, escort reviews, escort ratings, escort directory, escort listing, escort booking, ${mainCity} call girl, ${countryName} call girl, ${mainCity} girls, ${countryName} girls, ${mainCity} massage, ${countryName} massage, ${mainCity} dating, ${countryName} dating, find escort near me, escort service near me, local escort, local girls, best escort site, top escort website, escort platform, escort agency, hire escort, book escort, meet escort, contact escort, escort phone, whatsapp escort, telegram escort, escort chat, escort message, escort photos, escort gallery, escort videos, escort profile, African escort, East African escort, hookup ${mainCity}, dating ${countryName}, girls ${mainCity}, meet girls ${countryName}, find girls near me`}
         />
         <meta name="robots" content="index, follow" />
         <meta name="googlebot" content="index, follow" />
@@ -351,11 +395,11 @@ const Index = () => {
         <meta property="og:type" content="website" />
         <meta
           property="og:title"
-          content={`${countryName} Escorts - Verified Call Girls & Companions`}
+          content={`🔥 Epic Escorts - ${countryName} Call Girls, Massage & GFE | Premium ${mainCity} Escort Services`}
         />
         <meta
           property="og:description"
-          content={`Find verified ${countryName} escorts and call girls in ${mainCity}. Premium escort services, massage, companionship, and more.`}
+          content={`🔥 Epic Escorts - Find verified ${countryName} escorts, call girls & sexy companions in ${mainCity}! Premium escort services, sensual massage, girlfriend experience (GFE), dating & adult entertainment. 100% discreet, verified profiles, outcall/incall available.`}
         />
         <meta
           property="og:url"
@@ -373,11 +417,11 @@ const Index = () => {
         <meta name="twitter:card" content="summary_large_image" />
         <meta
           name="twitter:title"
-          content={`${countryName} Escorts - Verified Call Girls & Companions`}
+          content={`🔥 Epic Escorts - ${countryName} Call Girls, Massage & GFE | Premium ${mainCity} Escort Services`}
         />
         <meta
           name="twitter:description"
-          content={`Find verified ${countryName} escorts and call girls in ${mainCity}. Premium escort services, massage, companionship, and more.`}
+          content={`🔥 Epic Escorts - Find verified ${countryName} escorts, call girls & sexy companions in ${mainCity}! Premium escort services, sensual massage, girlfriend experience (GFE), dating & adult entertainment.`}
         />
         <meta
           name="twitter:image"
@@ -387,9 +431,34 @@ const Index = () => {
         {/* Additional SEO */}
         <meta name="author" content="Epic Escorts" />
         <meta name="language" content="en" />
+        <meta name="classification" content="adult entertainment" />
+        <meta
+          name="category"
+          content="escort services, adult services, companions"
+        />
+        <meta name="coverage" content="Worldwide" />
+        <meta name="distribution" content="Global" />
+        <meta name="rating" content="adult" />
+        <meta name="revisit-after" content="1 days" />
+        <meta name="geo.region" content="{countryCode?.toUpperCase()}" />
+        <meta name="geo.placename" content="{mainCity}" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+        <meta name="theme-color" content="#8B5CF6" />
+        <meta name="msapplication-navbutton-color" content="#8B5CF6" />
+        <meta name="apple-mobile-web-app-title" content="Epic Escorts" />
         <meta name="revisit-after" content="1 days" />
         <meta name="distribution" content="global" />
         <meta name="rating" content="adult" />
+
+        {/* Favicon */}
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
 
         {/* Canonical URL */}
         <link
@@ -402,8 +471,8 @@ const Index = () => {
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "WebSite",
-            name: `${countryName} Escorts - Epic Escorts`,
-            description: `Find verified ${countryName} escorts and call girls in ${mainCity}. Premium escort services, massage, companionship, and more.`,
+            name: `Epic Escorts - ${countryName} Escorts & Call Girls`,
+            description: `Epic Escorts - Find verified ${countryName} escorts and call girls in ${mainCity}. Premium escort services, massage, companionship, and more.`,
             url: `https://epicescorts.live/${countryCode || "ug"}`,
             potentialAction: {
               "@type": "SearchAction",

@@ -16,6 +16,37 @@ const sendMessage = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Escort ID and content or media are required");
   }
 
+  // Check photo permissions for image messages
+  if (type === "image") {
+    const sender = req.user;
+    const recipient = await mongoose.model("User").findById(escortId);
+
+    // Admin can always send photos
+    if (sender.role === "admin") {
+      // Allow
+    }
+    // Premium users can send photos to anyone
+    else if (sender.subscriptionTier === "premium") {
+      // Allow
+    }
+    // Basic/Featured can only send photos to Admin
+    else if (
+      sender.subscriptionTier === "basic" ||
+      sender.subscriptionTier === "featured"
+    ) {
+      if (recipient?.role !== "admin") {
+        throw new ApiError(
+          403,
+          "Upgrade to Premium to send photos to other users"
+        );
+      }
+    }
+    // No subscription - not allowed
+    else {
+      throw new ApiError(403, "You need a subscription to send photos");
+    }
+  }
+
   const messageData = {
     sender: userId,
     recipient: escortId,

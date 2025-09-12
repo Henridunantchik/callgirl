@@ -526,7 +526,7 @@ const EscortList = () => {
               itemListElement: escorts.slice(0, 10).map((escort, index) => ({
                 "@type": "Person",
                 position: index + 1,
-                name: escort.name,
+                name: escort.alias || escort.name,
                 description:
                   escort.bio ||
                   `Professional escort in ${city || mainCity}, ${countryName}`,
@@ -938,7 +938,13 @@ const EscortList = () => {
                               escort.gallery[0].src ||
                               escort.avatar
                             }
-                            alt={escort.name}
+                            alt={escort.alias || escort.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : escort.avatar ? (
+                          <FirebaseImageDisplay
+                            src={escort.avatar}
+                            alt={escort.alias || escort.name}
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -981,7 +987,7 @@ const EscortList = () => {
                         {/* Name and Age - Aligned like EscortCard */}
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="text-base font-semibold text-gray-900 truncate">
-                            {escort.name}
+                            {escort.alias || escort.name}
                           </h3>
                           <span className="text-xs text-gray-500">
                             {escort.age} years
