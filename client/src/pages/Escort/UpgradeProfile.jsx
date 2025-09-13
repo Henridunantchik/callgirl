@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 
 const UpgradeProfile = () => {
-  const { user, getUserId, isAuthenticated } = useAuth();
+  const { user, getUserId, isAuthenticated, refreshUser } = useAuth();
   const { countryCode } = useParams();
   const navigate = useNavigate();
 
@@ -70,6 +70,22 @@ const UpgradeProfile = () => {
       return;
     }
   }, [user, navigate, getUserId, isAuthenticated]);
+
+  // Refresh user data to get latest subscription status
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (user && user.role === "escort") {
+        try {
+          console.log("🔄 Refreshing user data on upgrade page load...");
+          await refreshUser();
+        } catch (error) {
+          console.error("❌ Error refreshing user data:", error);
+        }
+      }
+    };
+
+    refreshUserData();
+  }, []); // Only run once on mount
 
   // Fetch upgrade requests and subscription status (cache-first + timeout)
   useEffect(() => {
@@ -146,9 +162,17 @@ const UpgradeProfile = () => {
 
   const handleWhatsAppContact = () => {
     // Open WhatsApp with pre-filled message for upgrade help
-    const message = `Hello! I'm a Featured user (${
-      user?.name || user?.email
-    }) and I need help with upgrading to Premium.`;
+    const currentTier = user?.user?.subscriptionTier || "basic";
+    const tierLabel =
+      currentTier === "premium"
+        ? "Premium"
+        : currentTier === "featured"
+        ? "Featured"
+        : "Basic";
+
+    const message = `Hello! I'm a ${tierLabel} user (${
+      user?.user?.name || user?.user?.email || user?.name || user?.email
+    }) and I need help with upgrading my subscription plan.`;
     const whatsappUrl = `https://wa.me/+256701760214?text=${encodeURIComponent(
       message
     )}`;
@@ -645,6 +669,14 @@ const UpgradeProfile = () => {
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span>Text messaging only</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span>No photos or videos</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
                       <span>3x more clients</span>
                     </li>
                   </ul>
@@ -663,6 +695,14 @@ const UpgradeProfile = () => {
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
                       <span>Everything from Featured</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span>Photo gallery (up to 30 photos)</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span>Video uploads (up to 15 videos)</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600" />
@@ -776,10 +816,11 @@ const UpgradeProfile = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Featured ($12): Visible contact, more visibility, 3x more
-                  clients. Premium ($5/month or $60/year): Everything from
-                  Featured + verified badge, maximum visibility, 5x more
-                  clients.
+                  Featured ($12): Visible contact, more visibility, text
+                  messaging only, no photos/videos, 3x more clients. Premium
+                  ($5/month or $60/year): Everything from Featured + photo
+                  gallery (30 photos), video uploads (15 videos), verified
+                  badge, maximum visibility, 5x more clients.
                 </p>
               </CardContent>
             </Card>
@@ -839,6 +880,7 @@ const UpgradeProfile = () => {
         onWhatsAppContact={handleWhatsAppContact}
         onMessengerContact={handleMessengerContact}
         onRequestCreated={fetchUpgradeRequests}
+        user={user}
       />
 
       {/* Upgrade Notification */}

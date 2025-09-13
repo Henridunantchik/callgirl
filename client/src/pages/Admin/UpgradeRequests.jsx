@@ -150,6 +150,19 @@ const UpgradeRequests = () => {
       return;
     }
 
+    // Validate that the request is in the correct status for approval
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        selectedRequest.status
+      )
+    ) {
+      showToast(
+        "error",
+        `Cannot approve request. Current status: ${selectedRequest.status}. Only pending, payment required or confirmed requests can be approved.`
+      );
+      return;
+    }
+
     try {
       setProcessing(true);
       await upgradeAPI.approveRequest(selectedRequest._id, adminNotes);
@@ -221,6 +234,19 @@ Admin Team`;
   };
 
   const handleQuickApprove = (request) => {
+    // Validate that the request is in the correct status for approval
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        request.status
+      )
+    ) {
+      showToast(
+        "error",
+        `Cannot approve request. Current status: ${request.status}. Only pending, payment required or confirmed requests can be approved.`
+      );
+      return;
+    }
+
     setQuickAction("approve");
     setQuickRequest(request);
     setQuickNotes("");
@@ -228,6 +254,19 @@ Admin Team`;
   };
 
   const handleQuickReject = (request) => {
+    // Validate that the request can be rejected
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        request.status
+      )
+    ) {
+      showToast(
+        "error",
+        `Cannot reject request. Current status: ${request.status}. Request has already been processed.`
+      );
+      return;
+    }
+
     setQuickAction("reject");
     setQuickRequest(request);
     setQuickNotes("");
@@ -235,6 +274,15 @@ Admin Team`;
   };
 
   const handleQuickConfirmPayment = (request) => {
+    // Validate that the request is in the correct status for payment confirmation
+    if (request.status !== "payment_required") {
+      showToast(
+        "error",
+        `Cannot confirm payment. Current status: ${request.status}. Payment instructions must be sent first.`
+      );
+      return;
+    }
+
     setQuickAction("confirm_payment");
     setQuickRequest(request);
     setQuickNotes("");
@@ -249,33 +297,23 @@ Admin Team`;
 
     try {
       setProcessing(true);
-      console.log("Processing quick action:", quickAction);
-      console.log("Request ID:", quickRequest._id);
-      console.log("Admin notes:", quickNotes);
 
       if (quickAction === "approve") {
-        console.log("Calling approveRequest API...");
         const response = await upgradeAPI.approveRequest(
           quickRequest._id,
           quickNotes
         );
-        console.log("Approve response:", response);
         showToast("success", "Request approved");
       } else if (quickAction === "confirm_payment") {
-        console.log("Calling confirmPayment API...");
-        const response = await upgradeAPI.confirmPayment(
-          quickRequest._id,
-          quickNotes
-        );
-        console.log("Confirm payment response:", response);
+        const response = await upgradeAPI.confirmPayment(quickRequest._id, {
+          adminNotes: quickNotes,
+        });
         showToast("success", "Payment confirmed");
       } else if (quickAction === "reject") {
-        console.log("Calling rejectRequest API...");
         const response = await upgradeAPI.rejectRequest(
           quickRequest._id,
           quickNotes
         );
-        console.log("Reject response:", response);
         showToast("success", "Request rejected");
       }
 
@@ -300,6 +338,19 @@ Admin Team`;
   const handleReject = async () => {
     if (!selectedRequest || !adminNotes.trim()) {
       showToast("error", "Please add notes before rejecting");
+      return;
+    }
+
+    // Validate that the request can be rejected
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        selectedRequest.status
+      )
+    ) {
+      showToast(
+        "error",
+        `Cannot reject request. Current status: ${selectedRequest.status}. Request has already been processed.`
+      );
       return;
     }
 
@@ -611,18 +662,27 @@ Admin Team`;
 
                     {/* Action Buttons */}
                     <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-100">
-                      {/* Pending status - View button */}
+                      {/* Pending status - View and Approve buttons */}
                       {request.status === "pending" && (
-                        <Button
-                          onClick={() => handleViewRequest(request)}
-                          className="bg-blue-500 hover:bg-blue-600"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Details
-                        </Button>
+                        <>
+                          <Button
+                            onClick={() => handleViewRequest(request)}
+                            className="bg-blue-500 hover:bg-blue-600"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </Button>
+                          <Button
+                            onClick={() => handleQuickApprove(request)}
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Approve
+                          </Button>
+                        </>
                       )}
 
-                      {/* Payment required status - Confirm Payment/Reject buttons */}
+                      {/* Payment required status - Confirm Payment/Approve/Reject buttons */}
                       {request.status === "payment_required" && (
                         <>
                           <Button
@@ -640,6 +700,13 @@ Admin Team`;
                             Confirm Payment
                           </Button>
                           <Button
+                            onClick={() => handleQuickApprove(request)}
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Approve
+                          </Button>
+                          <Button
                             onClick={() => handleQuickReject(request)}
                             variant="destructive"
                           >
@@ -652,7 +719,7 @@ Admin Team`;
                       {/* Payment confirmed status - Approve button */}
                       {request.status === "payment_confirmed" && (
                         <Button
-                          onClick={() => handleViewRequest(request)}
+                          onClick={() => handleQuickApprove(request)}
                           className="bg-green-500 hover:bg-green-600"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -856,7 +923,9 @@ Admin Team`;
                 </>
               )}
 
-              {selectedRequest.status === "payment_confirmed" && (
+              {(selectedRequest.status === "pending" ||
+                selectedRequest.status === "payment_required" ||
+                selectedRequest.status === "payment_confirmed") && (
                 <>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">

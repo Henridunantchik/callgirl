@@ -19,13 +19,14 @@ const UpgradeModal = ({
   onWhatsAppContact,
   onMessengerContact,
   onRequestCreated,
+  user, // Add user prop to access logged-in user data
 }) => {
   const [contactMethod, setContactMethod] = useState(null);
   const [subscriptionPeriod, setSubscriptionPeriod] = useState("monthly");
   const [formData, setFormData] = useState({
     escortName: "",
     escortPhone: "",
-    escortEmail: "",
+    escortEmail: user?.user?.email || user?.email || "", // Pre-populate with logged-in user's email
     paymentProof: "",
   });
 
@@ -284,8 +285,13 @@ Price: ${planData.price}`;
                       value={formData.escortEmail}
                       onChange={handleInputChange}
                       placeholder="your.email@example.com"
+                      readOnly
+                      className="bg-gray-50 cursor-not-allowed border-gray-300"
                       required
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Email cannot be changed - using your login email
+                    </p>
                   </div>
 
                   {/* Subscription Period Selection for Premium */}

@@ -99,7 +99,6 @@ const EscortRegistration = () => {
     services: [],
     hourlyRate: "",
     isStandardPricing: true,
-    photos: [],
     agreeToTerms: false,
   });
 
@@ -108,8 +107,7 @@ const EscortRegistration = () => {
     { id: 2, title: "Personal Info", icon: User },
     { id: 3, title: "Location", icon: MapPin },
     { id: 4, title: "Services & Rates", icon: DollarSign },
-    { id: 5, title: "Gallery", icon: Camera },
-    { id: 6, title: "Terms", icon: FileText },
+    { id: 5, title: "Terms", icon: FileText },
   ];
 
   const serviceOptions = [
@@ -245,10 +243,6 @@ const EscortRegistration = () => {
     );
   };
 
-  // Function to check if Gallery step is complete
-  const isGalleryComplete = () => {
-    return formData.photos && formData.photos.length >= 3;
-  };
 
   // Function to check if Terms step is complete
   const isTermsComplete = () => {
@@ -302,14 +296,9 @@ const EscortRegistration = () => {
       return;
     }
 
-    // Prevent proceeding if Gallery is incomplete
-    if (currentStep === 5 && !isGalleryComplete()) {
-      alert("Please upload at least 3 photos before proceeding.");
-      return;
-    }
 
     // Prevent proceeding if Terms is incomplete
-    if (currentStep === 6 && !isTermsComplete()) {
+    if (currentStep === 5 && !isTermsComplete()) {
       alert("Please agree to the Terms of Service before proceeding.");
       return;
     }
@@ -518,11 +507,6 @@ const EscortRegistration = () => {
         return;
       }
 
-      // Validate photos
-      if (!formData.photos || formData.photos.length === 0) {
-        alert("Please upload at least one photo.");
-        return;
-      }
 
       // Validate terms agreement
       if (!formData.agreeToTerms) {
@@ -556,10 +540,6 @@ const EscortRegistration = () => {
         formData.isStandardPricing.toString()
       );
 
-      // Add photos
-      formData.photos.forEach((photo, index) => {
-        apiFormData.append("gallery", photo);
-      });
 
       // Add ID document if available
       if (formData.idDocument) {
@@ -1094,16 +1074,22 @@ const EscortRegistration = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="email">Email Address *</Label>
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      Email Address *
+                      <Lock className="h-3 w-3 text-gray-400" />
+                    </Label>
                     <Input
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) =>
-                        handleInputChange("email", e.target.value)
-                      }
-                      placeholder="Enter your email"
+                      readOnly
+                      className="bg-gray-50 cursor-not-allowed border-gray-300"
+                      placeholder="Email from your account"
                     />
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                      <Lock className="h-3 w-3" />
+                      This email is linked to your account and cannot be changed
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="phone">Phone Number *</Label>
@@ -1376,158 +1362,8 @@ const EscortRegistration = () => {
               </div>
             )}
 
+
             {currentStep === 5 && (
-              <div className="space-y-4">
-                <div>
-                  <Label>Profile Photos *</Label>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Upload at least 3 photos. First photo will be your main
-                    profile picture.
-                  </p>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      Click to upload photos or drag and drop
-                    </p>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files);
-                        console.log("=== PHOTO UPLOAD DEBUG ===");
-                        console.log("Files selected:", files.length);
-
-                        // Validate files
-                        const validFiles = [];
-                        const maxSize = 5 * 1024 * 1024; // 5MB
-                        const allowedTypes = [
-                          "image/jpeg",
-                          "image/jpg",
-                          "image/png",
-                          "image/webp",
-                        ];
-
-                        files.forEach((file, index) => {
-                          console.log(
-                            `File ${index + 1}:`,
-                            file.name,
-                            file.size,
-                            file.type
-                          );
-
-                          // Check file size
-                          if (file.size > maxSize) {
-                            showToast(
-                              "error",
-                              `File ${file.name} is too large. Maximum size is 5MB.`
-                            );
-                            return;
-                          }
-
-                          // Check file type
-                          if (!allowedTypes.includes(file.type)) {
-                            showToast(
-                              "error",
-                              `File ${file.name} is not a supported image format. Please use JPG, PNG, or WebP.`
-                            );
-                            return;
-                          }
-
-                          validFiles.push(file);
-                        });
-
-                        if (validFiles.length > 0) {
-                          handleInputChange("photos", validFiles);
-                          showToast(
-                            "success",
-                            `${validFiles.length} photo(s) selected successfully!`
-                          );
-                        }
-                      }}
-                      className="hidden"
-                      id="photo-upload"
-                    />
-                    <label htmlFor="photo-upload">
-                      <Button variant="outline" asChild>
-                        <span>Choose Photos</span>
-                      </Button>
-                    </label>
-
-                    {/* No photos uploaded message */}
-                    {formData.photos.length === 0 && (
-                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-yellow-100 rounded-full flex items-center justify-center">
-                            <span className="text-xs text-yellow-600">!</span>
-                          </div>
-                          <p className="text-sm text-yellow-800">
-                            Please upload at least 3 photos to continue
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {formData.photos.length > 0 && (
-                      <div className="mt-4">
-                        <p
-                          className={`text-sm ${
-                            formData.photos.length >= 3
-                              ? "text-green-600"
-                              : "text-orange-600"
-                          }`}
-                        >
-                          {formData.photos.length} photo(s) selected{" "}
-                          {formData.photos.length >= 3
-                            ? "✓"
-                            : `(${3 - formData.photos.length} more needed)`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Photo Preview */}
-                  {formData.photos && formData.photos.length > 0 && (
-                    <div className="mt-6">
-                      <Label className="text-sm font-medium mb-3 block">
-                        Photo Preview
-                      </Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {formData.photos.map((photo, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={URL.createObjectURL(photo)}
-                              alt={`Photo ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                            />
-                            <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                              {index === 0 ? "Main" : index + 1}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newPhotos = formData.photos.filter(
-                                  (_, i) => i !== index
-                                );
-                                handleInputChange("photos", newPhotos);
-                              }}
-                              className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        First photo will be your main profile picture. Hover
-                        over photos to remove them.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {currentStep === 6 && (
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
                   <Checkbox
@@ -1576,7 +1412,6 @@ const EscortRegistration = () => {
                       (currentStep === 2 && !isPersonalInfoComplete()) ||
                       (currentStep === 3 && !isLocationComplete()) ||
                       (currentStep === 4 && !isServicesRatesComplete()) ||
-                      (currentStep === 5 && !isGalleryComplete())
                     }
                   >
                     Next
@@ -1612,11 +1447,6 @@ const EscortRegistration = () => {
                   {currentStep === 4 && !isServicesRatesComplete() && (
                     <p className="text-xs text-red-600 mt-1">
                       Please select services and enter hourly rate to continue
-                    </p>
-                  )}
-                  {currentStep === 5 && !isGalleryComplete() && (
-                    <p className="text-xs text-red-600 mt-1">
-                      Please upload at least 3 photos to continue
                     </p>
                   )}
                 </div>

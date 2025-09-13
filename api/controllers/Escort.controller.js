@@ -1098,7 +1098,7 @@ export const searchEscorts = asyncHandler(async (req, res, next) => {
     // Get escorts with pagination
     const escorts = await User.find(filter)
       .select(
-        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion"
+        "name alias age location gender rates services gallery stats subscriptionTier isVerified isAgeVerified profileCompletion bio hairColor eyeColor bodyType height weight languages phone whatsapp telegram experience ethnicity availability"
       )
       .sort(sort)
       .limit(limit * 1)

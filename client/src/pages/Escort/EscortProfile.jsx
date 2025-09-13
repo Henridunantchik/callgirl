@@ -114,35 +114,45 @@ const EscortProfile = () => {
       // Our API expects an ObjectId; validate the ID format
       const looksLikeId = /^[a-f\d]{24}$/i.test(decoded);
       if (!looksLikeId) {
-        // If it's not a valid ObjectId, try to search by alias/name
-        console.log("🔍 Invalid ID format, searching by alias/name:", decoded);
+        // If it's not a valid ObjectId, try to get by alias/name using profile API
+        console.log(
+          "🔍 Invalid ID format, trying profile API with alias/name:",
+          decoded
+        );
         try {
-          console.log("🔍 Searching for escort with query:", decoded);
+          console.log("🔍 Getting escort profile with query:", decoded);
 
-          // Try search with a timeout
-          const searchPromise = escortAPI.searchEscorts({
-            q: decoded,
-            limit: 1,
-          });
+          // Use the profile API which returns all fields
+          const profileResponse = await escortAPI.getEscortProfile(decoded);
+          console.log("🔍 Profile response:", profileResponse);
 
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Search timeout")), 5000)
-          );
-
-          const searchResponse = await Promise.race([
-            searchPromise,
-            timeoutPromise,
-          ]);
-          console.log("🔍 Search response:", searchResponse);
-
-          if (searchResponse?.data?.data?.escorts?.length > 0) {
-            const foundEscort = searchResponse.data.data.escorts[0];
+          if (profileResponse?.data?.escort) {
+            const foundEscort = profileResponse.data.escort;
             console.log("✅ Found escort by alias/name:", foundEscort);
+            console.log("🔍 Setting escort data with:", {
+              name: foundEscort.name,
+              alias: foundEscort.alias,
+              age: foundEscort.age,
+              gender: foundEscort.gender,
+              location: foundEscort.location,
+              rates: foundEscort.rates,
+              services: foundEscort.services,
+              whatsapp: foundEscort.whatsapp,
+              telegram: foundEscort.telegram,
+              bio: foundEscort.bio,
+              hairColor: foundEscort.hairColor,
+              eyeColor: foundEscort.eyeColor,
+              bodyType: foundEscort.bodyType,
+              height: foundEscort.height,
+              weight: foundEscort.weight,
+              experience: foundEscort.experience,
+              languages: foundEscort.languages,
+            });
             setEscort(foundEscort);
             setLoading(false);
             return;
           } else {
-            console.log("❌ No escorts found in search results");
+            console.log("❌ No escort found in profile results");
             throw new Error("No escort found with that alias/name");
           }
         } catch (searchError) {
@@ -153,38 +163,26 @@ const EscortProfile = () => {
             status: searchError.response?.status,
           });
 
-          // If search fails due to toUpperCase error, try direct API call
-          if (
-            searchError.message &&
-            searchError.message.includes("toUpperCase")
-          ) {
-            console.log(
-              "🔄 Search failed due to toUpperCase error, trying direct API call..."
+          // If profile API fails, try direct API call
+          console.log("🔄 Profile API failed, trying direct API call...");
+          try {
+            const apiBase =
+              import.meta.env.VITE_API_BASE_URL ||
+              "https://epic-escorts-production.up.railway.app";
+            const directResponse = await fetch(
+              `${apiBase}/api/escort/profile/${encodeURIComponent(decoded)}`
             );
-            try {
-              const apiBase =
-                import.meta.env.VITE_API_BASE_URL ||
-                "https://epic-escorts-production.up.railway.app";
-              const directResponse = await fetch(
-                `${apiBase}/api/escort/search?q=${encodeURIComponent(
-                  decoded
-                )}&limit=1`
-              );
-              const directData = await directResponse.json();
+            const directData = await directResponse.json();
 
-              if (directData?.data?.escorts?.length > 0) {
-                const foundEscort = directData.data.escorts[0];
-                console.log(
-                  "✅ Found escort via direct API call:",
-                  foundEscort
-                );
-                setEscort(foundEscort);
-                setLoading(false);
-                return;
-              }
-            } catch (directError) {
-              console.error("❌ Direct API call also failed:", directError);
+            if (directData?.data?.escort) {
+              const foundEscort = directData.data.escort;
+              console.log("✅ Found escort via direct API call:", foundEscort);
+              setEscort(foundEscort);
+              setLoading(false);
+              return;
             }
+          } catch (directError) {
+            console.error("❌ Direct API call also failed:", directError);
           }
 
           throw new Error(
@@ -435,6 +433,9 @@ const EscortProfile = () => {
   }
 
   // Simple debug - show escort data if available
+  console.log("🔍 EscortProfile render - escort data:", escort);
+  console.log("🔍 EscortProfile render - loading:", loading);
+  console.log("🔍 EscortProfile render - error:", error);
 
   // Get country and city information for SEO
   const countryInfo = getCountryByCode(countryCode || "ug");
@@ -540,6 +541,15 @@ const EscortProfile = () => {
                 fallbackSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM4QjVDRjYiLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjRUM0ODk5Ii8+CjwvbGluZWFyR3JhZGllbnQ+CjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZGllbnQpIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCI+Q292ZXI8L3RleHQ+Cjwvc3ZnPgo="
               />
             </div>
+          ) : escort.avatar ? (
+            <div className="w-full h-full">
+              <FirebaseImageDisplay
+                src={escort.avatar}
+                alt={`${escort.alias || escort.name} - Cover Photo`}
+                className="w-full h-full object-cover"
+                fallbackSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM4QjVDRjYiLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjRUM0ODk5Ii8+CjwvbGluZWFyR3JhZGllbnQ+CjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZGllbnQpIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCI+Q292ZXI8L3RleHQ+Cjwvc3ZnPgo="
+              />
+            </div>
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
               <Camera className="h-16 w-16 text-white/50" />
@@ -611,6 +621,25 @@ const EscortProfile = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Contact Information - Only show for featured/premium users */}
+                    {(escort.subscriptionTier === "featured" ||
+                      escort.subscriptionTier === "premium") && (
+                      <div className="flex flex-wrap items-center gap-4 text-gray-600 mt-2">
+                        {escort.whatsapp && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-4 w-4" />
+                            <span>WhatsApp: {escort.whatsapp}</span>
+                          </div>
+                        )}
+                        {escort.telegram && (
+                          <div className="flex items-center gap-1">
+                            <MessageCircle className="h-4 w-4" />
+                            <span>Telegram: {escort.telegram}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* 3 Badges Only */}
                     <div className="flex flex-wrap gap-2">
@@ -709,8 +738,8 @@ const EscortProfile = () => {
             </div>
           </div>
 
-          {/* Upgrade Banner for Basic Users */}
-          {!canShowPhotos(escort) && (
+          {/* Upgrade Banner for Basic Users - Only show for the escort themselves */}
+          {!canShowPhotos(escort) && user && user._id === escort._id && (
             <div className="bg-white rounded-lg shadow-lg mb-6 p-6">
               <UpgradePrompt
                 type="photos"
@@ -725,132 +754,131 @@ const EscortProfile = () => {
             <div className="bg-gradient-to-r from-gray-50 to-gray-100">
               <nav className="flex space-x-1 px-6">
                 {[
-                  ...(canShowPhotos(escort) &&
-                  escort.subscriptionTier !== "basic"
-                    ? ["photos"]
-                    : []),
+                  ...(canShowPhotos(escort) ? ["photos"] : []),
                   ...(canShowAbout(escort) ? ["about"] : []),
                   ...(canShowServices(escort) ? ["services"] : []),
                   ...(canShowRates(escort) ? ["rates"] : []),
-                ].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`py-4 px-6 font-medium text-sm capitalize transition-all duration-300 rounded-t-lg ${
-                      activeTab === tab
-                        ? "bg-white text-purple-600 shadow-lg border-b-2 border-purple-500"
-                        : "text-gray-600 hover:text-purple-600 hover:bg-white/50"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+                ]
+                  .filter((tab) => {
+                    // For Basic escorts, only show tabs to the escort themselves
+                    if (
+                      escort.subscriptionTier === "basic" &&
+                      (!user || user._id !== escort._id)
+                    ) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`py-4 px-6 font-medium text-sm capitalize transition-all duration-300 rounded-t-lg ${
+                        activeTab === tab
+                          ? "bg-white text-purple-600 shadow-lg border-b-2 border-purple-500"
+                          : "text-gray-600 hover:text-purple-600 hover:bg-white/50"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
               </nav>
             </div>
 
             <div className="p-6">
-              {/* Photos Tab - Only show for non-basic escorts */}
-              {activeTab === "photos" &&
-                escort.subscriptionTier !== "basic" && (
-                  <div className="space-y-8">
-                    {/* Gallery Section */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">Photos</h3>
-                        {escort.gallery && escort.gallery.length > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsGalleryOpen(true)}
-                            className="flex items-center gap-2"
-                          >
-                            <Eye className="h-4 w-4" />
-                            View All ({escort.gallery.length})
-                          </Button>
-                        )}
-                      </div>
-                      {canShowPhotos(escort) ? (
-                        escort.gallery && escort.gallery.length > 0 ? (
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                            {escort.gallery.map((photo, index) => (
-                              <div
-                                key={index}
-                                className="relative group cursor-pointer aspect-square overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
-                                onClick={() => handleImageClick(index)}
-                              >
-                                <FirebaseImageDisplay
-                                  src={photo.url || photo.filePath || photo.src}
-                                  alt={`${
-                                    escort.alias || escort.name
-                                  } - Photo ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                                    <Eye className="h-6 w-6 text-white" />
-                                  </div>
-                                </div>
-                                {photo.caption && (
-                                  <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-2 rounded-lg backdrop-blur-sm">
-                                    {photo.caption}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-12">
-                            <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <p className="text-gray-500">No photos available</p>
-                          </div>
-                        )
-                      ) : (
-                        <UpgradePrompt
-                          type="photos"
-                          escort={escort}
-                          onUpgrade={handleUpgrade}
-                        />
+              {/* Photos Tab - Only show for non-basic escorts or escort themselves */}
+              {activeTab === "photos" && canShowPhotos(escort) && (
+                <div className="space-y-8">
+                  {/* Gallery Section */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Photos</h3>
+                      {escort.gallery && escort.gallery.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsGalleryOpen(true)}
+                          className="flex items-center gap-2"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View All ({escort.gallery.length})
+                        </Button>
                       )}
                     </div>
-
-                    {/* Videos Section */}
                     {canShowPhotos(escort) ? (
-                      escort.videos &&
-                      escort.videos.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Videos</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {escort.videos.map((video, index) => (
-                              <div
-                                key={index}
-                                className="relative group cursor-pointer rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
-                              >
-                                <video
-                                  src={video.url}
-                                  className="w-full h-64 object-cover"
-                                  poster={video.thumbnail}
-                                  controls
-                                  preload="metadata"
-                                />
-                                {video.caption && (
-                                  <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-2 rounded-lg backdrop-blur-sm">
-                                    {video.caption}
-                                  </div>
-                                )}
+                      escort.gallery && escort.gallery.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                          {escort.gallery.map((photo, index) => (
+                            <div
+                              key={index}
+                              className="relative group cursor-pointer aspect-square overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                              onClick={() => handleImageClick(index)}
+                            >
+                              <FirebaseImageDisplay
+                                src={photo.url || photo.filePath || photo.src}
+                                alt={`${escort.alias || escort.name} - Photo ${
+                                  index + 1
+                                }`}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                                  <Eye className="h-6 w-6 text-white" />
+                                </div>
                               </div>
-                            ))}
-                          </div>
+                              {photo.caption && (
+                                <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-2 rounded-lg backdrop-blur-sm">
+                                  {photo.caption}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                          <p className="text-gray-500">No photos available</p>
                         </div>
                       )
                     ) : (
-                      <UpgradePrompt
-                        type="videos"
-                        escort={escort}
-                        onUpgrade={handleUpgrade}
-                      />
+                      <div className="text-center py-8">
+                        <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500">Photos not available</p>
+                      </div>
                     )}
                   </div>
-                )}
+
+                  {/* Videos Section - Only show for non-basic escorts */}
+                  {canShowPhotos(escort) &&
+                    escort.videos &&
+                    escort.videos.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">Videos</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {escort.videos.map((video, index) => (
+                            <div
+                              key={index}
+                              className="relative group cursor-pointer rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                            >
+                              <video
+                                src={video.url}
+                                className="w-full h-64 object-cover"
+                                poster={video.thumbnail}
+                                controls
+                                preload="metadata"
+                              />
+                              {video.caption && (
+                                <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-2 rounded-lg backdrop-blur-sm">
+                                  {video.caption}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
 
               {/* About Tab */}
               {activeTab === "about" && (
@@ -868,11 +896,10 @@ const EscortProfile = () => {
                       )}
                     </>
                   ) : (
-                    <UpgradePrompt
-                      type="details"
-                      escort={escort}
-                      onUpgrade={handleUpgrade}
-                    />
+                    <div className="text-center py-8">
+                      <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">Details not available</p>
+                    </div>
                   )}
 
                   {/* Experience Section - Moved to top */}
