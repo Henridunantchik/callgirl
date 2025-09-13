@@ -162,30 +162,33 @@ const EscortProfileEdit = () => {
         console.log("Hair color:", user.hairColor);
         console.log("Eye color:", user.eyeColor);
 
-      form.reset({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        whatsapp: user.whatsapp || "",
-        telegram: user.telegram || "",
-        alias: user.alias || "",
-        age: user.age || 18,
-        gender: user.gender || "",
-        city: user.location?.city || "",
-        neighborhood: user.location?.subLocation || "",
-        hourlyRate: user.rates?.hourly || 100,
-        bio: user.bio || "",
-        bodyType: user.bodyType || "",
-        hairColor: user.hairColor || "",
-        eyeColor: user.eyeColor || "",
-        ethnicity: user.ethnicity || "",
-        height: user.height ? parseInt(user.height) : 0,
-        weight: user.weight ? parseInt(user.weight) : 0,
-        experience: user.experience || "",
-        languages: user.languages || [],
-        services: user.services || [],
-      });
-    }
+        form.reset({
+          name: user.name || "",
+          email: user.email || "",
+          phone: user.phone || "",
+          whatsapp: user.whatsapp || "",
+          telegram: user.telegram || "",
+          alias: user.alias || "",
+          age: user.age || 18,
+          gender: user.gender || "",
+          city: user.location?.city || "",
+          neighborhood: user.location?.subLocation || "",
+          hourlyRate: user.rates?.hourly || 100,
+          bio: user.bio || "",
+          bodyType: user.bodyType || "",
+          hairColor: user.hairColor || "",
+          eyeColor: user.eyeColor || "",
+          ethnicity: user.ethnicity || "",
+          height: user.height ? parseInt(user.height) : 0,
+          weight: user.weight ? parseInt(user.weight) : 0,
+          experience: user.experience || "",
+          languages: user.languages || [],
+          services: user.services || [],
+        });
+      }
+    };
+
+    loadUserData();
   }, [user, form]);
 
   // Calculate profile completion
