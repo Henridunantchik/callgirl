@@ -1411,7 +1411,7 @@ const EscortRegistration = () => {
                           formData.verificationStatus === "failed")) ||
                       (currentStep === 2 && !isPersonalInfoComplete()) ||
                       (currentStep === 3 && !isLocationComplete()) ||
-                      (currentStep === 4 && !isServicesRatesComplete()) ||
+                      (currentStep === 4 && !isServicesRatesComplete())
                     }
                   >
                     Next
