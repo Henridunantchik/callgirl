@@ -19,8 +19,10 @@ const UpgradeCard = ({
       color: "bg-gray-500",
       features: [
         "Profile visible in listings",
-        "Basic information",
-        "Messaging system",
+        "Basic information only",
+        "Text messaging system",
+        "No photos or videos",
+        "Limited visibility",
       ],
     },
     featured: {
@@ -34,6 +36,8 @@ const UpgradeCard = ({
         "Featured badge",
         "More visibility",
         "Detailed services",
+        "Text messaging only",
+        "No photos or videos",
         "3x more clients",
       ],
     },
@@ -44,6 +48,8 @@ const UpgradeCard = ({
       color: "bg-gradient-to-r from-purple-500 to-pink-500",
       features: [
         "Everything from Featured",
+        "Photo gallery (up to 30 photos)",
+        "Video uploads (up to 15 videos)",
         "Verified badge on photo",
         "Maximum visibility",
         "Priority support",

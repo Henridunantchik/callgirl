@@ -28,6 +28,7 @@ import { useRealTimeStats } from "../../hooks/useRealTimeStats";
 import { showToast } from "../../helpers/showToast";
 import UpgradeCard from "../../components/UpgradeCard";
 import UpgradeNotification from "../../components/UpgradeNotification";
+import { useAuth } from "../../contexts/AuthContext";
 import useUpgradeNotifications from "../../hooks/useUpgradeNotifications";
 import PremiumStats from "../../components/PremiumStats";
 
@@ -35,6 +36,7 @@ const EscortDashboard = () => {
   const navigate = useNavigate();
   const { countryCode } = useParams();
   const user = useSelector((state) => state.user);
+  const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     profileViews: 0,
@@ -83,6 +85,17 @@ const EscortDashboard = () => {
         setLoading(true);
         console.log("=== ESCORT DASHBOARD DEBUG ===");
         console.log("User:", user);
+
+        // First, refresh user data to get latest subscription status
+        try {
+          console.log("🔄 Refreshing user data on dashboard load...");
+          await refreshUser();
+        } catch (refreshError) {
+          console.log(
+            "⚠️ AuthContext refresh failed, continuing with dashboard data:",
+            refreshError
+          );
+        }
 
         if (!user.user || user.user.role !== "escort") {
           showToast("Access denied. Escort profile required.", "error");
@@ -209,12 +222,40 @@ const EscortDashboard = () => {
     <>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome, {escortData?.alias || escortData?.name || "Escort"}!
-          </h1>
-          <p className="text-gray-600">
-            Manage your profile and track your success
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Welcome, {escortData?.alias || escortData?.name || "Escort"}!
+              </h1>
+              <p className="text-gray-600">
+                Manage your profile and track your success
+              </p>
+            </div>
+            <div className="text-right">
+              <Badge
+                className={`${
+                  currentPlan === "premium"
+                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                    : currentPlan === "featured"
+                    ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                    : "bg-gradient-to-r from-gray-500 to-gray-600 text-white"
+                }`}
+              >
+                {currentPlan === "premium"
+                  ? "Premium"
+                  : currentPlan === "featured"
+                  ? "Featured"
+                  : "Basic"}
+              </Badge>
+              <p className="text-sm text-gray-500 mt-1">
+                {currentPlan === "premium"
+                  ? "Full Access"
+                  : currentPlan === "featured"
+                  ? "Enhanced Features"
+                  : "Limited Access"}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Subscription Status Banner */}
@@ -323,55 +364,95 @@ const EscortDashboard = () => {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-8">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-4 text-center">
               <Eye className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-blue-600">
                 {stats.profileViews.toLocaleString()}
               </div>
               <div className="text-sm text-gray-600">Profile Views</div>
+              {stats.profileViewsGrowth > 0 && (
+                <div className="text-xs text-green-600 mt-1">
+                  +{stats.profileViewsGrowth}% this week
+                </div>
+              )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-4 text-center">
               <MessageCircle className="w-6 h-6 mx-auto mb-2 text-green-500" />
-              <div className="text-2xl font-bold">{stats.messages}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {stats.messages}
+              </div>
               <div className="text-sm text-gray-600">Messages</div>
+              {stats.messagesGrowth > 0 && (
+                <div className="text-xs text-green-600 mt-1">
+                  +{stats.messagesGrowth}% this week
+                </div>
+              )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-4 text-center">
               <Calendar className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-              <div className="text-2xl font-bold">{stats.bookings}</div>
+              <div className="text-2xl font-bold text-purple-600">
+                {stats.bookings}
+              </div>
               <div className="text-sm text-gray-600">Bookings</div>
+              {stats.bookingsGrowth > 0 && (
+                <div className="text-xs text-green-600 mt-1">
+                  +{stats.bookingsGrowth}% this week
+                </div>
+              )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-4 text-center">
               <Heart className="w-6 h-6 mx-auto mb-2 text-red-500" />
-              <div className="text-2xl font-bold">{stats.favorites}</div>
+              <div className="text-2xl font-bold text-red-600">
+                {stats.favorites}
+              </div>
               <div className="text-sm text-gray-600">Favorites</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-4 text-center">
-              <MessageSquare className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-              <div className="text-2xl font-bold">{stats.reviews}</div>
+              <MessageSquare className="w-6 h-6 mx-auto mb-2 text-indigo-500" />
+              <div className="text-2xl font-bold text-indigo-600">
+                {stats.reviews}
+              </div>
               <div className="text-sm text-gray-600">Reviews</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-4 text-center">
               <Star className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
-              <div className="text-2xl font-bold">{stats.rating}</div>
+              <div className="text-2xl font-bold text-yellow-600">
+                {stats.rating > 0 ? stats.rating.toFixed(1) : "N/A"}
+              </div>
               <div className="text-sm text-gray-600">Rating</div>
+              {stats.rating > 0 && (
+                <div className="text-xs text-yellow-600 mt-1">
+                  {Array.from(
+                    { length: Math.floor(stats.rating) },
+                    (_, i) => "⭐"
+                  ).join("")}
+                </div>
+              )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-4 text-center">
-              <DollarSign className="w-6 h-6 mx-auto mb-2 text-green-500" />
-              <div className="text-2xl font-bold">${stats.earnings}</div>
+              <DollarSign className="w-6 h-6 mx-auto mb-2 text-emerald-500" />
+              <div className="text-2xl font-bold text-emerald-600">
+                ${stats.earnings}
+              </div>
               <div className="text-sm text-gray-600">This Month</div>
+              {stats.earningsGrowth > 0 && (
+                <div className="text-xs text-green-600 mt-1">
+                  +{stats.earningsGrowth}% this week
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -609,12 +690,19 @@ const EscortDashboard = () => {
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
                 Performance Overview
+                <Badge variant="outline" className="ml-2">
+                  {currentPlan === "premium"
+                    ? "Premium Analytics"
+                    : currentPlan === "featured"
+                    ? "Enhanced Analytics"
+                    : "Basic Analytics"}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Weekly Performance */}
-                <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
+                <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:shadow-md transition-shadow">
                   <h3 className="font-semibold text-blue-800 mb-2">
                     This Week
                   </h3>
@@ -622,10 +710,15 @@ const EscortDashboard = () => {
                     {stats.bookings > 0 ? Math.floor(stats.bookings / 4) : 0}
                   </div>
                   <p className="text-sm text-blue-600">Bookings</p>
+                  {stats.bookingsGrowth > 0 && (
+                    <div className="text-xs text-green-600 mt-1">
+                      +{stats.bookingsGrowth}% vs last week
+                    </div>
+                  )}
                 </div>
 
                 {/* Monthly Performance */}
-                <div className="text-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
+                <div className="text-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md transition-shadow">
                   <h3 className="font-semibold text-green-800 mb-2">
                     This Month
                   </h3>
@@ -633,51 +726,64 @@ const EscortDashboard = () => {
                     ${stats.earnings}
                   </div>
                   <p className="text-sm text-green-600">Earnings</p>
+                  {stats.earningsGrowth > 0 && (
+                    <div className="text-xs text-green-600 mt-1">
+                      +{stats.earningsGrowth}% vs last month
+                    </div>
+                  )}
                 </div>
 
                 {/* Average Rating */}
-                <div className="text-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg">
+                <div className="text-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg hover:shadow-md transition-shadow">
                   <h3 className="font-semibold text-yellow-800 mb-2">Rating</h3>
                   <div className="text-2xl font-bold text-yellow-600">
-                    {stats.rating > 0 ? stats.rating : "N/A"}
+                    {stats.rating > 0 ? stats.rating.toFixed(1) : "N/A"}
                   </div>
                   <p className="text-sm text-yellow-600">Average</p>
+                  {stats.rating > 0 && (
+                    <div className="text-xs text-yellow-600 mt-1">
+                      {Array.from(
+                        { length: Math.floor(stats.rating) },
+                        (_, i) => "⭐"
+                      ).join("")}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Quick Stats */}
               <div className="mt-6 grid grid-cols-2 md:grid-cols-6 gap-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="text-lg font-semibold text-gray-700">
-                    {stats.profileViews}
+                    {stats.profileViews.toLocaleString()}
                   </div>
                   <p className="text-xs text-gray-500">Profile Views</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="text-lg font-semibold text-gray-700">
                     {stats.messages}
                   </div>
                   <p className="text-xs text-gray-500">Messages</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="text-lg font-semibold text-gray-700">
                     {stats.favorites}
                   </div>
                   <p className="text-xs text-gray-500">Favorites</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="text-lg font-semibold text-gray-700">
                     {stats.reviews}
                   </div>
                   <p className="text-xs text-gray-500">Reviews</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="text-lg font-semibold text-gray-700">
                     {recentBookings.length}
                   </div>
                   <p className="text-xs text-gray-500">Recent Bookings</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="text-lg font-semibold text-gray-700">
                     {stats.rating > 0
                       ? "⭐".repeat(Math.floor(stats.rating))
@@ -686,6 +792,22 @@ const EscortDashboard = () => {
                   <p className="text-xs text-gray-500">Stars</p>
                 </div>
               </div>
+
+              {/* Subscription-specific insights */}
+              {currentPlan === "basic" && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-5 h-5 text-orange-600" />
+                    <h4 className="font-semibold text-orange-800">
+                      Upgrade to See More
+                    </h4>
+                  </div>
+                  <p className="text-sm text-orange-700">
+                    Get detailed analytics, growth insights, and advanced
+                    performance metrics with Featured or Premium plans.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

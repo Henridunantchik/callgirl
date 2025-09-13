@@ -151,17 +151,21 @@ const UpgradeRequests = () => {
     }
 
     // Validate that the request is in the correct status for approval
-    if (selectedRequest.status !== "payment_confirmed") {
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        selectedRequest.status
+      )
+    ) {
       showToast(
         "error",
-        `Cannot approve request. Current status: ${selectedRequest.status}. Payment must be confirmed first.`
+        `Cannot approve request. Current status: ${selectedRequest.status}. Only pending, payment required or confirmed requests can be approved.`
       );
       return;
     }
 
     try {
       setProcessing(true);
-      await upgradeAPI.approveRequest(selectedRequest._id, { adminNotes });
+      await upgradeAPI.approveRequest(selectedRequest._id, adminNotes);
       showToast("success", "Request approved successfully");
       setShowModal(false);
       fetchUpgradeRequests();
@@ -231,10 +235,14 @@ Admin Team`;
 
   const handleQuickApprove = (request) => {
     // Validate that the request is in the correct status for approval
-    if (request.status !== "payment_confirmed") {
+    if (
+      !["pending", "payment_required", "payment_confirmed"].includes(
+        request.status
+      )
+    ) {
       showToast(
         "error",
-        `Cannot approve request. Current status: ${request.status}. Payment must be confirmed first.`
+        `Cannot approve request. Current status: ${request.status}. Only pending, payment required or confirmed requests can be approved.`
       );
       return;
     }
@@ -289,30 +297,23 @@ Admin Team`;
 
     try {
       setProcessing(true);
-      console.log("Processing quick action:", quickAction);
-      console.log("Request ID:", quickRequest._id);
-      console.log("Admin notes:", quickNotes);
 
       if (quickAction === "approve") {
-        console.log("Calling approveRequest API...");
-        const response = await upgradeAPI.approveRequest(quickRequest._id, {
-          adminNotes: quickNotes,
-        });
-        console.log("Approve response:", response);
+        const response = await upgradeAPI.approveRequest(
+          quickRequest._id,
+          quickNotes
+        );
         showToast("success", "Request approved");
       } else if (quickAction === "confirm_payment") {
-        console.log("Calling confirmPayment API...");
         const response = await upgradeAPI.confirmPayment(quickRequest._id, {
           adminNotes: quickNotes,
         });
-        console.log("Confirm payment response:", response);
         showToast("success", "Payment confirmed");
       } else if (quickAction === "reject") {
-        console.log("Calling rejectRequest API...");
-        const response = await upgradeAPI.rejectRequest(quickRequest._id, {
-          adminNotes: quickNotes,
-        });
-        console.log("Reject response:", response);
+        const response = await upgradeAPI.rejectRequest(
+          quickRequest._id,
+          quickNotes
+        );
         showToast("success", "Request rejected");
       }
 
@@ -355,7 +356,7 @@ Admin Team`;
 
     try {
       setProcessing(true);
-      await upgradeAPI.rejectRequest(selectedRequest._id, { adminNotes });
+      await upgradeAPI.rejectRequest(selectedRequest._id, adminNotes);
       showToast("success", "Request rejected");
       setShowModal(false);
       fetchUpgradeRequests();
@@ -661,18 +662,27 @@ Admin Team`;
 
                     {/* Action Buttons */}
                     <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-100">
-                      {/* Pending status - View button */}
+                      {/* Pending status - View and Approve buttons */}
                       {request.status === "pending" && (
-                        <Button
-                          onClick={() => handleViewRequest(request)}
-                          className="bg-blue-500 hover:bg-blue-600"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Details
-                        </Button>
+                        <>
+                          <Button
+                            onClick={() => handleViewRequest(request)}
+                            className="bg-blue-500 hover:bg-blue-600"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </Button>
+                          <Button
+                            onClick={() => handleQuickApprove(request)}
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Approve
+                          </Button>
+                        </>
                       )}
 
-                      {/* Payment required status - Confirm Payment/Reject buttons */}
+                      {/* Payment required status - Confirm Payment/Approve/Reject buttons */}
                       {request.status === "payment_required" && (
                         <>
                           <Button
@@ -690,6 +700,13 @@ Admin Team`;
                             Confirm Payment
                           </Button>
                           <Button
+                            onClick={() => handleQuickApprove(request)}
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Approve
+                          </Button>
+                          <Button
                             onClick={() => handleQuickReject(request)}
                             variant="destructive"
                           >
@@ -702,7 +719,7 @@ Admin Team`;
                       {/* Payment confirmed status - Approve button */}
                       {request.status === "payment_confirmed" && (
                         <Button
-                          onClick={() => handleViewRequest(request)}
+                          onClick={() => handleQuickApprove(request)}
                           className="bg-green-500 hover:bg-green-600"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -906,7 +923,9 @@ Admin Team`;
                 </>
               )}
 
-              {selectedRequest.status === "payment_confirmed" && (
+              {(selectedRequest.status === "pending" ||
+                selectedRequest.status === "payment_required" ||
+                selectedRequest.status === "payment_confirmed") && (
                 <>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">

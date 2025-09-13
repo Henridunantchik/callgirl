@@ -13,19 +13,29 @@ export const canSendPhotos = (user, recipient) => {
 
   // Premium users can send photos to anyone
   if (user.subscriptionTier === "premium") return true;
+
   // Basic/Featured escorts can only send photos to Admin
   if (
     user.subscriptionTier === "basic" ||
     user.subscriptionTier === "featured"
   ) {
-    return recipient?.role === "admin";
+    // Check if recipient is admin by role, email, or specific admin ID
+    const isAdmin =
+      recipient?.role === "admin" ||
+      recipient?.email === "congogenocidememorial@gmail.com" ||
+      recipient?._id === "67bb7464ac51a7a6674dca42" ||
+      recipient?.name === "Admin";
+    return isAdmin;
   }
 
   // Clients (no subscriptionTier or role === "client") can only send photos to Premium escorts and Admin
   if (user.role === "client" || !user.subscriptionTier) {
-    return (
-      recipient?.role === "admin" || recipient?.subscriptionTier === "premium"
-    );
+    const isAdmin =
+      recipient?.role === "admin" ||
+      recipient?.email === "congogenocidememorial@gmail.com" ||
+      recipient?._id === "67bb7464ac51a7a6674dca42" ||
+      recipient?.name === "Admin";
+    return isAdmin || recipient?.subscriptionTier === "premium";
   }
 
   return false;
@@ -46,12 +56,23 @@ export const canReceivePhotos = (user, sender) => {
     user.subscriptionTier === "basic" ||
     user.subscriptionTier === "featured"
   ) {
-    return sender?.role === "admin";
+    // Check if sender is admin by role, email, or specific admin ID
+    const isAdmin =
+      sender?.role === "admin" ||
+      sender?.email === "congogenocidememorial@gmail.com" ||
+      sender?._id === "67bb7464ac51a7a6674dca42" ||
+      sender?.name === "Admin";
+    return isAdmin;
   }
 
   // Clients (no subscriptionTier or role === "client") can only receive photos from Premium escorts and Admin
   if (user.role === "client" || !user.subscriptionTier) {
-    return sender?.role === "admin" || sender?.subscriptionTier === "premium";
+    const isAdmin =
+      sender?.role === "admin" ||
+      sender?.email === "congogenocidememorial@gmail.com" ||
+      sender?._id === "67bb7464ac51a7a6674dca42" ||
+      sender?.name === "Admin";
+    return isAdmin || sender?.subscriptionTier === "premium";
   }
 
   return false;
@@ -119,14 +140,23 @@ export const canSendPhotosTo = (user, recipient) => {
     user.subscriptionTier === "basic" ||
     user.subscriptionTier === "featured"
   ) {
-    return recipient.role === "admin";
+    // Check if recipient is admin by role, email, or specific admin ID
+    const isAdmin =
+      recipient.role === "admin" ||
+      recipient.email === "congogenocidememorial@gmail.com" ||
+      recipient._id === "67bb7464ac51a7a6674dca42" ||
+      recipient.name === "Admin";
+    return isAdmin;
   }
 
   // Clients (no subscriptionTier or role === "client") can only send photos to Premium escorts and Admin
   if (user.role === "client" || !user.subscriptionTier) {
-    return (
-      recipient.role === "admin" || recipient.subscriptionTier === "premium"
-    );
+    const isAdmin =
+      recipient.role === "admin" ||
+      recipient.email === "congogenocidememorial@gmail.com" ||
+      recipient._id === "67bb7464ac51a7a6674dca42" ||
+      recipient.name === "Admin";
+    return isAdmin || recipient.subscriptionTier === "premium";
   }
 
   return false;

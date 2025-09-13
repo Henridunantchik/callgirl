@@ -35,6 +35,8 @@ import Dropzone from "react-dropzone";
 import { showToast } from "@/helpers/showToast";
 import { userAPI, escortAPI } from "@/services/api";
 import { fixUserUrls } from "@/utils/urlHelper";
+import { useAuth } from "@/contexts/AuthContext";
+import { getUploadLimits } from "@/utils/uploadLimits";
 import FirebaseImageDisplay from "@/components/FirebaseImageDisplay";
 import UploadButton from "@/components/UploadButton";
 import UpgradePrompt from "@/components/UpgradePrompt";
@@ -55,6 +57,10 @@ import {
   Eye,
   EyeOff,
   Languages,
+  CheckCircle,
+  Lock,
+  Crown,
+  Info,
 } from "lucide-react";
 
 // Validation schema for escort profile
@@ -89,6 +95,7 @@ const EscortProfileEdit = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user.user);
+  const { refreshUser } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -139,12 +146,21 @@ const EscortProfileEdit = () => {
 
   // Load user data
   useEffect(() => {
-    if (user) {
-      console.log("=== LOADING USER DATA ===");
-      console.log("User data:", user);
-      console.log("Body type:", user.bodyType);
-      console.log("Hair color:", user.hairColor);
-      console.log("Eye color:", user.eyeColor);
+    const loadUserData = async () => {
+      // First, refresh user data to get latest subscription status
+      try {
+        console.log("🔄 Refreshing user data on profile edit load...");
+        await refreshUser();
+      } catch (refreshError) {
+        console.log("⚠️ AuthContext refresh failed, continuing with existing data:", refreshError);
+      }
+
+      if (user) {
+        console.log("=== LOADING USER DATA ===");
+        console.log("User data:", user);
+        console.log("Body type:", user.bodyType);
+        console.log("Hair color:", user.hairColor);
+        console.log("Eye color:", user.eyeColor);
 
       form.reset({
         name: user.name || "",
@@ -1714,7 +1730,8 @@ const EscortProfileEdit = () => {
                     <div className="mt-4">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-medium">
-                          {user.gallery.length}/10 photos
+                          {user.gallery.length}/
+                          {getUploadLimits(user.subscriptionTier).photos} photos
                         </p>
                         <Button
                           type="button"
@@ -1755,70 +1772,125 @@ const EscortProfileEdit = () => {
 
           {/* Upgrade Section for Basic Escorts */}
           {user.subscriptionTier === "basic" && (
-            <Card className="border-2 border-dashed border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50">
+            <Card className="border-2 border-dashed border-blue-300 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-orange-800">
+                <CardTitle className="flex items-center gap-2 text-blue-800">
                   <Camera className="w-5 h-5" />
                   Gallery Photos - Upgrade Required
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center py-8">
-                <div className="mb-6">
-                  <Camera className="w-16 h-16 text-orange-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-orange-800 mb-2">
-                    Upload Photos & Videos
+                <div className="mb-8">
+                  <div className="relative inline-block mb-4">
+                    <Camera className="w-20 h-20 text-blue-400 mx-auto" />
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
+                      <Lock className="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                    Unlock Gallery Features
                   </h3>
-                  <p className="text-orange-600 mb-4">
+                  <p className="text-gray-600 mb-2 max-w-md mx-auto">
                     Upgrade to Featured or Premium to upload gallery photos and
                     videos
                   </p>
+                  <p className="text-sm text-gray-500">
+                    Showcase your personality and attract more clients
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div className="bg-white rounded-lg p-4 border border-orange-200">
-                    <h4 className="font-semibold text-blue-800 mb-2">
-                      Featured Plan
-                    </h4>
-                    <ul className="text-sm text-blue-600 space-y-1">
-                      <li>✅ 10 Gallery Photos</li>
-                      <li>✅ 5 Videos</li>
-                      <li>✅ Featured Badge</li>
-                      <li>✅ Priority Listing</li>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-white rounded-xl p-6 border-2 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-xl font-bold text-blue-800">
+                        Featured Plan
+                      </h4>
+                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        Popular
+                      </div>
+                    </div>
+                    <ul className="space-y-3 mb-6">
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">10 Gallery Photos</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">5 Videos</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">Featured Badge</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">Priority Listing</span>
+                      </li>
                     </ul>
-                    <div className="mt-3">
-                      <span className="text-lg font-bold text-blue-800">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-blue-800 mb-1">
                         $12
-                      </span>
-                      <span className="text-sm text-blue-600"> lifetime</span>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        One-time payment
+                      </div>
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg p-4 border border-purple-200">
-                    <h4 className="font-semibold text-purple-800 mb-2">
-                      Premium Plan
-                    </h4>
-                    <ul className="text-sm text-purple-600 space-y-1">
-                      <li>✅ 30 Gallery Photos</li>
-                      <li>✅ 15 Videos</li>
-                      <li>✅ Premium Badge</li>
-                      <li>✅ All Features</li>
+                  <div className="bg-white rounded-xl p-6 border-2 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-xl font-bold text-purple-800">
+                        Premium Plan
+                      </h4>
+                      <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                        Best Value
+                      </div>
+                    </div>
+                    <ul className="space-y-3 mb-6">
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">30 Gallery Photos</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">15 Videos</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">Premium Badge</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-gray-700">All Features</span>
+                      </li>
                     </ul>
-                    <div className="mt-3">
-                      <span className="text-lg font-bold text-purple-800">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-purple-800 mb-1">
                         $5
-                      </span>
-                      <span className="text-sm text-purple-600">/month</span>
+                      </div>
+                      <div className="text-sm text-gray-500">Per month</div>
                     </div>
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleUpgrade}
-                  className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                  size="lg"
-                >
-                  Upgrade Now
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button
+                    onClick={handleUpgrade}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                    size="lg"
+                  >
+                    <Crown className="w-5 h-5 mr-2" />
+                    Upgrade Now
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50 px-8 py-3 rounded-xl"
+                    size="lg"
+                  >
+                    <Info className="w-5 h-5 mr-2" />
+                    Learn More
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -1923,8 +1995,8 @@ const EscortProfileEdit = () => {
                   <div className="mt-6">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-sm font-medium text-gray-900">
-                        Uploaded Videos ({user.videos ? user.videos.length : 0}
-                        /5)
+                        Uploaded Videos ({user.videos ? user.videos.length : 0}/
+                        {getUploadLimits(user.subscriptionTier).videos})
                       </h4>
                       <Button
                         type="button"

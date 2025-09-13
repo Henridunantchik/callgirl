@@ -181,7 +181,9 @@ const Favorites = () => {
                         <div className="flex items-center justify-between mb-2">
                           <h3
                             className="font-semibold text-lg cursor-pointer hover:text-blue-600"
-                            onClick={() => handleViewProfile(escort._id)}
+                            onClick={() =>
+                              handleViewProfile(escort.alias || escort.name)
+                            }
                           >
                             {escort.alias || escort.name}
                           </h3>
@@ -217,7 +219,9 @@ const Favorites = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleViewProfile(escort._id)}
+                            onClick={() =>
+                              handleViewProfile(escort.alias || escort.name)
+                            }
                           >
                             <User className="w-3 h-3" />
                           </Button>

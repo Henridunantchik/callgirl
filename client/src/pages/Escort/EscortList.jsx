@@ -531,7 +531,7 @@ const EscortList = () => {
                   escort.bio ||
                   `Professional escort in ${city || mainCity}, ${countryName}`,
                 url: `https://epicescorts.live/${countryCode || "ug"}/escort/${
-                  escort._id
+                  escort.alias || escort.name
                 }`,
               })),
             },

@@ -602,6 +602,13 @@ export const userAPI = {
     api.get(`user/online-status/${userId}`, config),
   markOffline: () => api.put("user/offline"),
   getMainAdmin: () => api.get("user/main-admin"),
+  // Admin user management methods
+  getAllUsers: (params = {}, config = {}) =>
+    api.get("admin/users", { params, ...config }),
+  suspendUser: (userId) => api.put(`admin/users/${userId}/suspend`),
+  activateUser: (userId) => api.put(`admin/users/${userId}/activate`),
+  verifyUser: (userId) => api.put(`admin/users/${userId}/verify`),
+  deleteUser: (userId) => api.delete(`admin/users/${userId}`),
 };
 
 // Message API
@@ -630,6 +637,7 @@ export const messageAPI = {
 export const bookingAPI = {
   getUserBookings: (config = {}) => api.get("booking/user", config),
   getEscortBookings: (config = {}) => api.get("booking/escort", config),
+  getStats: (config = {}) => api.get("booking/stats", config),
 };
 
 // Review API

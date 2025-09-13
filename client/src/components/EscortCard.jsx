@@ -221,7 +221,9 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           {/* Name and Age */}
           <div className="flex items-center justify-between mb-1">
             <Link
-              to={`/${countryCode}/escort/${fixedEscort._id}`}
+              to={`/${countryCode}/escort/${
+                fixedEscort.alias || fixedEscort.name
+              }`}
               className="hover:underline"
             >
               <h3 className="text-base font-semibold text-gray-900">

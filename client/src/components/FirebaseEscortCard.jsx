@@ -120,7 +120,7 @@ const FirebaseEscortCard = ({
 
         {/* Overlay au survol */}
         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
-          <Link to={`/escort/${_id}`}>
+          <Link to={`/escort/${alias || name}`}>
             <Button
               variant="outline"
               size="sm"

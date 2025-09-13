@@ -222,21 +222,57 @@ const approveUpgradeRequest = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Accès non autorisé");
   }
 
+  console.log("🔍 APPROVE DEBUG - Looking for request with ID:", id);
+
   const upgradeRequest = await UpgradeRequest.findById(id).populate(
     "escort",
     "name subscriptionTier"
   );
 
+  console.log("🔍 APPROVE DEBUG - Request found:", !!upgradeRequest);
+
   if (!upgradeRequest) {
+    console.log("❌ APPROVE FAILED - Request not found for ID:", id);
     throw new ApiError(404, "Demande d'upgrade non trouvée");
   }
 
-  if (upgradeRequest.status !== "payment_confirmed") {
+  console.log("🔍 APPROVE DEBUG - Request details:", {
+    id: upgradeRequest._id,
+    status: upgradeRequest.status,
+    requestedPlan: upgradeRequest.requestedPlan,
+    escort: upgradeRequest.escort?._id,
+  });
+
+  // Debug: Log the actual status
+  console.log("🔍 APPROVE DEBUG - Request ID:", id);
+  console.log("🔍 APPROVE DEBUG - Current status:", upgradeRequest.status);
+  console.log(
+    "🔍 APPROVE DEBUG - Expected statuses: pending, payment_required, payment_confirmed"
+  );
+  console.log(
+    "🔍 APPROVE DEBUG - Status check result:",
+    ["pending", "payment_required", "payment_confirmed"].includes(
+      upgradeRequest.status
+    )
+  );
+
+  // Allow approval for pending, payment_required and payment_confirmed statuses
+  if (
+    !["pending", "payment_required", "payment_confirmed"].includes(
+      upgradeRequest.status
+    )
+  ) {
+    console.log(
+      "❌ APPROVE FAILED - Status not allowed:",
+      upgradeRequest.status
+    );
     throw new ApiError(
       400,
-      "Cette demande n'est pas prête à être approuvée. Le paiement doit d'abord être confirmé."
+      `Cette demande n'est pas prête à être approuvée. Statut actuel: ${upgradeRequest.status}. Seules les demandes en attente, avec paiement requis ou confirmé peuvent être approuvées.`
     );
   }
+
+  console.log("✅ APPROVE SUCCESS - Status allowed, proceeding with approval");
 
   // Mettre à jour le profil de l'escort
   const escort = await User.findById(upgradeRequest.escort);
@@ -361,7 +397,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
     requestId: id,
     adminNotes: adminNotes,
     adminUser: req.user?.email,
-    adminRole: req.user?.role
+    adminRole: req.user?.role,
   });
 
   // Vérifier que l'utilisateur est admin
@@ -373,14 +409,14 @@ const confirmPayment = asyncHandler(async (req, res) => {
   console.log("🔍 Looking for upgrade request with ID:", id);
   const upgradeRequest = await UpgradeRequest.findById(id);
   console.log("🔍 Upgrade request found:", !!upgradeRequest);
-  
+
   if (upgradeRequest) {
     console.log("🔍 Upgrade request status:", upgradeRequest.status);
     console.log("🔍 Upgrade request details:", {
       id: upgradeRequest._id,
       status: upgradeRequest.status,
       escort: upgradeRequest.escort,
-      requestedPlan: upgradeRequest.requestedPlan
+      requestedPlan: upgradeRequest.requestedPlan,
     });
   }
 
@@ -390,7 +426,10 @@ const confirmPayment = asyncHandler(async (req, res) => {
   }
 
   if (upgradeRequest.status !== "payment_required") {
-    console.log("❌ Invalid status for payment confirmation:", upgradeRequest.status);
+    console.log(
+      "❌ Invalid status for payment confirmation:",
+      upgradeRequest.status
+    );
     throw new ApiError(
       400,
       "Cette demande n'est pas en attente de confirmation de paiement"
@@ -427,8 +466,9 @@ const rejectUpgradeRequest = asyncHandler(async (req, res) => {
   }
 
   if (
-    upgradeRequest.status !== "pending" &&
-    upgradeRequest.status !== "payment_required"
+    !["pending", "payment_required", "payment_confirmed"].includes(
+      upgradeRequest.status
+    )
   ) {
     throw new ApiError(400, "Cette demande a déjà été traitée");
   }
@@ -591,14 +631,15 @@ const getUserSubscriptionStatus = asyncHandler(async (req, res) => {
   // First check if there's a separate Subscription document
   const subscription = await Subscription.findOne({
     userId: userId,
-    status: "active"
+    status: "active",
   });
 
   if (subscription) {
     // Use data from Subscription document
     subscriptionInfo.remainingDays = subscription.daysRemaining;
     subscriptionInfo.endDate = subscription.endDate;
-    subscriptionInfo.period = subscription.tier === "premium" ? "monthly" : null;
+    subscriptionInfo.period =
+      subscription.tier === "premium" ? "monthly" : null;
     subscriptionInfo.isExpired = subscription.daysRemaining <= 0;
   } else if (
     user.subscriptionTier === "premium" &&

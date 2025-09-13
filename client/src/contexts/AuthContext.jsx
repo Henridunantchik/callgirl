@@ -389,6 +389,23 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
+  // Refresh user data from server
+  const refreshUser = async () => {
+    try {
+      console.log("🔄 Refreshing user data from server...");
+      const response = await authAPI.getCurrentUser();
+      if (response?.data?.user) {
+        console.log("✅ Fresh user data received:", response.data.user);
+        setUser(response.data.user);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        return response.data.user;
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing user data:", error);
+      throw error;
+    }
+  };
+
   const isAuthenticated = () => {
     return !!user && !!localStorage.getItem("token");
   };
@@ -416,6 +433,7 @@ export const AuthProvider = ({ children }) => {
     forgotPassword,
     resetPassword,
     updateUser,
+    refreshUser,
     isAuthenticated,
     isEscort,
     isClient,

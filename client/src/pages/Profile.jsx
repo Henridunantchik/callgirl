@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { FirebasePremiumAvatar } from "@/components/firebase";
 
 import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,10 +36,12 @@ import { getEvn } from "@/helpers/getEnv";
 import { userAPI } from "@/services/api";
 import { fixUserUrls } from "@/utils/urlHelper";
 import { FirebaseImageDisplay } from "@/components/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Profile = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshUser } = useAuth();
   const [filePreview, setPreview] = useState();
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
@@ -188,6 +191,17 @@ const Profile = () => {
         console.log("=== PROFILE PAGE DEBUG ===");
         console.log("Fetching fresh user data...");
 
+        // First, refresh user data from AuthContext
+        try {
+          console.log("🔄 Refreshing user data from AuthContext...");
+          await refreshUser();
+        } catch (refreshError) {
+          console.log(
+            "⚠️ AuthContext refresh failed, continuing with API call:",
+            refreshError
+          );
+        }
+
         // Get fresh user data from API
         const response = await fetch("/api/auth/me", {
           headers: {
@@ -222,10 +236,11 @@ const Profile = () => {
     };
 
     fetchUserData();
-  }, [user]);
+  }, [user, refreshUser]);
 
   const isEscort = userData?.user?.role === "escort" || user?.role === "escort";
   const isClient = userData?.user?.role === "client" || user?.role === "client";
+  const isAdmin = userData?.user?.role === "admin" || user?.role === "admin";
 
   console.log("=== PROFILE DEBUG ===");
   console.log("userData:", userData);
@@ -234,19 +249,8 @@ const Profile = () => {
   console.log("isClient:", isClient);
   console.log("current pathname:", location.pathname);
 
-  // Redirect logic: if escort is on /profile, redirect to /escort/profile
-  useEffect(() => {
-    if (
-      isEscort &&
-      location.pathname.includes("/profile") &&
-      !location.pathname.includes("/escort/profile")
-    ) {
-      // Extract country code from current path
-      const pathParts = location.pathname.split("/");
-      const countryCode = pathParts[1]; // e.g., "ug" from "/ug/profile"
-      navigate(`/${countryCode}/escort/profile`, { replace: true });
-    }
-  }, [isEscort, location.pathname, navigate]);
+  // Profile page is accessible to all user types
+  // No redirect needed - different content shown based on role
 
   // Form schema
   const formSchema = z.object({
@@ -829,30 +833,8 @@ const Profile = () => {
     );
   }
 
-  // Ensure only clients can access this page
-  if (isEscort) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Access Denied
-          </h1>
-          <p className="text-gray-600 mb-4">
-            This page is only available for client profiles.
-          </p>
-          <Button
-            onClick={() => {
-              const pathParts = location.pathname.split("/");
-              const countryCode = pathParts[1];
-              navigate(`/${countryCode}/escort/profile`);
-            }}
-          >
-            Go to Escort Profile
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // Profile page is accessible to all user types (client, escort, admin)
+  // Different content will be shown based on user role
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -876,11 +858,17 @@ const Profile = () => {
               </svg>
             </div>
             <h1 className="text-2xl font-semibold text-gray-900">
-              {isEscort ? "Escort Profile Management" : "Client Profile"}
+              {isAdmin
+                ? "Admin Profile"
+                : isEscort
+                ? "Escort Profile Management"
+                : "Client Profile"}
             </h1>
           </div>
           <p className="text-gray-600 text-sm">
-            {isEscort
+            {isAdmin
+              ? "Manage your admin profile and system settings"
+              : isEscort
               ? "Manage your escort profile, gallery, services, and settings"
               : "Update your personal information and preferences"}
           </p>
