@@ -270,29 +270,62 @@ const Messages = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
+      console.log("📞 Client fetching conversations...");
       // Short timeout and no batching for snappy UX
       const response = await messageAPI.getUserConversations({
         timeout: 1200,
         batch: false,
       });
+      console.log("📞 Client Conversations API Response:", response);
 
       if (response.data && response.data.data) {
         setConversations(response.data.data);
+        console.log(
+          "📞 Client Conversations loaded:",
+          response.data.data.length
+        );
         // Auto-select first conversation if none selected
         if (response.data.data.length > 0 && !selectedChat) {
           setSelectedChat(response.data.data[0]);
         }
+      } else if (response.data && Array.isArray(response.data)) {
+        // Handle different response structure
+        setConversations(response.data);
+        console.log(
+          "📞 Client Conversations loaded (direct array):",
+          response.data.length
+        );
+        // Auto-select first conversation if none selected
+        if (response.data.length > 0 && !selectedChat) {
+          setSelectedChat(response.data[0]);
+        }
       } else {
+        console.log("📞 Client No conversations data in response");
         setConversations([]);
       }
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
-      // Gracefully fallback on timeout
-      if (error.code === "ECONNABORTED") {
-        setConversations([]);
-      } else {
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
+
+      // Don't show error toast for 404 (no conversations yet) or 401/403 (auth issues)
+      if (
+        error.response?.status !== 404 &&
+        error.response?.status !== 401 &&
+        error.response?.status !== 403
+      ) {
         showToast("error", "Failed to load conversations");
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        console.log("Authentication error - user may need to login");
       }
+      setConversations([]);
     } finally {
       setLoading(false);
     }
@@ -300,13 +333,19 @@ const Messages = () => {
 
   const fetchMessages = async (escortId) => {
     try {
+      console.log("📨 Fetching messages for escort:", escortId);
       const response = await messageAPI.getConversation(escortId, 1, {
         timeout: 1200,
         batch: false,
       });
+      console.log("📨 Messages API Response:", response);
 
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
+        console.log(
+          "📨 Messages loaded:",
+          response.data.data.messages?.length || 0
+        );
 
         // Mark all messages as read when conversation is opened
         await markAllMessagesAsRead(escortId);
@@ -317,10 +356,37 @@ const Messages = () => {
             detail: { escortId },
           })
         );
+      } else if (response.data && Array.isArray(response.data)) {
+        // Handle different response structure
+        setMessages(response.data);
+        console.log("📨 Messages loaded (direct array):", response.data.length);
+      } else {
+        console.log("📨 No messages data in response");
+        setMessages([]);
       }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
-      showToast("error", "Failed to load messages");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
+
+      // Don't show error toast for 404 (no messages yet) or 401/403 (auth issues)
+      if (
+        error.response?.status !== 404 &&
+        error.response?.status !== 401 &&
+        error.response?.status !== 403
+      ) {
+        showToast("error", "Failed to load messages");
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        console.log("Authentication error - user may need to login");
+      }
+      setMessages([]);
     }
   };
 

@@ -27,25 +27,59 @@ const ReviewSystem = ({ escortId, onReviewUpdate }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [userReview, setUserReview] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   // Fetch reviews on mount
   useEffect(() => {
     if (escortId) {
+      console.log("🔍 ReviewSystem: Fetching reviews for escort:", escortId);
       fetchReviews();
-      checkUserReview();
+      if (user) {
+        checkUserReview();
+      }
     }
-  }, [escortId]);
+  }, [escortId, user]);
 
   const fetchReviews = async () => {
     try {
       setLoading(true);
       const response = await reviewAPI.getEscortReviews(escortId);
+      console.log("🔍 Reviews API Response:", response);
+      
       if (response.data && response.data.data) {
         setReviews(response.data.data.reviews || []);
+      } else if (response.data && response.data.reviews) {
+        // Handle different response structure
+        setReviews(response.data.reviews || []);
+      } else {
+        console.log("No reviews found for escort:", escortId);
+        setReviews([]);
       }
+      setHasError(false);
+      setRetryCount(0);
     } catch (error) {
       console.error("Error fetching reviews:", error);
-      showToast("error", "Failed to load reviews");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      });
+      
+      // Don't show error toast for 404 (no reviews yet)
+      if (error.response?.status !== 404) {
+        // Retry up to 3 times for network errors
+        if (retryCount < 3 && (error.code === 'NETWORK_ERROR' || !error.response)) {
+          console.log(`🔄 Retrying reviews fetch (attempt ${retryCount + 1}/3)...`);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => fetchReviews(), 2000 * (retryCount + 1)); // Exponential backoff
+          return;
+        }
+        showToast("error", "Failed to load reviews");
+        setHasError(true);
+      }
+      setReviews([]);
     } finally {
       setLoading(false);
     }
@@ -177,6 +211,13 @@ const ReviewSystem = ({ escortId, onReviewUpdate }) => {
 
   return (
     <div className="space-y-6">
+      {/* Debug Info - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-xs">
+          <strong>Debug:</strong> Escort ID: {escortId} | Loading: {loading.toString()} | Reviews: {reviews.length} | User: {user ? 'Logged in' : 'Not logged in'}
+        </div>
+      )}
+
       {/* Review Summary */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -252,11 +293,38 @@ const ReviewSystem = ({ escortId, onReviewUpdate }) => {
             <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
             <span className="ml-2 text-gray-600">Loading reviews...</span>
           </div>
+        ) : hasError ? (
+          <div className="text-center py-8 text-red-500">
+            <MessageSquare className="w-12 h-12 mx-auto mb-4 text-red-300" />
+            <p>Failed to load reviews</p>
+            <p className="text-sm mb-4">There was an error loading the reviews</p>
+            <Button 
+              onClick={() => {
+                setHasError(false);
+                setRetryCount(0);
+                fetchReviews();
+              }} 
+              variant="outline"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Retry Loading Reviews
+            </Button>
+          </div>
         ) : reviews.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p>No reviews yet</p>
             <p className="text-sm">Be the first to leave a review!</p>
+            {user && (
+              <Button 
+                onClick={() => setShowForm(true)} 
+                className="mt-4"
+                variant="outline"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Write First Review
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

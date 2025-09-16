@@ -243,7 +243,6 @@ const EscortRegistration = () => {
     );
   };
 
-
   // Function to check if Terms step is complete
   const isTermsComplete = () => {
     return formData.agreeToTerms === true;
@@ -295,7 +294,6 @@ const EscortRegistration = () => {
       );
       return;
     }
-
 
     // Prevent proceeding if Terms is incomplete
     if (currentStep === 5 && !isTermsComplete()) {
@@ -507,7 +505,6 @@ const EscortRegistration = () => {
         return;
       }
 
-
       // Validate terms agreement
       if (!formData.agreeToTerms) {
         alert("Please agree to the terms and conditions to continue.");
@@ -539,7 +536,6 @@ const EscortRegistration = () => {
         "isStandardPricing",
         formData.isStandardPricing.toString()
       );
-
 
       // Add ID document if available
       if (formData.idDocument) {
@@ -1361,7 +1357,6 @@ const EscortRegistration = () => {
                 </div>
               </div>
             )}
-
 
             {currentStep === 5 && (
               <div className="space-y-4">

@@ -108,6 +108,8 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -244,7 +246,8 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
   const fetchConversations = async () => {
     // Don't fetch if user is not authenticated
-    if (!user || !user._id) {
+    const userId = user?._id || user?.user?._id || user?.id || user?.user?.id;
+    if (!user || !userId) {
       console.log("Skipping fetchConversations - user not authenticated");
       return;
     }
@@ -252,7 +255,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     try {
       setLoading(true);
       console.log("📞 Calling getUserConversations API...");
-      const response = await messageAPI.getUserConversations();
+      const response = await messageAPI.getUserConversations({
+        timeout: 1200,
+        batch: false,
+      });
       console.log("📞 API Response:", response);
 
       if (response.data && response.data.data) {
@@ -263,13 +269,58 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
         if (response.data.data.length > 0 && !selectedChat) {
           setSelectedChat(response.data.data[0]);
         }
+      } else if (response.data && Array.isArray(response.data)) {
+        // Handle different response structure
+        console.log("📞 Setting conversations (direct array):", response.data);
+        setConversations(response.data);
+
+        // Auto-select first conversation if none selected
+        if (response.data.length > 0 && !selectedChat) {
+          setSelectedChat(response.data[0]);
+        }
       } else {
         console.log("📞 No conversations data in response");
         setConversations([]);
       }
+      setHasError(false);
+      setRetryCount(0);
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
-      showToast("error", "Failed to load conversations");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
+
+      // Don't show error toast for 404 (no conversations yet) or 401/403 (auth issues)
+      if (
+        error.response?.status !== 404 &&
+        error.response?.status !== 401 &&
+        error.response?.status !== 403
+      ) {
+        // Retry up to 3 times for network errors
+        if (
+          retryCount < 3 &&
+          (error.code === "NETWORK_ERROR" || !error.response)
+        ) {
+          console.log(
+            `🔄 Retrying conversations fetch (attempt ${retryCount + 1}/3)...`
+          );
+          setRetryCount((prev) => prev + 1);
+          setTimeout(() => fetchConversations(), 2000 * (retryCount + 1)); // Exponential backoff
+          return;
+        }
+        showToast("error", "Failed to load conversations");
+        setHasError(true);
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        console.log("Authentication error - user may need to login");
+        // Don't show error toast for auth issues, just log it
+      }
+      setConversations([]);
     } finally {
       setLoading(false);
     }
@@ -284,10 +335,19 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     }
 
     try {
-      const response = await messageAPI.getConversation(escortId);
+      console.log("📨 Fetching messages for escort:", escortId);
+      const response = await messageAPI.getConversation(escortId, 1, {
+        timeout: 1200,
+        batch: false,
+      });
+      console.log("📨 Messages API Response:", response);
 
       if (response.data && response.data.data) {
         setMessages(response.data.data.messages || []);
+        console.log(
+          "📨 Messages loaded:",
+          response.data.data.messages?.length || 0
+        );
 
         // Mark all messages as read using the new API
         try {
@@ -299,10 +359,53 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
         } catch (error) {
           console.error("Failed to mark messages as read:", error);
         }
+      } else if (response.data && Array.isArray(response.data)) {
+        // Handle different response structure
+        setMessages(response.data);
+        console.log("📨 Messages loaded (direct array):", response.data.length);
+      } else {
+        console.log("📨 No messages data in response");
+        setMessages([]);
       }
+      setHasError(false);
+      setRetryCount(0);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
-      showToast("error", "Failed to load messages");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
+
+      // Don't show error toast for 404 (no messages yet) or 401/403 (auth issues)
+      if (
+        error.response?.status !== 404 &&
+        error.response?.status !== 401 &&
+        error.response?.status !== 403
+      ) {
+        // Retry up to 3 times for network errors
+        if (
+          retryCount < 3 &&
+          (error.code === "NETWORK_ERROR" || !error.response)
+        ) {
+          console.log(
+            `🔄 Retrying messages fetch (attempt ${retryCount + 1}/3)...`
+          );
+          setRetryCount((prev) => prev + 1);
+          setTimeout(() => fetchMessages(escortId), 2000 * (retryCount + 1)); // Exponential backoff
+          return;
+        }
+        showToast("error", "Failed to load messages");
+        setHasError(true);
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        console.log("Authentication error - user may need to login");
+        // Don't show error toast for auth issues, just log it
+      }
+      setMessages([]);
     }
   };
 
@@ -661,6 +764,16 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
         {!isMinimized && (
           <CardContent className="p-0 h-80 flex flex-col">
+            {/* Debug Info - Remove in production */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="bg-yellow-50 border-b border-yellow-200 p-2 text-xs">
+                <strong>Debug:</strong> User:{" "}
+                {user ? "Logged in" : "Not logged in"} | Conversations:{" "}
+                {conversations.length} | Selected: {selectedChat ? "Yes" : "No"}{" "}
+                | Loading: {loading.toString()} | Error: {hasError.toString()}
+              </div>
+            )}
+
             {/* Authentication Check */}
             {!isAuthenticated ? (
               // Login prompt
@@ -704,6 +817,21 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                   {loading ? (
                     <div className="p-4 text-center text-gray-500">
                       Loading...
+                    </div>
+                  ) : hasError ? (
+                    <div className="p-4 text-center text-red-500">
+                      <p className="mb-2">Failed to load conversations</p>
+                      <Button
+                        onClick={() => {
+                          setHasError(false);
+                          setRetryCount(0);
+                          fetchConversations();
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Retry
+                      </Button>
                     </div>
                   ) : conversations.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
@@ -880,7 +1008,24 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                   className="flex-1 overflow-y-auto p-3 space-y-2"
                   style={{ maxHeight: "200px" }}
                 >
-                  {messages.length === 0 ? (
+                  {hasError ? (
+                    <div className="text-center text-red-500 text-sm py-8">
+                      <p className="mb-2">Failed to load messages</p>
+                      <Button
+                        onClick={() => {
+                          setHasError(false);
+                          setRetryCount(0);
+                          if (selectedChat) {
+                            fetchMessages(selectedChat.user._id);
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Retry Loading Messages
+                      </Button>
+                    </div>
+                  ) : messages.length === 0 ? (
                     <div className="text-center text-gray-500 text-sm py-8">
                       No messages yet. Start a conversation!
                     </div>
