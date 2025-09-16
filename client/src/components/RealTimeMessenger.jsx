@@ -255,7 +255,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
     try {
       setLoading(true);
       console.log("📞 Calling getUserConversations API...");
-      const response = await messageAPI.getUserConversations();
+      const response = await messageAPI.getUserConversations({
+        timeout: 1200,
+        batch: false,
+      });
       console.log("📞 API Response:", response);
 
       if (response.data && response.data.data) {
@@ -290,8 +293,12 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
         url: error.config?.url,
       });
 
-      // Don't show error toast for 404 (no conversations yet)
-      if (error.response?.status !== 404) {
+      // Don't show error toast for 404 (no conversations yet) or 401/403 (auth issues)
+      if (
+        error.response?.status !== 404 &&
+        error.response?.status !== 401 &&
+        error.response?.status !== 403
+      ) {
         // Retry up to 3 times for network errors
         if (
           retryCount < 3 &&
@@ -306,6 +313,12 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
         }
         showToast("error", "Failed to load conversations");
         setHasError(true);
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        console.log("Authentication error - user may need to login");
+        // Don't show error toast for auth issues, just log it
       }
       setConversations([]);
     } finally {
@@ -323,7 +336,10 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
 
     try {
       console.log("📨 Fetching messages for escort:", escortId);
-      const response = await messageAPI.getConversation(escortId);
+      const response = await messageAPI.getConversation(escortId, 1, {
+        timeout: 1200,
+        batch: false,
+      });
       console.log("📨 Messages API Response:", response);
 
       if (response.data && response.data.data) {
@@ -351,6 +367,8 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
         console.log("📨 No messages data in response");
         setMessages([]);
       }
+      setHasError(false);
+      setRetryCount(0);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
       console.error("Error details:", {
@@ -360,9 +378,32 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
         url: error.config?.url,
       });
 
-      // Don't show error toast for 404 (no messages yet)
-      if (error.response?.status !== 404) {
+      // Don't show error toast for 404 (no messages yet) or 401/403 (auth issues)
+      if (
+        error.response?.status !== 404 &&
+        error.response?.status !== 401 &&
+        error.response?.status !== 403
+      ) {
+        // Retry up to 3 times for network errors
+        if (
+          retryCount < 3 &&
+          (error.code === "NETWORK_ERROR" || !error.response)
+        ) {
+          console.log(
+            `🔄 Retrying messages fetch (attempt ${retryCount + 1}/3)...`
+          );
+          setRetryCount((prev) => prev + 1);
+          setTimeout(() => fetchMessages(escortId), 2000 * (retryCount + 1)); // Exponential backoff
+          return;
+        }
         showToast("error", "Failed to load messages");
+        setHasError(true);
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        console.log("Authentication error - user may need to login");
+        // Don't show error toast for auth issues, just log it
       }
       setMessages([]);
     }
@@ -967,7 +1008,24 @@ const RealTimeMessenger = ({ isOpen, onClose, selectedEscort = null }) => {
                   className="flex-1 overflow-y-auto p-3 space-y-2"
                   style={{ maxHeight: "200px" }}
                 >
-                  {messages.length === 0 ? (
+                  {hasError ? (
+                    <div className="text-center text-red-500 text-sm py-8">
+                      <p className="mb-2">Failed to load messages</p>
+                      <Button
+                        onClick={() => {
+                          setHasError(false);
+                          setRetryCount(0);
+                          if (selectedChat) {
+                            fetchMessages(selectedChat.user._id);
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Retry Loading Messages
+                      </Button>
+                    </div>
+                  ) : messages.length === 0 ? (
                     <div className="text-center text-gray-500 text-sm py-8">
                       No messages yet. Start a conversation!
                     </div>

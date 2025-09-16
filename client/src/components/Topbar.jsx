@@ -62,7 +62,10 @@ const Topbar = () => {
     }
 
     try {
-      const response = await messageAPI.getUserConversations();
+      const response = await messageAPI.getUserConversations({
+        timeout: 1200,
+        batch: false,
+      });
       if (response.data && response.data.data) {
         const totalUnread = response.data.data.reduce((total, conv) => {
           return total + (conv.unreadCount || 0);

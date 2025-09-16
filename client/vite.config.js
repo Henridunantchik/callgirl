@@ -63,12 +63,15 @@ export default defineConfig({
     },
   },
   preview: {
-    port: process.env.PORT || 4173,
+    port: process.env.PORT || 3000,
     host: "0.0.0.0",
     allowedHosts: [
       "epic-escorts-client-production.up.railway.app",
       "www.epicescorts.live",
       "epicescorts.live",
+      "healthcheck.railway.app",
+      "localhost",
+      "0.0.0.0",
     ],
   },
   // Railway deployment configuration

@@ -93,7 +93,10 @@ const AppSidebar = () => {
 
         // Fetch unread message count (for both clients and escorts)
         try {
-          const messagesResponse = await messageAPI.getUserConversations();
+          const messagesResponse = await messageAPI.getUserConversations({
+            timeout: 1200,
+            batch: false,
+          });
           console.log("📨 Messages response:", messagesResponse.data);
           console.log(
             "📨 Messages data structure:",
