@@ -152,7 +152,10 @@ const EscortProfileEdit = () => {
         console.log("🔄 Refreshing user data on profile edit load...");
         await refreshUser();
       } catch (refreshError) {
-        console.log("⚠️ AuthContext refresh failed, continuing with existing data:", refreshError);
+        console.log(
+          "⚠️ AuthContext refresh failed, continuing with existing data:",
+          refreshError
+        );
       }
 
       if (user) {

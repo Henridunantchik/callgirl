@@ -71,6 +71,15 @@ export default defineConfig({
       "epicescorts.live",
     ],
   },
+  // Railway deployment configuration
+  define: {
+    __DEV__: JSON.stringify(process.env.NODE_ENV === "development"),
+    __PROD__: JSON.stringify(process.env.NODE_ENV === "production"),
+    // Ensure environment variables are available
+    "process.env.NODE_ENV": JSON.stringify(
+      process.env.NODE_ENV || "production"
+    ),
+  },
   build: {
     // Enable source maps for debugging
     sourcemap: false,
@@ -98,7 +107,7 @@ export default defineConfig({
     minify: "terser",
     terserOptions: {
       compress: {
-        drop_console: true,
+        drop_console: false, // Keep console logs for debugging SEO issues
         drop_debugger: true,
       },
     },
@@ -139,11 +148,6 @@ export default defineConfig({
     postcss: {
       plugins: [autoprefixer, tailwindcss],
     },
-  },
-  // Define global constants
-  define: {
-    __DEV__: JSON.stringify(process.env.NODE_ENV === "development"),
-    __PROD__: JSON.stringify(process.env.NODE_ENV === "production"),
   },
   // Experimental features for better performance
   experimental: {

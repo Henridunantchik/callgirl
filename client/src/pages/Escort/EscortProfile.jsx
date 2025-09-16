@@ -622,25 +622,6 @@ const EscortProfile = () => {
                       )}
                     </div>
 
-                    {/* Contact Information - Only show for featured/premium users */}
-                    {(escort.subscriptionTier === "featured" ||
-                      escort.subscriptionTier === "premium") && (
-                      <div className="flex flex-wrap items-center gap-4 text-gray-600 mt-2">
-                        {escort.whatsapp && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-4 w-4" />
-                            <span>WhatsApp: {escort.whatsapp}</span>
-                          </div>
-                        )}
-                        {escort.telegram && (
-                          <div className="flex items-center gap-1">
-                            <MessageCircle className="h-4 w-4" />
-                            <span>Telegram: {escort.telegram}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     {/* 3 Badges Only */}
                     <div className="flex flex-wrap gap-2">
                       {/* 1. Available Badge */}

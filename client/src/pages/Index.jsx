@@ -145,55 +145,88 @@ const Index = () => {
       setTotalEscorts(escorts.length);
       setTotalPages(Math.ceil(escorts.length / escortsPerPage));
 
-      // Background fetch stats (do not block rendering)
+      // Calculate real stats from actual escort data
+      const calculateRealStats = (escortList) => {
+        const totalEscorts = escortList.length;
+        const verifiedEscorts = escortList.filter(
+          (escort) => escort.isVerified === true
+        ).length;
+        const onlineEscorts = escortList.filter(
+          (escort) => escort.isOnline === true
+        ).length;
+        const featuredEscorts = escortList.filter(
+          (escort) => escort.isFeatured === true
+        ).length;
+        const premiumEscorts = escortList.filter(
+          (escort) =>
+            escort.subscriptionTier === "premium" ||
+            escort.subscriptionTier === "elite"
+        ).length;
+
+        // Get unique cities from escort data
+        const uniqueCities = [
+          ...new Set(escortList.map((escort) => escort.city).filter(Boolean)),
+        ];
+        const citiesCovered = uniqueCities.length;
+
+        return {
+          totalEscorts,
+          verifiedEscorts,
+          onlineEscorts,
+          featuredEscorts,
+          premiumEscorts,
+          citiesCovered,
+          topCities: uniqueCities.slice(0, 5).map((city) => ({
+            _id: city,
+            escortCount: escortList.filter((escort) => escort.city === city)
+              .length,
+          })),
+          countryCode: countryCode || "ug",
+        };
+      };
+
+      // Set real stats from escort data
+      const realStats = calculateRealStats(escorts);
+      setStatsData(realStats);
+
+      // Also try to fetch additional stats from API for comparison
       try {
         statsAPI
           .getCountryStats(countryCode || "ug")
           .then((resp) => {
             if (resp?.data?.data?.stats) {
-              setStatsData(resp.data.data.stats);
-            } else {
-              // Use demo data if API returns empty stats
-              console.log("Using demo stats for homepage");
+              // Merge API stats with real calculated stats
+              const apiStats = resp.data.data.stats;
               setStatsData({
-                totalEscorts: 1,
-                verifiedEscorts: 1,
-                onlineEscorts: 1,
-                featuredEscorts: 0,
-                premiumEscorts: 0,
-                citiesCovered: 1,
-                topCities: [{ _id: "Kampala", escortCount: 1 }],
-                countryCode: countryCode || "ug",
+                ...realStats,
+                // Use API data if available, otherwise use calculated
+                totalEscorts: apiStats.totalEscorts || realStats.totalEscorts,
+                verifiedEscorts:
+                  apiStats.verifiedEscorts || realStats.verifiedEscorts,
+                onlineEscorts:
+                  apiStats.onlineEscorts || realStats.onlineEscorts,
+                featuredEscorts:
+                  apiStats.featuredEscorts || realStats.featuredEscorts,
+                premiumEscorts:
+                  apiStats.premiumEscorts || realStats.premiumEscorts,
+                citiesCovered:
+                  apiStats.citiesCovered || realStats.citiesCovered,
               });
             }
           })
           .catch((err) => {
-            console.warn("Stats fetch failed:", err?.message);
-            // Use demo data when API fails
-            setStatsData({
-              totalEscorts: 1,
-              verifiedEscorts: 1,
-              onlineEscorts: 1,
-              featuredEscorts: 0,
-              premiumEscorts: 0,
-              citiesCovered: 1,
-              topCities: [{ _id: "Kampala", escortCount: 1 }],
-              countryCode: countryCode || "ug",
-            });
+            console.warn(
+              "API stats fetch failed, using calculated stats:",
+              err?.message
+            );
+            // Keep using the real calculated stats
           });
       } catch (error) {
-        console.warn("Stats fetch error:", error?.message);
-        // Use demo data when API fails
-        setStatsData({
-          totalEscorts: 1,
-          verifiedEscorts: 1,
-          onlineEscorts: 1,
-          featuredEscorts: 0,
-          premiumEscorts: 0,
-          citiesCovered: 1,
-          topCities: [{ _id: "Kampala", escortCount: 1 }],
-          countryCode: countryCode || "ug",
-        });
+        console.warn(
+          "API stats error, using calculated stats:",
+          error?.message
+        );
+        // Keep using the real calculated stats
       }
 
       setError(null);
@@ -486,11 +519,17 @@ const Index = () => {
               name: "Epic Escorts",
               url: "https://epicescorts.live",
             },
+            mainEntity: {
+              "@type": "ItemList",
+              name: `${countryName} Escorts Directory`,
+              description: `Verified escort profiles in ${countryName}`,
+              numberOfItems: escortData?.escorts?.length || 0,
+            },
           })}
         </script>
       </Helmet>
 
-      <div className="space-y-6">
+      <div className="space-y-6 px-2 sm:px-0">
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-gray-900">
@@ -654,7 +693,7 @@ const Index = () => {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">
@@ -719,7 +758,7 @@ const Index = () => {
 
           {escortData?.escorts && escortData.escorts.length > 0 ? (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
                 {console.log(
                   "Rendering escorts, count:",
                   getCurrentPageEscorts().length

@@ -62,7 +62,17 @@ const EscortReviews = () => {
       }
     } catch (error) {
       console.error("Error fetching reviews:", error);
-      showToast("Failed to load reviews", "error");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
+
+      // Don't show error toast for 404 (no reviews yet)
+      if (error.response?.status !== 404) {
+        showToast("Failed to load reviews", "error");
+      }
     } finally {
       setLoading(false);
     }

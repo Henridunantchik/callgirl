@@ -131,9 +131,9 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
     >
-      <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white h-[500px] flex flex-col">
+      <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white h-[480px] sm:h-[500px] flex flex-col">
         {/* Image Section */}
-        <div className="relative h-96 overflow-hidden">
+        <div className="relative h-80 sm:h-96 overflow-hidden">
           <FirebaseImageDisplay
             src={(() => {
               // For Basic escorts: Always use avatar (no gallery access)
@@ -217,7 +217,7 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           )}
         </div>
 
-        <CardContent className="p-3 flex flex-col">
+        <CardContent className="p-2 sm:p-3 flex flex-col">
           {/* Name and Age */}
           <div className="flex items-center justify-between mb-1">
             <Link
@@ -226,13 +226,11 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
               }`}
               className="hover:underline"
             >
-              <h3 className="text-base font-semibold text-gray-900">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900">
                 {fixedEscort.alias || fixedEscort.name}
               </h3>
             </Link>
-            <span className="text-xs text-gray-500">
-              {fixedEscort.age} years
-            </span>
+            <span className="text-xs text-gray-500">{fixedEscort.age}</span>
           </div>
 
           {/* Location */}
@@ -343,26 +341,30 @@ const EscortCard = ({ escort, onFavorite, onContact, isFavorite = false }) => {
           )}
         </CardContent>
 
-        <CardFooter className="p-3 pt-0">
+        <CardFooter className="p-2 sm:p-3 pt-0">
           {canShowContactInfo(fixedEscort) ? (
             <div className="flex gap-2 w-full">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="flex-1 text-xs sm:text-sm"
                 onClick={() => onContact(fixedEscort, "message")}
               >
-                <MessageCircle className="w-4 h-4 mr-1" />
-                Message
+                <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                <span className="hidden sm:inline">Message</span>
+                <span className="sm:hidden">Msg</span>
               </Button>
               <Button
                 variant="default"
                 size="sm"
-                className="flex-1"
+                className="flex-1 text-xs sm:text-sm"
                 onClick={() => onContact(fixedEscort, "call")}
               >
-                <Phone className="w-4 h-4 mr-1" />
-                {fixedEscort.phone || "Call"}
+                <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                <span className="hidden sm:inline">
+                  {fixedEscort.phone || "Call"}
+                </span>
+                <span className="sm:hidden">Call</span>
               </Button>
             </div>
           ) : // Only show premium access message to escorts (not clients)
